@@ -15,16 +15,20 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
   const messages = useChatStore(selectMessages);
   const loading = useChatStore(selectLoading);
   const showTracker = useChatStore(selectShowTracker);
+  const shouldCelebrate = useChatStore((state) => state.shouldCelebrate);
   const extractedAnswers = useChatStore((state) => state.extractedAnswers);
   const sendMessage = useChatStore((state) => state.sendMessage);
   const handleButtonClick = useChatStore((state) => state.handleButtonClick);
+  const clearCelebration = useChatStore((state) => state.clearCelebration);
   
   const [input, setInput] = useState('');
+  const [showCelebrationBanner, setShowCelebrationBanner] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    console.log(messages)
   }, [messages]);
 
   // Check completion
@@ -33,6 +37,21 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
       setTimeout(() => onComplete(extractedAnswers), 1000);
     }
   }, [extractedAnswers.length, onComplete]);
+
+  // Handle celebration banner (one-time display)
+  useEffect(() => {
+    if (shouldCelebrate) {
+      setShowCelebrationBanner(true);
+      // Clear the flag after showing
+      setTimeout(() => {
+        clearCelebration();
+      }, 100);
+      // Hide banner after 5 seconds
+      setTimeout(() => {
+        setShowCelebrationBanner(false);
+      }, 5000);
+    }
+  }, [shouldCelebrate, clearCelebration]);
 
   const handleSend = async () => {
     const message = input;
@@ -48,6 +67,31 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
       <div className="flex-1 flex flex-col h-[600px] bg-white rounded-xl shadow-lg">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* One-time celebration banner at top */}
+          <AnimatePresence>
+            {showCelebrationBanner && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0, y: -20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: -20 }}
+                className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 sticky top-0 z-10"
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className="text-blue-600" size={24} />
+                  <div>
+                    <p className="font-semibold text-blue-900">
+                      🎉 Analysis Started!
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      I'm building your personalized home valuation report
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Messages */}
           {messages.map((msg, i) => (
             <motion.div
               key={`${msg.timestamp?.getTime()}-${i}`}
@@ -62,32 +106,13 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-100 text-gray-900'
                 }`}>
-                  {msg.content.split('\n\n').map((para, j) => (
-                    <p key={j} className={j > 0 ? 'mt-2' : ''}>{para}</p>
-                  ))}
+                  {msg.content ? (
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+                  ) : (
+                    <p className="text-gray-500 italic">Loading...</p>
+                  )}
                 </div>
               </div>
-
-              {/* Celebration animation */}
-              {msg.celebration && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200"
-                >
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="text-blue-600" size={24} />
-                    <div>
-                      <p className="font-semibold text-blue-900">
-                        🎉 Analysis Started!
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        I'm building your personalized home valuation report
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
 
               {/* Button options */}
               {msg.buttons && msg.buttons.length > 0 && i === messages.length - 1 && (

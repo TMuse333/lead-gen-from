@@ -13,6 +13,7 @@ const initialState = {
   showTracker: false,
   currentFlow: null,
   progress: 0,
+  shouldCelebrate: false,
 };
 
 export const useChatStore = create<ChatState>()(
@@ -32,13 +33,24 @@ export const useChatStore = create<ChatState>()(
           const newAnswers = [...state.extractedAnswers, answer];
           const progress = Math.round((newAnswers.length / 6) * 100);
 
-          // Show tracker and confetti on first answer
-          if (newAnswers.length === 1 && !state.showTracker) {
+          // Trigger confetti on 2nd answer (enough to start analysis)
+          // Trigger tracker and celebration on 2nd answer
+          if (newAnswers.length === 2) {
             confetti({
               particleCount: 100,
               spread: 70,
               origin: { y: 0.6 }
             });
+            return {
+              extractedAnswers: newAnswers,
+              progress,
+              showTracker: true,
+              shouldCelebrate: true,
+            };
+          }
+
+          // Show tracker on first answer (no celebration yet)
+          if (newAnswers.length === 1 && !state.showTracker) {
             return {
               extractedAnswers: newAnswers,
               progress,
@@ -109,8 +121,12 @@ export const useChatStore = create<ChatState>()(
           }
 
           const data = await response.json();
+          
+          console.log('🎯 API Response data:', data);
+          console.log('📝 Reply from API:', data.reply);
+          console.log('🔘 Buttons from API:', data.buttons);
 
-          // Update extracted answers if any
+          // Update extracted answers if any (this will trigger confetti in addExtractedAnswer)
           if (data.extracted) {
             get().addExtractedAnswer(data.extracted);
           }
@@ -120,14 +136,15 @@ export const useChatStore = create<ChatState>()(
             set({ currentFlow: data.flowType });
           }
 
-          // Add AI reply
+          // Add AI reply - clean from API
           const aiMsg: ChatMessage = {
             role: 'assistant',
-            content: data.reply,
+            content: data.reply || 'Let me help you with that.',
             buttons: data.buttons || [],
-            celebration: data.celebration,
             timestamp: new Date(),
           };
+          
+          console.log('💬 AI Message being added:', aiMsg);
 
           set((state) => ({
             messages: [...state.messages, aiMsg],
@@ -154,6 +171,10 @@ export const useChatStore = create<ChatState>()(
         } finally {
           set({ loading: false });
         }
+      },
+
+      clearCelebration: () => {
+        set({ shouldCelebrate: false });
       },
 
       reset: () => {
