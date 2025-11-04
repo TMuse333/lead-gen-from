@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
     // STEP 1: Extract property profile from answers
     // ============================================
     const propertyProfile = extractPropertyProfile(answers);
+
     const userEmail = answers.find((a) => a.questionId === 'email')?.value as string;
+    const userPhone = answers.find((a) => a.questionId === 'phoneNumber')?.value as number;
     
     if (!userEmail) {
       return NextResponse.json(
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
       formId: 'default-form',
       agentId,
       email: userEmail,
+      phoneNumber: userPhone, 
       answers,
       propertyProfile,
       submittedAt: new Date(),

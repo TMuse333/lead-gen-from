@@ -17,6 +17,7 @@ export interface LeadDocument {
   
   // User data
   email: string;
+  phoneNumber?: string;
   answers: Array<{
     questionId: string;
     question: string;

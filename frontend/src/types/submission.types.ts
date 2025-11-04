@@ -14,6 +14,7 @@ export interface FormAnswer {
     formId: string;
     agentId: string;
     email: string;
+    phoneNumber?:number
     answers: FormAnswer[];
     propertyProfile: {
       type?: string;
