@@ -31,7 +31,10 @@ export const useChatStore = create<ChatState>()(
       addExtractedAnswer: (answer: ExtractedAnswer) => {
         set((state) => {
           const newAnswers = [...state.extractedAnswers, answer];
-          const progress = Math.round((newAnswers.length / 6) * 100);
+          
+          // Get total questions for current flow (default to 6)
+          const totalQuestions = 6; // All flows have 6 questions
+          const progress = Math.round((newAnswers.length / totalQuestions) * 100);
 
           // Trigger confetti on 2nd answer (enough to start analysis)
           // Trigger tracker and celebration on 2nd answer
@@ -73,7 +76,7 @@ export const useChatStore = create<ChatState>()(
         set({ showTracker: show });
       },
 
-      setCurrentFlow: (flow: 'sell' | 'buy' | 'value' | null) => {
+      setCurrentFlow: (flow: 'sell' | 'buy' | 'value' | 'browse' | null) => {
         set({ currentFlow: flow });
       },
 
@@ -82,6 +85,12 @@ export const useChatStore = create<ChatState>()(
       },
 
       handleButtonClick: async (button: ChatButton) => {
+        // Detect flow from button value
+        if (button.value === 'sell' || button.value === 'buy' || button.value === 'browse') {
+          console.log('🎯 Flow detected from button:', button.value);
+          set({ currentFlow: button.value as 'sell' | 'buy' | 'browse' });
+        }
+        
         const { sendMessage } = get();
         await sendMessage(button.value, button.label);
       },
@@ -125,6 +134,7 @@ export const useChatStore = create<ChatState>()(
           console.log('🎯 API Response data:', data);
           console.log('📝 Reply from API:', data.reply);
           console.log('🔘 Buttons from API:', data.buttons);
+          console.log('✅ Is Complete:', data.isComplete);
 
           // Update extracted answers if any (this will trigger confetti in addExtractedAnswer)
           if (data.extracted) {
@@ -153,6 +163,17 @@ export const useChatStore = create<ChatState>()(
           // Update progress
           if (data.progress !== undefined) {
             set({ progress: data.progress });
+          }
+
+          // If complete, wait 2 seconds then trigger onComplete
+          if (data.isComplete) {
+            console.log('🎊 Form complete! Will trigger redirect in 2 seconds...');
+            setTimeout(() => {
+              const onComplete = (window as any).__chatOnComplete;
+              if (onComplete) {
+                onComplete(get().extractedAnswers);
+              }
+            }, 2000);
           }
 
         } catch (error) {

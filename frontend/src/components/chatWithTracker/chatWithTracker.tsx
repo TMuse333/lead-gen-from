@@ -28,15 +28,17 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    console.log(messages)
   }, [messages]);
 
   // Check completion
   useEffect(() => {
-    if (extractedAnswers.length >= 6 && onComplete) {
-      setTimeout(() => onComplete(extractedAnswers), 1000);
-    }
-  }, [extractedAnswers.length, onComplete]);
+    // Attach callback to window so store can call it
+    (window as any).__chatOnComplete = onComplete;
+    
+    return () => {
+      delete (window as any).__chatOnComplete;
+    };
+  }, [onComplete]);
 
   // Handle celebration banner (one-time display)
   useEffect(() => {
@@ -107,7 +109,9 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
                     : 'bg-gray-100 text-gray-900'
                 }`}>
                   {msg.content ? (
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                    msg.content.split('\n\n').map((para, j) => (
+                      <p key={j} className={j > 0 ? 'mt-2' : ''}>{para}</p>
+                    ))
                   ) : (
                     <p className="text-gray-500 italic">Loading...</p>
                   )}

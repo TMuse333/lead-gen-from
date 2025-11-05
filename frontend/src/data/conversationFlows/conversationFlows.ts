@@ -2,8 +2,21 @@
 
 import { ConversationFlows } from '@/types/chat.types';
 
-export const CONVERSATION_FLOWS: ConversationFlows = {
-  sell: {
+// data/conversationFlows.ts
+
+export const INITIAL_MESSAGE = {
+    role: 'assistant' as const,
+    content: "Hi! I'm Chris's AI assistant. How can I help you today?",
+    buttons: [
+      { id: 'sell', label: '🏠 I want to sell my home', value: 'sell' },
+      { id: 'buy', label: '🔍 I\'m looking to buy', value: 'buy' },
+      { id: 'browse', label: '👀 Just browsing the market', value: 'browse' },
+      { id: 'question', label: '💬 I have a question', value: 'question' },
+    ]
+  };
+  
+  // SELLER FLOW
+  export const SELLER_FLOW = {
     propertyType: {
       question: "What type of property do you have?",
       buttons: [
@@ -14,7 +27,7 @@ export const CONVERSATION_FLOWS: ConversationFlows = {
       ]
     },
     propertyAge: {
-      question: "How old is your home approximately?",
+      question: "How old is your home?",
       buttons: [
         { id: 'new', label: '< 10 years', value: '0-10' },
         { id: 'mid1', label: '10-20 years', value: '10-20' },
@@ -53,16 +66,141 @@ export const CONVERSATION_FLOWS: ConversationFlows = {
       question: "What's your email address?",
       buttons: []
     }
-  }
-};
-
-export const INITIAL_MESSAGE = {
-  role: 'assistant' as const,
-  content: "Hi! I'm Chris's AI assistant. How can I help you today?",
-  buttons: [
-    { id: 'sell', label: '🏠 I want to sell my home', value: 'sell' },
-    { id: 'buy', label: '🔍 I\'m considering buying', value: 'buy' },
-    { id: 'value', label: '💰 Get a home valuation', value: 'value' },
-    { id: 'question', label: '💬 Just have a question', value: 'question' },
-  ]
-};
+  };
+  
+  // BUYER FLOW
+  export const BUYER_FLOW = {
+    propertyType: {
+      question: "What type of property are you looking for?",
+      buttons: [
+        { id: 'house', label: 'Single-family house', value: 'single-family house' },
+        { id: 'condo', label: 'Condo/Apartment', value: 'condo' },
+        { id: 'townhouse', label: 'Townhouse', value: 'townhouse' },
+        { id: 'any', label: 'Open to any type', value: 'any' },
+      ]
+    },
+    budget: {
+      question: "What's your budget range?",
+      buttons: [
+        { id: 'under400', label: 'Under $400K', value: 'under-400k' },
+        { id: '400-600', label: '$400K - $600K', value: '400k-600k' },
+        { id: '600-800', label: '$600K - $800K', value: '600k-800k' },
+        { id: 'over800', label: 'Over $800K', value: 'over-800k' },
+      ]
+    },
+    bedrooms: {
+      question: "How many bedrooms do you need?",
+      buttons: [
+        { id: '1-2', label: '1-2 bedrooms', value: '1-2' },
+        { id: '3', label: '3 bedrooms', value: '3' },
+        { id: '4', label: '4 bedrooms', value: '4' },
+        { id: '5plus', label: '5+ bedrooms', value: '5+' },
+      ]
+    },
+    timeline: {
+      question: "When are you looking to buy?",
+      buttons: [
+        { id: 'asap', label: 'ASAP (0-3 months)', value: '0-3' },
+        { id: 'soon', label: '3-6 months', value: '3-6' },
+        { id: 'planning', label: '6-12 months', value: '6-12' },
+        { id: 'exploring', label: 'Just exploring', value: '12+' },
+      ]
+    },
+    buyingReason: {
+      question: "What's your main reason for buying?",
+      buttons: [
+        { id: 'first-home', label: 'First home', value: 'first-home' },
+        { id: 'upgrade', label: 'Upgrading', value: 'upgrade' },
+        { id: 'downsize', label: 'Downsizing', value: 'downsize' },
+        { id: 'investment', label: 'Investment property', value: 'investment' },
+      ]
+    },
+    email: {
+      question: "What's your email address?",
+      buttons: []
+    }
+  };
+  
+  // BROWSER FLOW
+  export const BROWSER_FLOW = {
+    interest: {
+      question: "What interests you most about real estate?",
+      buttons: [
+        { id: 'market-trends', label: 'Market trends', value: 'market-trends' },
+        { id: 'investment', label: 'Investment opportunities', value: 'investment' },
+        { id: 'neighborhood', label: 'Neighborhood info', value: 'neighborhood' },
+        { id: 'general', label: 'General curiosity', value: 'general' },
+      ]
+    },
+    location: {
+      question: "Which area are you interested in?",
+      buttons: [
+        { id: 'downtown', label: 'Downtown Halifax', value: 'downtown-halifax' },
+        { id: 'dartmouth', label: 'Dartmouth', value: 'dartmouth' },
+        { id: 'bedford', label: 'Bedford', value: 'bedford' },
+        { id: 'other', label: 'Other areas', value: 'other' },
+      ]
+    },
+    priceRange: {
+      question: "What price range interests you?",
+      buttons: [
+        { id: 'under400', label: 'Under $400K', value: 'under-400k' },
+        { id: '400-600', label: '$400K - $600K', value: '400k-600k' },
+        { id: '600-800', label: '$600K - $800K', value: '600k-800k' },
+        { id: 'over800', label: 'Over $800K', value: 'over-800k' },
+      ]
+    },
+    timeline: {
+      question: "When might you consider entering the market?",
+      buttons: [
+        { id: 'soon', label: 'Within 6 months', value: '0-6' },
+        { id: 'year', label: 'Within a year', value: '6-12' },
+        { id: 'later', label: '1-2 years', value: '12-24' },
+        { id: 'just-looking', label: 'Just gathering info', value: '24+' },
+      ]
+    },
+    goal: {
+      question: "What's your main goal?",
+      buttons: [
+        { id: 'buy-future', label: 'Planning to buy', value: 'buy-future' },
+        { id: 'sell-future', label: 'Planning to sell', value: 'sell-future' },
+        { id: 'invest', label: 'Looking to invest', value: 'invest' },
+        { id: 'learn', label: 'Just learning', value: 'learn' },
+      ]
+    },
+    email: {
+      question: "Want market updates sent to your email?",
+      buttons: []
+    }
+  };
+  
+  // COMBINED
+  export const CONVERSATION_FLOWS = {
+    sell: SELLER_FLOW,
+    buy: BUYER_FLOW,
+    browse: BROWSER_FLOW,
+  };
+  
+  // METADATA
+  export const FLOW_CONFIG = {
+    sell: {
+      name: 'Selling a Home',
+      totalQuestions: 6,
+      questionOrder: ['propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason', 'email'],
+      completionMessage: "Perfect! I have everything I need to create your home valuation report. 🎉",
+    },
+    buy: {
+      name: 'Buying a Home',
+      totalQuestions: 6,
+      questionOrder: ['propertyType', 'budget', 'bedrooms', 'timeline', 'buyingReason', 'email'],
+      completionMessage: "Excellent! I have all the details to find you perfect properties. 🎉",
+    },
+    browse: {
+      name: 'Browsing the Market',
+      totalQuestions: 6,
+      questionOrder: ['interest', 'location', 'priceRange', 'timeline', 'goal', 'email'],
+      completionMessage: "Great! I have everything to send you personalized market insights. 🎉",
+    },
+  };
+  
+  export type FlowType = keyof typeof CONVERSATION_FLOWS;

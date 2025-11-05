@@ -2,63 +2,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { CONVERSATION_FLOWS, FLOW_CONFIG, FlowType } from '@/data/conversationFlows/conversationFlows';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// Simple conversation flows
-const FLOWS = {
-  sell: {
-    propertyType: {
-      question: "What type of property do you have?",
-      buttons: [
-        { id: 'house', label: 'Single-family house', value: 'single-family house' },
-        { id: 'condo', label: 'Condo/Apartment', value: 'condo' },
-        { id: 'townhouse', label: 'Townhouse', value: 'townhouse' },
-        { id: 'multi', label: 'Multi-family', value: 'multi-family' },
-      ]
-    },
-    propertyAge: {
-      question: "How old is your home?",
-      buttons: [
-        { id: 'new', label: '< 10 years', value: '0-10' },
-        { id: 'mid1', label: '10-20 years', value: '10-20' },
-        { id: 'mid2', label: '20-30 years', value: '20-30' },
-        { id: 'old', label: '30+ years', value: '30+' },
-      ]
-    },
-    renovations: {
-      question: "Have you done any major renovations?",
-      buttons: [
-        { id: 'yes-kitchen', label: 'Kitchen', value: 'kitchen' },
-        { id: 'yes-bath', label: 'Bathroom', value: 'bathroom' },
-        { id: 'yes-both', label: 'Both', value: 'kitchen and bathroom' },
-        { id: 'no', label: 'No major renovations', value: 'none' },
-      ]
-    },
-    timeline: {
-      question: "When are you looking to sell?",
-      buttons: [
-        { id: 'asap', label: '0-3 months (ASAP)', value: '0-3' },
-        { id: 'soon', label: '3-6 months', value: '3-6' },
-        { id: 'planning', label: '6-12 months', value: '6-12' },
-        { id: 'exploring', label: 'Just exploring', value: '12+' },
-      ]
-    },
-    sellingReason: {
-      question: "What's your main reason for selling?",
-      buttons: [
-        { id: 'relocate', label: 'Relocating', value: 'relocating' },
-        { id: 'upsize', label: 'Upsizing', value: 'upsizing' },
-        { id: 'downsize', label: 'Downsizing', value: 'downsizing' },
-        { id: 'investment', label: 'Investment', value: 'investment' },
-      ]
-    },
-    email: {
-      question: "What's your email address?",
-      buttons: []
-    }
-  }
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,17 +13,29 @@ export async function POST(req: NextRequest) {
 
     const { messages, currentAnswers = [], currentFlow = null } = body;
 
-    const systemPrompt = `You are Chris's AI assistant helping with home selling in Halifax.
+    // Get the active flow or default to 'sell'
+    const activeFlow: FlowType = currentFlow || 'sell';
+    const flowConfig = FLOW_CONFIG[activeFlow];
+    const flow = CONVERSATION_FLOWS[activeFlow];
+    
+    const isFirstMessage = currentAnswers.length === 0 && !currentFlow;
 
-Current answers collected: ${currentAnswers.length}
+    const systemPrompt = `You are Chris's AI assistant helping with ${flowConfig.name.toLowerCase()} in Halifax.
+
+Current answers collected: ${currentAnswers.length}/${flowConfig.totalQuestions}
+${isFirstMessage ? `
+FIRST MESSAGE: The user just selected their path. You MUST:
+1. Detect their flow type from their message
+2. Set flowType in the function call ('sell', 'buy', or 'browse')
+3. Ask the FIRST question from that flow
+` : ''}
 
 CRITICAL: You MUST provide a friendly conversational response.
 Keep it SHORT (1-2 sentences).
-Example: "Great! I'd love to help you sell your home."
 
 Then call the function to extract data and provide options.`;
 
-    console.log('🤖 Calling OpenAI...');
+    console.log('🤖 Calling OpenAI... Flow:', activeFlow, 'Is First:', isFirstMessage);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -105,11 +63,20 @@ Then call the function to extract data and provide options.`;
               },
               nextQuestion: { 
                 type: 'string',
-                enum: ['propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason', 'email', 'none']
+                enum: [
+                  // Seller questions
+                  'propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason',
+                  // Buyer questions
+                  'budget', 'bedrooms', 'buyingReason',
+                  // Browser questions
+                  'interest', 'location', 'priceRange', 'goal',
+                  // Common
+                  'email', 'none'
+                ]
               },
               flowType: {
                 type: 'string',
-                enum: ['sell', 'buy', 'value']
+                enum: ['sell', 'buy', 'browse']
               }
             },
             required: ['nextQuestion']
@@ -147,7 +114,7 @@ Then call the function to extract data and provide options.`;
 
         if (args.flowType) {
           flowType = args.flowType;
-          console.log('🎯 Flow type detected:', flowType);
+          console.log('🎯 Flow type detected from AI:', flowType);
         }
 
         if (args.extractedAnswer) {
@@ -161,10 +128,17 @@ Then call the function to extract data and provide options.`;
         }
 
         if (args.nextQuestion && args.nextQuestion !== 'none') {
-          const flow = FLOWS.sell[args.nextQuestion as keyof typeof FLOWS.sell];
-          if (flow) {
-            buttons = flow.buttons;
+          const currentFlow: FlowType = flowType || activeFlow;
+          console.log('📍 Using flow for buttons:', currentFlow);
+          
+          const flowData = CONVERSATION_FLOWS[currentFlow];
+          const questionData = flowData[args.nextQuestion as keyof typeof flowData];
+          
+          if (questionData) {
+            buttons = questionData.buttons;
             console.log('🔘 Buttons:', buttons.length);
+          } else {
+            console.warn('⚠️ No question data found for:', args.nextQuestion, 'in flow:', currentFlow);
           }
         }
       }
@@ -174,21 +148,32 @@ Then call the function to extract data and provide options.`;
     if (!reply || reply.trim() === '') {
       console.log('⚠️ Empty reply - constructing from question...');
       
-      // If we have a next question, use that
-      if (toolCalls && toolCalls.length > 0) {
+      // Check if we're done collecting answers
+      const totalAnswersAfter = currentAnswers.length + (extracted ? 1 : 0);
+      const isComplete = totalAnswersAfter >= flowConfig.totalQuestions;
+      
+      if (isComplete) {
+        // COMPLETION MESSAGE - use flow-specific message
+        reply = flowConfig.completionMessage + "\n\nI'm now generating your personalized report. This will just take a moment...";
+        console.log('✅ Form complete! Sending completion message');
+      } else if (toolCalls && toolCalls.length > 0) {
+        // Regular question flow
         const toolCall = toolCalls[0];
         if (toolCall.type === 'function') {
           const args = JSON.parse(toolCall.function.arguments);
           if (args.nextQuestion && args.nextQuestion !== 'none') {
-            const flow = FLOWS.sell[args.nextQuestion as keyof typeof FLOWS.sell];
-            if (flow) {
+            const currentFlow: FlowType =  activeFlow;
+            const flowData = CONVERSATION_FLOWS[currentFlow];
+            const questionData = flowData[args.nextQuestion as keyof typeof flowData];
+            
+            if (questionData) {
               // Construct a natural reply
-              if (args.flowType === 'sell') {
-                reply = "Great! I'd love to help you sell your home. " + flow.question;
+              if (args.flowType && !currentFlow) {
+                reply = `Great! I'd love to help you with ${FLOW_CONFIG[args.flowType as FlowType].name.toLowerCase()}. ${questionData.question}`;
               } else if (extracted) {
-                reply = "Got it! " + flow.question;
+                reply = "Perfect! " + questionData.question;
               } else {
-                reply = flow.question;
+                reply = questionData.question;
               }
               console.log('✅ Constructed reply:', reply);
             }
@@ -207,7 +192,8 @@ Then call the function to extract data and provide options.`;
       buttons,
       extracted,
       flowType,
-      progress: Math.round(((currentAnswers.length + (extracted ? 1 : 0)) / 6) * 100)
+      progress: Math.round(((currentAnswers.length + (extracted ? 1 : 0)) / flowConfig.totalQuestions) * 100),
+      isComplete: (currentAnswers.length + (extracted ? 1 : 0)) >= flowConfig.totalQuestions
     };
 
     console.log('📤 Sending response:', JSON.stringify(response, null, 2));
