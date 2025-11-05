@@ -76,7 +76,7 @@ export const useChatStore = create<ChatState>()(
         set({ showTracker: show });
       },
 
-      setCurrentFlow: (flow: 'sell' | 'buy' | 'value' | null) => {
+      setCurrentFlow: (flow: 'sell' | 'buy' | 'browse' | null) => {
         set({ currentFlow: flow });
       },
 

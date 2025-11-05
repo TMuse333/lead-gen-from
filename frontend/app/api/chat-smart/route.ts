@@ -170,7 +170,7 @@ Then call determine_next_step with the correct nextQuestion from the list above.
         if (toolCall.type === 'function') {
           const args = JSON.parse(toolCall.function.arguments);
           if (args.nextQuestion && args.nextQuestion !== 'none') {
-            const currentFlow: FlowType =  activeFlow;
+            const currentFlow: FlowType = activeFlow;
             const flowData = CONVERSATION_FLOWS[currentFlow];
             const questionData = flowData[args.nextQuestion as keyof typeof flowData];
             

@@ -1,9 +1,5 @@
 // data/conversationFlows.ts
 
-import { ConversationFlows } from '@/types/chat.types';
-
-// data/conversationFlows.ts
-
 export const INITIAL_MESSAGE = {
     role: 'assistant' as const,
     content: "Hi! I'm Chris's AI assistant. How can I help you today?",
@@ -204,8 +200,3 @@ export const INITIAL_MESSAGE = {
   };
   
   export type FlowType = keyof typeof CONVERSATION_FLOWS;
-
-  Object.keys(FLOW_CONFIG).forEach(flow => {
-    const cfg = FLOW_CONFIG[flow as keyof typeof FLOW_CONFIG];
-    cfg.totalQuestions = cfg.questionOrder.length;
-  });

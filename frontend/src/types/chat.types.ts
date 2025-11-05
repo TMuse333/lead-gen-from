@@ -28,7 +28,7 @@ export interface ChatButton {
     extractedAnswers: ExtractedAnswer[];
     loading: boolean;
     showTracker: boolean;
-    currentFlow: 'sell' | 'buy' | 'value' | null;
+    currentFlow: 'sell' | 'buy' | 'browse' | null;
     progress: number;
     shouldCelebrate: boolean;
     
@@ -37,7 +37,7 @@ export interface ChatButton {
     addExtractedAnswer: (answer: ExtractedAnswer) => void;
     setLoading: (loading: boolean) => void;
     setShowTracker: (show: boolean) => void;
-    setCurrentFlow: (flow: 'sell' | 'buy' | 'value' | null) => void;
+    setCurrentFlow: (flow: 'sell' | 'buy' | 'browse' | null) => void;
     setProgress: (progress: number) => void;
     sendMessage: (message: string, displayText?: string) => Promise<void>;
     handleButtonClick: (button: ChatButton) => Promise<void>;
@@ -53,7 +53,7 @@ export interface ChatButton {
   }
   
   export interface ConversationFlows {
-    sell: ConversationFlow;
+    sell?: ConversationFlow;
     buy?: ConversationFlow;
-    value?: ConversationFlow;
+    browse?: ConversationFlow;
   }
