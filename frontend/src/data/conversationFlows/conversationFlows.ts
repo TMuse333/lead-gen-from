@@ -204,3 +204,8 @@ export const INITIAL_MESSAGE = {
   };
   
   export type FlowType = keyof typeof CONVERSATION_FLOWS;
+
+  Object.keys(FLOW_CONFIG).forEach(flow => {
+    const cfg = FLOW_CONFIG[flow as keyof typeof FLOW_CONFIG];
+    cfg.totalQuestions = cfg.questionOrder.length;
+  });

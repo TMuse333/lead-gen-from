@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const { messages, currentAnswers = [], currentFlow = null } = body;
 
     // Get the active flow or default to 'sell'
-    const activeFlow: FlowType = currentFlow || 'sell';
+    const activeFlow: FlowType = currentFlow || sell;
     const flowConfig = FLOW_CONFIG[activeFlow];
     const flow = CONVERSATION_FLOWS[activeFlow];
     
@@ -150,7 +150,8 @@ Then call the function to extract data and provide options.`;
       
       // Check if we're done collecting answers
       const totalAnswersAfter = currentAnswers.length + (extracted ? 1 : 0);
-      const isComplete = totalAnswersAfter >= flowConfig.totalQuestions;
+      const totalQuestions = flowConfig.questionOrder.length;
+      const isComplete = totalAnswersAfter >= totalQuestions;
       
       if (isComplete) {
         // COMPLETION MESSAGE - use flow-specific message

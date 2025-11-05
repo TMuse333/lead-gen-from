@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import confetti from 'canvas-confetti';
 import { ChatState, ChatMessage, ExtractedAnswer, ChatButton } from '@/types/chat.types';
-import { INITIAL_MESSAGE } from '@/data/conversationFlows/conversationFlows';
+import { FLOW_CONFIG, INITIAL_MESSAGE } from '@/data/conversationFlows/conversationFlows';
 
 const initialState = {
   messages: [INITIAL_MESSAGE],
@@ -33,7 +33,7 @@ export const useChatStore = create<ChatState>()(
           const newAnswers = [...state.extractedAnswers, answer];
           
           // Get total questions for current flow (default to 6)
-          const totalQuestions = 6; // All flows have 6 questions
+          const totalQuestions = FLOW_CONFIG[state.currentFlow || 'sell'].questionOrder.length
           const progress = Math.round((newAnswers.length / totalQuestions) * 100);
 
           // Trigger confetti on 2nd answer (enough to start analysis)
