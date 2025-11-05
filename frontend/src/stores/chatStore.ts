@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import confetti from 'canvas-confetti';
 import { ChatState, ChatMessage, ExtractedAnswer, ChatButton } from '@/types/chat.types';
-import { FLOW_CONFIG, INITIAL_MESSAGE } from '@/data/conversationFlows/conversationFlows';
+import { INITIAL_MESSAGE } from '@/data/conversationFlows/conversationFlows';
 
 const initialState = {
   messages: [INITIAL_MESSAGE],
@@ -33,7 +33,7 @@ export const useChatStore = create<ChatState>()(
           const newAnswers = [...state.extractedAnswers, answer];
           
           // Get total questions for current flow (default to 6)
-          const totalQuestions = FLOW_CONFIG[state.currentFlow || 'sell'].questionOrder.length
+          const totalQuestions = 6; // All flows have 6 questions
           const progress = Math.round((newAnswers.length / totalQuestions) * 100);
 
           // Trigger confetti on 2nd answer (enough to start analysis)
@@ -76,7 +76,7 @@ export const useChatStore = create<ChatState>()(
         set({ showTracker: show });
       },
 
-      setCurrentFlow: (flow: 'sell' | 'buy' | 'value' | 'browse' | null) => {
+      setCurrentFlow: (flow: 'sell' | 'buy' | 'value' | null) => {
         set({ currentFlow: flow });
       },
 
@@ -100,6 +100,10 @@ export const useChatStore = create<ChatState>()(
         
         if (!message.trim()) return;
 
+        console.log('📤 Sending message:', message);
+        console.log('🎯 Current flow in store:', state.currentFlow);
+        console.log('📊 Current answers:', state.extractedAnswers.length);
+
         set({ loading: true });
 
         // Add user message
@@ -115,14 +119,18 @@ export const useChatStore = create<ChatState>()(
 
         try {
           // Call API
+          const payload = {
+            messages: [...state.messages, userMsg],
+            currentAnswers: state.extractedAnswers,
+            currentFlow: state.currentFlow,
+          };
+          
+          console.log('📦 Payload to API:', JSON.stringify(payload, null, 2));
+          
           const response = await fetch('/api/chat-smart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messages: [...state.messages, userMsg],
-              currentAnswers: state.extractedAnswers,
-              currentFlow: state.currentFlow,
-            }),
+            body: JSON.stringify(payload),
           });
 
           if (!response.ok) {
@@ -135,14 +143,16 @@ export const useChatStore = create<ChatState>()(
           console.log('📝 Reply from API:', data.reply);
           console.log('🔘 Buttons from API:', data.buttons);
           console.log('✅ Is Complete:', data.isComplete);
+          console.log('🎯 Flow type from API:', data.flowType);
 
           // Update extracted answers if any (this will trigger confetti in addExtractedAnswer)
           if (data.extracted) {
             get().addExtractedAnswer(data.extracted);
           }
 
-          // Update current flow if starting new flow
-          if (data.flowType && !state.currentFlow) {
+          // Update current flow if detected (this ensures flow persists)
+          if (data.flowType) {
+            console.log('🔄 Updating flow to:', data.flowType);
             set({ currentFlow: data.flowType });
           }
 

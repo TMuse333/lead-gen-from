@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const { messages, currentAnswers = [], currentFlow = null } = body;
 
     // Get the active flow or default to 'sell'
-    const activeFlow: FlowType = currentFlow || sell;
+    const activeFlow: FlowType = currentFlow || 'sell';
     const flowConfig = FLOW_CONFIG[activeFlow];
     const flow = CONVERSATION_FLOWS[activeFlow];
     
@@ -23,17 +23,25 @@ export async function POST(req: NextRequest) {
     const systemPrompt = `You are Chris's AI assistant helping with ${flowConfig.name.toLowerCase()} in Halifax.
 
 Current answers collected: ${currentAnswers.length}/${flowConfig.totalQuestions}
+
+VALID QUESTIONS FOR THIS FLOW (${activeFlow.toUpperCase()}):
+${flowConfig.questionOrder.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+YOU MUST ONLY USE THESE QUESTION IDs IN nextQuestion!
+
 ${isFirstMessage ? `
-FIRST MESSAGE: The user just selected their path. You MUST:
-1. Detect their flow type from their message
-2. Set flowType in the function call ('sell', 'buy', or 'browse')
-3. Ask the FIRST question from that flow
-` : ''}
+FIRST MESSAGE: The user just selected "${activeFlow}". You MUST:
+1. Set flowType: "${activeFlow}"
+2. Ask the FIRST question: "${flowConfig.questionOrder[0]}"
+` : `
+NEXT STEPS:
+- Extract the answer if user provided one
+- Ask the NEXT question from the list above
+- NEVER use questions from other flows
+`}
 
-CRITICAL: You MUST provide a friendly conversational response.
-Keep it SHORT (1-2 sentences).
-
-Then call the function to extract data and provide options.`;
+CRITICAL: Provide a SHORT conversational response (1-2 sentences).
+Then call determine_next_step with the correct nextQuestion from the list above.`;
 
     console.log('🤖 Calling OpenAI... Flow:', activeFlow, 'Is First:', isFirstMessage);
 
@@ -150,8 +158,7 @@ Then call the function to extract data and provide options.`;
       
       // Check if we're done collecting answers
       const totalAnswersAfter = currentAnswers.length + (extracted ? 1 : 0);
-      const totalQuestions = flowConfig.questionOrder.length;
-      const isComplete = totalAnswersAfter >= totalQuestions;
+      const isComplete = totalAnswersAfter >= flowConfig.totalQuestions;
       
       if (isComplete) {
         // COMPLETION MESSAGE - use flow-specific message
@@ -192,7 +199,7 @@ Then call the function to extract data and provide options.`;
       reply,
       buttons,
       extracted,
-      flowType,
+      flowType: flowType || activeFlow,  // ← Always return current flow
       progress: Math.round(((currentAnswers.length + (extracted ? 1 : 0)) / flowConfig.totalQuestions) * 100),
       isComplete: (currentAnswers.length + (extracted ? 1 : 0)) >= flowConfig.totalQuestions
     };
