@@ -3,10 +3,71 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import confetti from 'canvas-confetti';
-import { ChatState, ChatMessage, ExtractedAnswer, ChatButton } from '@/types/chat.types';
+import {
+ 
+  ExtractedAnswer,
+  ChatButton,
+  ChatMessage,
+} from '@/types/chat.types';
 import { INITIAL_MESSAGE } from '@/data/conversationFlows/conversationFlows';
+import { FlowAnalysisOutput } from '@/types/analysis.types';
+import { ComparableHome } from '@/types';
+import { useEffect } from 'react';
 
-const initialState = {
+
+
+// =========================
+// State Types
+// =========================
+
+export interface ChatStateData {
+  messages: ChatMessage[];
+  extractedAnswers: ExtractedAnswer[];
+  loading: boolean;
+  showTracker: boolean;
+  currentFlow: 'sell' | 'buy' | 'browse' | null;
+  progress: number;
+  shouldCelebrate: boolean;
+  isComplete: boolean;
+
+  // ✅ New: store full results for easy access on results page
+  analysisResult: FlowAnalysisOutput | null;
+  comparableHomes: ComparableHome[];
+  userEmail: string | null;
+}
+
+export interface ChatStateActions {
+  addMessage: (message: ChatMessage) => void;
+  addExtractedAnswer: (answer: ExtractedAnswer) => void;
+  setLoading: (loading: boolean) => void;
+  setShowTracker: (show: boolean) => void;
+  setCurrentFlow: (flow: 'sell' | 'buy' | 'browse' | null) => void;
+  setProgress: (progress: number) => void;
+  clearCelebration: () => void;
+  reset: () => void;
+  setComplete: (complete: boolean) => void;
+
+  // ✅ New actions for result data
+  setResults: (data: {
+    analysis: FlowAnalysisOutput;
+    comparableHomes?: ComparableHome[];
+    email?: string;
+  }) => void;
+
+  clearResults: () => void;
+
+  // existing chat flow handlers
+  sendMessage: (message: string, displayText?: string) => Promise<void>;
+  handleButtonClick: (button: ChatButton) => Promise<void>;
+}
+
+export type ChatState = ChatStateData & ChatStateActions;
+
+// =========================
+// Initial State
+// =========================
+
+const initialState: ChatStateData = {
   messages: [INITIAL_MESSAGE],
   extractedAnswers: [],
   loading: false,
@@ -14,14 +75,27 @@ const initialState = {
   currentFlow: null,
   progress: 0,
   shouldCelebrate: false,
+  isComplete: false,
+
+  // ✅ new
+  analysisResult: null,
+  comparableHomes: [],
+  userEmail: null,
 };
+
+// =========================
+// Store
+// =========================
 
 export const useChatStore = create<ChatState>()(
   devtools(
     (set, get) => ({
       ...initialState,
 
-      // Actions
+      // =========================
+      // Chat Actions
+      // =========================
+
       addMessage: (message: ChatMessage) => {
         set((state) => ({
           messages: [...state.messages, message],
@@ -31,19 +105,15 @@ export const useChatStore = create<ChatState>()(
       addExtractedAnswer: (answer: ExtractedAnswer) => {
         set((state) => {
           const newAnswers = [...state.extractedAnswers, answer];
-          
-          // Get total questions for current flow (default to 6)
-          const totalQuestions = 6; // All flows have 6 questions
+          const totalQuestions = 6; // default
           const progress = Math.round((newAnswers.length / totalQuestions) * 100);
 
-          // Trigger confetti on 2nd answer (enough to start analysis)
-          // Trigger tracker and celebration on 2nd answer
+          if (newAnswers.length === 1 && !state.showTracker) {
+            return { extractedAnswers: newAnswers, progress, showTracker: true };
+          }
+
           if (newAnswers.length === 2) {
-            confetti({
-              particleCount: 100,
-              spread: 70,
-              origin: { y: 0.6 }
-            });
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             return {
               extractedAnswers: newAnswers,
               progress,
@@ -52,174 +122,135 @@ export const useChatStore = create<ChatState>()(
             };
           }
 
-          // Show tracker on first answer (no celebration yet)
-          if (newAnswers.length === 1 && !state.showTracker) {
-            return {
-              extractedAnswers: newAnswers,
-              progress,
-              showTracker: true,
-            };
-          }
-
-          return {
-            extractedAnswers: newAnswers,
-            progress,
-          };
+          return { extractedAnswers: newAnswers, progress };
         });
       },
 
-      setLoading: (loading: boolean) => {
-        set({ loading });
-      },
+      setLoading: (loading: boolean) => set({ loading }),
+      setShowTracker: (show: boolean) => set({ showTracker: show }),
+      setCurrentFlow: (flow: 'sell' | 'buy' | 'browse' | null) =>
+        set({ currentFlow: flow }),
+      setProgress: (progress: number) => set({ progress }),
+      clearCelebration: () => set({ shouldCelebrate: false }),
+      reset: () => set(initialState),
+      setComplete: (complete: boolean) => set({ isComplete: complete }),
 
-      setShowTracker: (show: boolean) => {
-        set({ showTracker: show });
-      },
+      // =========================
+      // ✅ Results Management
+      // =========================
+      setResults: ({ analysis, comparableHomes = [], email }) =>
+        set({
+          analysisResult: analysis,
+          comparableHomes,
+          userEmail: email || null,
+        }),
 
-      setCurrentFlow: (flow: 'sell' | 'buy' | 'browse' | null) => {
-        set({ currentFlow: flow });
-      },
+      clearResults: () =>
+        set({
+          analysisResult: null,
+          comparableHomes: [],
+          userEmail: null,
+        }),
 
-      setProgress: (progress: number) => {
-        set({ progress });
-      },
+      // =========================
+      // Chat Flow Logic
+      // =========================
 
       handleButtonClick: async (button: ChatButton) => {
-        // Detect flow from button value
-        if (button.value === 'sell' || button.value === 'buy' || button.value === 'browse') {
-          console.log('🎯 Flow detected from button:', button.value);
+        if (['sell', 'buy', 'browse'].includes(button.value)) {
           set({ currentFlow: button.value as 'sell' | 'buy' | 'browse' });
+          
+          get().setCurrentFlow(button.value as 'sell' | 'buy' | 'browse'); 
+          
         }
-        
         const { sendMessage } = get();
         await sendMessage(button.value, button.label);
       },
 
       sendMessage: async (message: string, displayText?: string) => {
         const state = get();
-        
         if (!message.trim()) return;
-
-        console.log('📤 Sending message:', message);
-        console.log('🎯 Current flow in store:', state.currentFlow);
-        console.log('📊 Current answers:', state.extractedAnswers.length);
 
         set({ loading: true });
 
-        // Add user message
         const userMsg: ChatMessage = {
           role: 'user',
           content: displayText || message,
           timestamp: new Date(),
         };
-
-        set((state) => ({
-          messages: [...state.messages, userMsg],
-        }));
+        set((state) => ({ messages: [...state.messages, userMsg] }));
 
         try {
-          // Call API
           const payload = {
             messages: [...state.messages, userMsg],
             currentAnswers: state.extractedAnswers,
             currentFlow: state.currentFlow,
           };
-          
-          console.log('📦 Payload to API:', JSON.stringify(payload, null, 2));
-          
+
           const response = await fetch('/api/chat-smart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
 
-          if (!response.ok) {
-            throw new Error('Failed to send message');
-          }
-
+          if (!response.ok) throw new Error('Failed to send message');
           const data = await response.json();
-          
-          console.log('🎯 API Response data:', data);
-          console.log('📝 Reply from API:', data.reply);
-          console.log('🔘 Buttons from API:', data.buttons);
-          console.log('✅ Is Complete:', data.isComplete);
-          console.log('🎯 Flow type from API:', data.flowType);
 
-          // Update extracted answers if any (this will trigger confetti in addExtractedAnswer)
-          if (data.extracted) {
-            get().addExtractedAnswer(data.extracted);
-          }
+          if (data.extracted) get().addExtractedAnswer(data.extracted);
+          if (data.flowType) set({ currentFlow: data.flowType });
 
-          // Update current flow if detected (this ensures flow persists)
-          if (data.flowType) {
-            console.log('🔄 Updating flow to:', data.flowType);
-            set({ currentFlow: data.flowType });
-          }
-
-          // Add AI reply - clean from API
           const aiMsg: ChatMessage = {
             role: 'assistant',
             content: data.reply || 'Let me help you with that.',
             buttons: data.buttons || [],
             timestamp: new Date(),
           };
-          
-          console.log('💬 AI Message being added:', aiMsg);
+          set((state) => ({ messages: [...state.messages, aiMsg] }));
 
-          set((state) => ({
-            messages: [...state.messages, aiMsg],
-          }));
+          if (data.progress !== undefined) set({ progress: data.progress });
 
-          // Update progress
-          if (data.progress !== undefined) {
-            set({ progress: data.progress });
-          }
-
-          // If complete, wait 2 seconds then trigger onComplete
           if (data.isComplete) {
-            console.log('🎊 Form complete! Will trigger redirect in 2 seconds...');
+            set({ isComplete: true });
             setTimeout(() => {
               const onComplete = (window as any).__chatOnComplete;
-              if (onComplete) {
-                onComplete(get().extractedAnswers);
-              }
+              if (onComplete) onComplete(get().extractedAnswers);
             }, 2000);
           }
-
         } catch (error) {
           console.error('Error sending message:', error);
-          
-          // Add error message
           const errorMsg: ChatMessage = {
             role: 'assistant',
             content: "I'm sorry, I encountered an error. Please try again.",
             timestamp: new Date(),
           };
-
-          set((state) => ({
-            messages: [...state.messages, errorMsg],
-          }));
+          set((state) => ({ messages: [...state.messages, errorMsg] }));
         } finally {
           set({ loading: false });
         }
       },
-
-      clearCelebration: () => {
-        set({ shouldCelebrate: false });
-      },
-
-      reset: () => {
-        set(initialState);
-      },
     }),
+
+
+    
     { name: 'chat-store' }
   )
 );
 
-// Selectors for better performance
+// =========================
+// Selectors
+// =========================
 export const selectMessages = (state: ChatState) => state.messages;
-export const selectExtractedAnswers = (state: ChatState) => state.extractedAnswers;
+export const selectExtractedAnswers = (state: ChatState) =>
+  state.extractedAnswers;
 export const selectLoading = (state: ChatState) => state.loading;
 export const selectShowTracker = (state: ChatState) => state.showTracker;
 export const selectProgress = (state: ChatState) => state.progress;
 export const selectCurrentFlow = (state: ChatState) => state.currentFlow;
+export const selectIsComplete = (state: ChatState) => state.isComplete;
+
+// ✅ New Selectors
+export const selectAnalysisResult = (state: ChatState) => state.analysisResult;
+export const selectComparableHomes = (state: ChatState) =>
+  state.comparableHomes;
+export const selectUserEmail = (state: ChatState) => state.userEmail;
+

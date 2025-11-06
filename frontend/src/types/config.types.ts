@@ -3,6 +3,7 @@
 // ============================================
 
 import { FormQuestion } from './question.types';
+import { FlowResultConfig } from './flow.types';
 
 export interface FormConfig {
   id: string;
@@ -18,13 +19,7 @@ export interface FormConfig {
     agentName: string;
     agentPhoto?: string;
   };
-  resultConfig: {
-    showComparableHomes: boolean;
-    showMarketTrends: boolean;
-    showAgentAdvice: boolean;
-    showEstimatedValue: boolean;
-    emailReportSubject: string;
-  };
+  resultConfig: FlowResultConfig;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

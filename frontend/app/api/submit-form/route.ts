@@ -4,22 +4,30 @@
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { FormAnswer, LeadSubmission, PropertyProfile, UserProfile } from '@/types';
+import { FlowType, FormAnswer, LeadSubmission, PropertyProfile, UserProfile } from '@/types';
 import { saveLeadSubmission, updateLeadAnalysis } from '@/lib/mongodb/mongodb';
 import { queryRelevantAdvice } from '@/lib/qdrant/qdrant';
 import { fetchComparableHomes, fetchMarketTrends } from '@/data/realEstateData/realEstateData';
-import { buildUserProfileText, generateEmbedding, generatePropertyAnalysis } from '@/lib/openai/openai';
+import { buildUserProfileText, generateEmbedding, generateFlowAnalysis } from '@/lib/openai/openai';
 import { sendAgentNotificationEmail, sendUserAnalysisEmail } from '@/lib/emails/emailLead';
+import { flowConfigs } from '@/lib/config/flowConfig';
+import { buildUserProfile } from '@/lib/openai/buildUserProfile';
+import { mapFlowConfigToFormConfig } from '@/lib/config/formFactory';
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { answers, pageUrl } = body as {
-      answers: FormAnswer[];
-      pageUrl?: string;
-    };
+   
+    const { answers,pageUrl, flow } = await request.json();
+
+
+
+    console.log('Received data:', { answers, pageUrl, flow });
+
+    if (!flow ) {
+      return NextResponse.json({ success: false, error: 'Invalid flow type' }, { status: 400 });
+    }
 
     // Validate input
     if (!answers || !Array.isArray(answers) || answers.length === 0) {
@@ -29,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('📝 Processing form submission with', answers.length, 'answers');
+    // console.log('📝 Processing form submission with', answers.length, 'answers');
 
     // ============================================
     // STEP 1: Extract property profile from answers
@@ -49,7 +57,7 @@ export async function POST(request: NextRequest) {
     // ============================================
     // STEP 2: Save initial lead to MongoDB
     // ============================================
-    const agentId = '82ae0d4d-c3d7-4997-bc7b-12b2261d167e';
+    const agentId = process.env.AGENT_ID!
     
     const leadData: Omit<LeadSubmission, '_id'> = {
       formId: 'default-form',
@@ -64,7 +72,7 @@ export async function POST(request: NextRequest) {
     };
 
     const leadId = await saveLeadSubmission(leadData);
-    console.log('✅ Lead saved with ID:', leadId);
+    // console.log('✅ Lead saved with ID:', leadId);
 
     // ============================================
     // STEP 3: Fetch comparable properties
@@ -74,13 +82,13 @@ export async function POST(request: NextRequest) {
       'Halifax',
       5
     );
-    console.log('✅ Found', comparableHomes.length, 'comparable homes');
+    // console.log('✅ Found', comparableHomes.length, 'comparable homes');
 
     // ============================================
     // STEP 4: Fetch market trends
     // ============================================
     const marketTrends = await fetchMarketTrends('Halifax');
-    console.log('✅ Fetched market trends');
+    // console.log('✅ Fetched market trends');
 
     // ============================================
     // STEP 5: Query Qdrant for relevant agent advice
@@ -88,12 +96,10 @@ export async function POST(request: NextRequest) {
     const userProfileText = buildUserProfileText(answers);
     const userProfileEmbedding = await generateEmbedding(userProfileText);
     
-    const userProfile: UserProfile = {
-      propertyType: propertyProfile.type,
-      sellingReason: propertyProfile.sellingReason,
-      timeline: propertyProfile.timeline,
-      concerns: propertyProfile.specificConcerns,
-    };
+   
+
+    const userProfile =  buildUserProfile(propertyProfile,flow)
+    
 
     const agentAdvice = await queryRelevantAdvice(
       agentId, // ✅ FIXED: Pass agentId, not collection name
@@ -101,41 +107,35 @@ export async function POST(request: NextRequest) {
       userProfileEmbedding,
       3
     );
-    console.log('✅ Found', agentAdvice.length, 'relevant advice pieces from Qdrant');
+    // console.log('✅ Found', agentAdvice.length, 'relevant advice pieces from Qdrant');
 
     // ============================================
     // STEP 6: Generate AI analysis using OpenAI
     // ============================================
-    const analysis = await generatePropertyAnalysis({
+  
+    const flowType: FlowType = flow; // from frontend, e.g., body.flow
+
+    // lookup the relevant config
+    const formConfig = mapFlowConfigToFormConfig(flowConfigs[flowType], agentId, 'halifax')
+    
+    if (!formConfig) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid flow type' },
+        { status: 400 }
+      );
+    }
+    
+    // then call your analysis function
+    const analysis = await generateFlowAnalysis(flowType, {
       leadData: { ...leadData, _id: leadId } as LeadSubmission,
       comparableHomes,
       marketTrends,
       agentAdvice,
-      formConfig: {
-        id: 'default-form',
-        agentId,
-        name: 'Halifax Seller Lead Form',
-        targetArea: 'Halifax',
-        questions: [],
-        emailCaptureAfter: 6,
-        branding: {
-          primaryColor: '#2563eb',
-          secondaryColor: '#10b981',
-          agentName: 'Chris Crowell',
-        },
-        resultConfig: {
-          showComparableHomes: true,
-          showMarketTrends: true,
-          showAgentAdvice: true,
-          showEstimatedValue: true,
-          emailReportSubject: 'Your Personalized Home Value Analysis',
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isActive: true,
-      },
+      formConfig,
     });
-    console.log('✅ AI analysis generated');
+     
+    
+    // console.log('✅ AI analysis generated');
 
     // ============================================
     // STEP 7: Update lead with analysis in MongoDB

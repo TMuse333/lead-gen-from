@@ -1,46 +1,35 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import ResultsPage from '@/components/resultsPage/results';
+import { useFlowResultStore } from '@/stores/flowResultStore';
+import HeroValueCard from '@/components/resultsPage/heroValueCard';
 
 export default function Results() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const result = useFlowResultStore((state) => state.result);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    // Get analysis and comparableHomes from URL params (passed from form)
-    const analysisParam = searchParams.get('analysis');
-    const comparableHomesParam = searchParams.get('comparableHomes');
-    const emailParam = searchParams.get('email');
+    // Zustand persist may take a tick to load from localStorage
+    if (!result) {
+      // Wait a tick and check again
+      const timeout = setTimeout(() => {
+        const r = useFlowResultStore.getState().result;
+        if (!r) {
+          setError('No analysis found. Please submit the form first.');
+        }
+        setLoading(false);
+      }, 100);
 
-    if (!analysisParam || !comparableHomesParam || !emailParam) {
-      setError('Missing required data. Please submit the form again.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const analysis = JSON.parse(decodeURIComponent(analysisParam));
-      const comparableHomes = JSON.parse(decodeURIComponent(comparableHomesParam));
-      const email = decodeURIComponent(emailParam);
-
-      setData({
-        analysis,
-        comparableHomes,
-        userEmail: email,
-      });
-      setLoading(false);
-    } catch (err) {
-      console.error('Error parsing data:', err);
-      setError('Error loading results. Please try again.');
+      return () => clearTimeout(timeout);
+    } else {
       setLoading(false);
     }
-  }, [searchParams]);
+  }, [result]);
 
   if (loading) {
     return (
@@ -53,13 +42,13 @@ export default function Results() {
     );
   }
 
-  if (error) {
+  if (error || !result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">Oops!</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{error || 'Analysis data not available.'}</p>
           <button
             onClick={() => router.push('/form')}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
@@ -72,10 +61,12 @@ export default function Results() {
   }
 
   return (
+    <>
     <ResultsPage
-      analysis={data.analysis}
-      comparableHomes={data.comparableHomes}
-      userEmail={data.userEmail}
+
+      userEmail={result.leadId!} // or however you want to display lead/user email
     />
+    <HeroValueCard/>
+    </>
   );
 }

@@ -6,53 +6,38 @@ import { useRouter } from 'next/navigation';
 import { useChatStore } from '@/stores/chatStore';
 import { ExtractedAnswer } from '@/types/chat.types';
 import ChatWithTracker from '@/components/chatWithTracker/chatWithTracker';
+import { FlowAnalysisOutput } from '@/types';
+import { useFlowResultStore } from '@/stores/flowResultStore';
+import axios from 'axios'
+import { useEffect , useRef, useState} from 'react';
+
 
 export default function FormPage() {
   const router = useRouter();
   const reset = useChatStore((state) => state.reset);
 
+
+  const [pageUrl, setPageUrl] = useState<string>('');
+
+  useEffect(() => {
+    setPageUrl(window.location.href);
+  }, []);
+
+
+
+
+//   console.log('Submitting form with:');
+// console.log('Answers:', extractedAnswers);
+// console.log('Flow:', currentFlow);
+// console.log('Page URL:', pageUrl);
+
   // Handle form completion with redirect
-  const handleComplete = async (answers: ExtractedAnswer[]) => {
-    console.log("Form completed! Submitting...");
-    
-    try {
-      const response = await fetch('/api/submit-form', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers,
-          pageUrl: window.location.href,
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log("✅ Success! Redirecting to results...");
-        
-        // Get user email from answers
-        const email = answers.find(a => a.questionId === 'email')?.value as string;
-        
-        // Redirect to results page with data in URL params
-        const params = new URLSearchParams({
-          analysis: encodeURIComponent(JSON.stringify(data.analysis)),
-          comparableHomes: encodeURIComponent(JSON.stringify(data.comparableHomes)),
-          email: encodeURIComponent(email || ''),
-        });
-        
-        // Reset chat store for next user
-        reset();
-        
-        router.push(`/results?${params.toString()}`);
-      } else {
-        alert('Something went wrong. Please try again.');
-        console.error('Submission failed:', data.error);
-      }
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert('Error submitting form. Please try again.');
-    }
-  };
+  const { extractedAnswers, currentFlow } = useChatStore();
+
+  const calledRef = useRef(false);
+  
+
+  
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12">
@@ -68,7 +53,7 @@ export default function FormPage() {
         </div>
 
         {/* Chat Component */}
-        <ChatWithTracker onComplete={handleComplete} />
+        <ChatWithTracker  />
       </div>
     </main>
   );

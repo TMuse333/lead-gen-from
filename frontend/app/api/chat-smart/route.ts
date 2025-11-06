@@ -98,9 +98,9 @@ Then call determine_next_step with the correct nextQuestion from the list above.
       },
     });
 
-    console.log('✅ OpenAI Response received');
-    console.log('📝 Content:', completion.choices[0].message.content);
-    console.log('🔧 Tool calls:', completion.choices[0].message.tool_calls);
+    // console.log('✅ OpenAI Response received');
+    // console.log('📝 Content:', completion.choices[0].message.content);
+    // console.log('🔧 Tool calls:', completion.choices[0].message.tool_calls);
 
     let reply = completion.choices[0].message.content || '';
     let buttons: any[] = [];
@@ -115,8 +115,8 @@ Then call determine_next_step with the correct nextQuestion from the list above.
       
       if (toolCall.type === 'function') {
         const func = toolCall.function;
-        console.log('📦 Function name:', func.name);
-        console.log('📦 Function args:', func.arguments);
+        // console.log('📦 Function name:', func.name);
+        // console.log('📦 Function args:', func.arguments);
         
         const args = JSON.parse(func.arguments);
 
@@ -137,16 +137,16 @@ Then call determine_next_step with the correct nextQuestion from the list above.
 
         if (args.nextQuestion && args.nextQuestion !== 'none') {
           const currentFlow: FlowType = flowType || activeFlow;
-          console.log('📍 Using flow for buttons:', currentFlow);
+          // console.log('📍 Using flow for buttons:', currentFlow);
           
           const flowData = CONVERSATION_FLOWS[currentFlow];
           const questionData = flowData[args.nextQuestion as keyof typeof flowData];
           
           if (questionData) {
             buttons = questionData.buttons;
-            console.log('🔘 Buttons:', buttons.length);
+            // console.log('🔘 Buttons:', buttons.length);
           } else {
-            console.warn('⚠️ No question data found for:', args.nextQuestion, 'in flow:', currentFlow);
+            // console.warn('⚠️ No question data found for:', args.nextQuestion, 'in flow:', currentFlow);
           }
         }
       }
@@ -154,7 +154,7 @@ Then call determine_next_step with the correct nextQuestion from the list above.
 
     // CRITICAL CHECK
     if (!reply || reply.trim() === '') {
-      console.log('⚠️ Empty reply - constructing from question...');
+      // console.log('⚠️ Empty reply - constructing from question...');
       
       // Check if we're done collecting answers
       const totalAnswersAfter = currentAnswers.length + (extracted ? 1 : 0);
@@ -163,7 +163,7 @@ Then call determine_next_step with the correct nextQuestion from the list above.
       if (isComplete) {
         // COMPLETION MESSAGE - use flow-specific message
         reply = flowConfig.completionMessage + "\n\nI'm now generating your personalized report. This will just take a moment...";
-        console.log('✅ Form complete! Sending completion message');
+        // console.log('✅ Form complete! Sending completion message');
       } else if (toolCalls && toolCalls.length > 0) {
         // Regular question flow
         const toolCall = toolCalls[0];
@@ -183,7 +183,7 @@ Then call determine_next_step with the correct nextQuestion from the list above.
               } else {
                 reply = questionData.question;
               }
-              console.log('✅ Constructed reply:', reply);
+              // console.log('✅ Constructed reply:', reply);
             }
           }
         }
@@ -204,7 +204,7 @@ Then call determine_next_step with the correct nextQuestion from the list above.
       isComplete: (currentAnswers.length + (extracted ? 1 : 0)) >= flowConfig.totalQuestions
     };
 
-    console.log('📤 Sending response:', JSON.stringify(response, null, 2));
+    // console.log('📤 Sending response:', JSON.stringify(response, null, 2));
 
     return NextResponse.json(response);
 

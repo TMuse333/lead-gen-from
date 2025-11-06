@@ -18,15 +18,15 @@ import ExportMenu from './exportMenu';
 import PDFResults from './pdfResults';
 import DownloadPDFButton from './downloadPdfButton';
 import { useChatStore, selectCurrentFlow, selectExtractedAnswers } from '@/stores/chatStore';
-import type { AIAnalysis, ComparableHome, FormConfig } from '@/types';
+import type {  ComparableHome, FlowAnalysisOutput, FormConfig } from '@/types';
 
 interface ResultsPageProps {
-  analysis: AIAnalysis;
-  comparableHomes: ComparableHome[];
+  // analysis: FlowAnalysisOutput
+  // comparableHomes: ComparableHome[];
   userEmail: string;
 }
 
-export default function ResultsPage({ analysis, comparableHomes, userEmail }: ResultsPageProps) {
+export default function ResultsPage({ userEmail }: ResultsPageProps) {
   const flow = useChatStore(selectCurrentFlow);
   const answers = useChatStore(selectExtractedAnswers);
   const [isDark, setIsDark] = useState(false);
@@ -49,49 +49,7 @@ export default function ResultsPage({ analysis, comparableHomes, userEmail }: Re
   };
 
   // ——— FLOW-SPECIFIC CONTENT ———
-  const flowConfig = {
-    sell: {
-      title: "Your Home Sale Strategy Is Ready!",
-      subtitle: `We’ve analyzed your ${answers.find(a => a.questionId === 'propertyType')?.value || 'home'} in Halifax.`,
-      icon: <Home className="w-8 h-8 text-green-600" />,
-      heroTitle: "Estimated Sale Price",
-      heroSubtitle: "Based on current market + your home details",
-      nextSteps: [
-        "Schedule your FREE staging consultation",
-        "Lock in your listing photos (drone included)",
-        "Go live on MLS in 72 hours",
-      ],
-      cta: "Launch My Sale →",
-    },
-    buy: {
-      title: "Your Dream Home Blueprint Is Here!",
-      subtitle: "We found homes matching your budget & timeline.",
-      icon: <Heart className="w-8 h-8 text-pink-600" />,
-      heroTitle: "Your Buying Power",
-      heroSubtitle: "Pre-approved range + hidden gems",
-      nextSteps: [
-        "Get pre-approved in 24 hrs",
-        "See 3 off-market listings",
-        "Tour your top match this weekend",
-      ],
-      cta: "Find My Home →",
-    },
-    browse: {
-      title: "Your Market Intelligence Report Is Ready!",
-      subtitle: "Custom insights for your area & budget.",
-      icon: <DollarSign className="w-8 h-8 text-blue-600" />,
-      heroTitle: "Market Overview",
-      heroSubtitle: "Real-time trends + opportunities",
-      nextSteps: [
-        "Download your market trends PDF",
-        "Get alerts for your area",
-        "Schedule a strategy call",
-      ],
-      cta: "Get Market Updates →",
-    },
-  };
 
-  const config = flowConfig[flow || 'browse'];
 
   return (
     <div className={`min-h-screen py-12 px-4 ${isDark ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50'}`}>
@@ -129,10 +87,10 @@ export default function ResultsPage({ analysis, comparableHomes, userEmail }: Re
             {/* {config.icon|| 'oops'} || '' */}
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {config.title}
+            {/* config.title}    { */}
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-300 mt-2">
-                {config.subtitle}
+                {/* {config.subtitle} */}
                 <br />
                 <span className="font-bold text-blue-600">Report sent to {userEmail}</span>
               </p>
@@ -144,13 +102,13 @@ export default function ResultsPage({ analysis, comparableHomes, userEmail }: Re
         {isPdfMode ? (
           <div>
             <div ref={pdfContentRef} id="pdf-content">
-              <PDFResults
+              {/* <PDFResults
                 analysis={analysis}
                 comparableHomes={comparableHomes}
                 userEmail={userEmail}
                 agentInfo={agentInfo}
-                flow={flow || 'browse'}
-              />
+               
+              /> */}
             </div>
             <div className="flex justify-center gap-6 mt-8">
               <button
@@ -166,16 +124,15 @@ export default function ResultsPage({ analysis, comparableHomes, userEmail }: Re
         ) : (
           <>
             <HeroValueCard
-              value={analysis.estimatedValue}
-              title={config.heroTitle}
-              subtitle={config.heroSubtitle}
-              flow={flow || 'browse'}
+           
+              // subtitle={config.heroSubtitle}
+              // flow={flow || 'browse'}
             />
-            <MarketStatsGrid summary={analysis.marketSummary} flow={flow || 'browse'} />
-            <AdviceAccordion advice={analysis.personalizedAdvice} agentName={agentInfo.name} flow={flow || 'browse'} />
-            <NextSteps actions={config.nextSteps} cta={config.cta} />
+            {/* <MarketStatsGrid summary={analysis.marketSummary} />
+            <AdviceAccordion advice={analysis.personalizedAdvice} agentName={agentInfo.name}  />
+            <NextSteps actions={config.nextSteps} />
             <ComparablesGrid homes={comparableHomes} summary={analysis.comparablesSummary} />
-            <AgentCTA agentInfo={agentInfo} flow={flow || 'browse'} />
+            <AgentCTA agentInfo={agentInfo}  /> */}
           </>
         )}
       </div>
