@@ -1,37 +1,28 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { FlowAnalysisOutput } from '@/types/analysis.types';
+import type { FlowAnalysisOutput, FlowType } from '@/types/analysis.types';
 
 interface FlowResultState {
   result: FlowAnalysisOutput | null;
-  setResult: (result: FlowAnalysisOutput) => void;
+  flowType: FlowType | null;
+  setResult: (result: FlowAnalysisOutput, flowType: FlowType) => void;
   clearResult: () => void;
-
-  // optional helpers for quick access
-  flowType?: string;
-  leadId?: string;
 }
 
 export const useFlowResultStore = create<FlowResultState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       result: null,
-
-      setResult: (result) =>
-        set({
-          result,
-          flowType: result.flowType,
-          leadId: result.leadId,
-        }),
-
-      clearResult: () => set({ result: null, flowType: undefined, leadId: undefined }),
+      flowType: null,
+      setResult: (result, flowType) =>
+        set({ result, flowType }),
+      clearResult: () => set({ result: null, flowType: null }),
     }),
     {
-      name: 'flow-result-storage', // localStorage key
+      name: 'flow-result-storage',
       partialize: (state) => ({
         result: state.result,
         flowType: state.flowType,
-        leadId: state.leadId,
       }),
     }
   )

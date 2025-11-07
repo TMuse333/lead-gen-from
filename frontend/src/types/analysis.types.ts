@@ -1,17 +1,25 @@
 // ============================================
 // AI ANALYSIS INPUT & OUTPUT TYPES
 // ============================================
-
 import { LeadSubmission } from './submission.types';
 import { ComparableHome } from './comparable.types';
-import { MarketTrend } from './market.types';
 import { AgentAdviceScenario } from './advice.types';
 import { FormConfig } from './config.types';
 
 // ============================================
+// MARKET TREND (matches backend)
+// ============================================
+export interface MarketTrend {
+  averageSalePrice: number;
+  medianSalePrice: number;
+  averageDaysOnMarket: number;
+  marketTrend: string; // e.g. "up (+3.2%)"
+  inventoryLevel: 'low' | 'balanced' | 'high';
+}
+
+// ============================================
 // INPUT STRUCTURE (Shared Across Flows)
 // ============================================
-
 export interface AnalysisInput {
   leadData: LeadSubmission;
   comparableHomes: ComparableHome[];
@@ -23,56 +31,53 @@ export interface AnalysisInput {
 // ============================================
 // BASE ANALYSIS (Shared Output Structure)
 // ============================================
-
 export interface BaseAnalysis {
-  marketSummary: string;
+  marketSummary: MarketTrend;     // ← NOW OBJECT
   personalizedAdvice: string;
   recommendedActions: string[];
-  generatedAt: Date;
+  generatedAt: string | Date;     // ← backend sends string
   tokensUsed: number;
 }
 
 // ============================================
-// SELLER ANALYSIS
+// SELLER ANALYSIS (matches backend)
 // ============================================
-
 export interface SellerAnalysis extends BaseAnalysis {
-  estimatedValue: {
-    low: number;
-    high: number;
-    confidence: number; // 0–1 scale
-    reasoning: string;
-  };
-  comparablesSummary: string;
+  estimatedValue: number;         // ← NOW NUMBER
+  comparablesSummary: {
+    address: string;
+    details: string;
+    soldPrice: number;
+  }[];                            // ← ARRAY OF OBJECTS
 }
 
 // ============================================
 // BUYER ANALYSIS
 // ============================================
-
 export interface BuyerAnalysis extends BaseAnalysis {
   bestNeighborhoods: string[];
   financingTips: string[];
-  comparablesSummary?: string; // optional if shown
+  comparablesSummary?: {
+    address: string;
+    details: string;
+    soldPrice: number;
+  }[];
 }
 
 // ============================================
-// BROWSE (MARKET SNAPSHOT / DISCOVERY FLOW)
+// BROWSE ANALYSIS
 // ============================================
-
 export interface BrowseAnalysis extends BaseAnalysis {
-  highlights: string[]; // e.g. featured listings, trending areas
-  suggestedFilters: string[]; // e.g. "condos under $500K"
+  highlights: string[];
+  suggestedFilters: string[];
   neighborhoodInsights?: string;
 }
 
 // ============================================
 // UNION TYPE FOR FLOW ANALYSIS
 // ============================================
-
 export type FlowAnalysis = SellerAnalysis | BuyerAnalysis | BrowseAnalysis;
 
-// Optional helper type for flow selection
 export type FlowType = 'sell' | 'buy' | 'browse';
 
 export interface FlowAnalysisInput {
@@ -83,15 +88,17 @@ export interface FlowAnalysisInput {
   formConfig: FormConfig;
 }
 
-
+// ============================================
+// FINAL OUTPUT (matches backend response)
+// ============================================
 export interface FlowAnalysisOutput {
-  flowType: FlowType; // 'sell' | 'buy' | 'browse'
-  analysis: FlowAnalysis; // seller, buyer, or browse analysis object
-  comparableHomes: ComparableHome[]; // used for visuals / summaries
-  marketTrends: MarketTrend; // local market stats / trends
-  agentAdvice: AgentAdviceScenario[]; // list of AI or agent insights
-  formConfig: FormConfig; // original config used
-  leadId?: string; // optional reference to saved lead
-  generatedAt: Date; // timestamp of generation
-  tokensUsed?: number; // optional model usage info
+  flowType: FlowType;
+  analysis: FlowAnalysis;
+  comparableHomes: ComparableHome[];
+  marketTrends?: MarketTrend;           // ← optional (backend may omit)
+  agentAdvice?: AgentAdviceScenario[];  // ← optional
+  formConfig?: FormConfig;              // ← optional
+  leadId?: string;
+  generatedAt: Date;
+  tokensUsed?: number;
 }

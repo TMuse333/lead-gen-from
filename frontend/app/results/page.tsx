@@ -1,4 +1,4 @@
-import Results from "@/pageComponents/frontendPages/results/results";
+import Results from "@/components/pageComponents/frontendPages/results/results";
 import React from "react";
 
 

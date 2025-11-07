@@ -6,7 +6,7 @@ import { FormQuestion, FormAnswer } from '@/types';
 import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 import QuestionCard from './questionCard';
-import AnalysisTracker from './analysisTracker';
+import AnalysisTracker from '../ux/chatWithTracker/analysisTracker';
 
 interface ConversationalFormProps {
   questions: FormQuestion[];

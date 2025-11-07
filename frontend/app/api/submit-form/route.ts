@@ -179,6 +179,7 @@ export async function POST(request: NextRequest) {
     // ============================================
     // STEP 9: Return analysis to frontend
     // ============================================
+    console.log('the final analysis',analysis)
     return NextResponse.json({
       success: true,
       leadId,

@@ -13,7 +13,7 @@ import {
   CalculatingValue,
   GeneratingRecommendations,
   PendingIcon,
-} from './icons/calculatingIcon';
+} from '../../conversationalForm/icons/calculatingIcon';
 
 const TOTAL_QUESTIONS = 6;
 

@@ -13,7 +13,7 @@ import {
   selectExtractedAnswers, 
   selectIsComplete
 } from '@/stores/chatStore';
-import AnalysisTracker from '../conversationalForm/analysisTracker';
+import AnalysisTracker from './analysisTracker';
 import { useFlowResultStore } from '@/stores/flowResultStore';
 import { ExtractedAnswer, FlowAnalysisOutput } from '@/types';
 
@@ -105,7 +105,7 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
           generatedAt: new Date(),
         };
 
-        useFlowResultStore.getState().setResult(result);
+        useFlowResultStore.getState().setResult(result,currentFlow);
 
         // Optionally trigger any parent callback
         if (onComplete) onComplete(extractedAnswers);
@@ -117,7 +117,7 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
         router.push('/results');
 
       } catch (err) {
-        console.error('Error submitting form:', err);
+        console.error('Error submitting form::', err);
         alert('Error submitting form. Please try again.');
       }
     };
