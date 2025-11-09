@@ -26,7 +26,7 @@ export const useSeedResult = (data: SeedData) => {
       comparableHomes: data.comparableHomes ?? [],
       marketTrends: data.marketTrends ?? null,
       agentAdvice: data.agentAdvice ?? [],
-      formConfig: data.formConfig ?? null,
+
       leadId: data.leadId,
       generatedAt: new Date(),
     };

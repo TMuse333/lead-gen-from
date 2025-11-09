@@ -25,6 +25,7 @@ export interface FormAnswer {
       sellingReason?: string;
       timeline?: string;
       specificConcerns?: string;
+      area?:string
     };
     analysis?: {
       estimatedValue?: {

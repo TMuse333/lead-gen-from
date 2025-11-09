@@ -10,6 +10,8 @@ import { FlowAnalysisOutput } from '@/types';
 import { useFlowResultStore } from '@/stores/flowResultStore';
 import axios from 'axios'
 import { useEffect , useRef, useState} from 'react';
+import MarketAnalysisDisplay from '@/components/ux/marketAnalysis/marketAnalysis';
+import PropertyList from '@/components/ux/propertyList/propertyList';
 
 
 export default function FormPage() {
@@ -53,7 +55,9 @@ export default function FormPage() {
         </div>
 
         {/* Chat Component */}
-        <ChatWithTracker  />
+        {/* <ChatWithTracker  /> */}
+        <PropertyList/>
+        <MarketAnalysisDisplay/>
       </div>
     </main>
   );

@@ -3,65 +3,54 @@
 // ============================================
 import { LeadSubmission } from './submission.types';
 import { ComparableHome } from './comparable.types';
+
 import { AgentAdviceScenario } from './advice.types';
 import { FormConfig } from './config.types';
-
-// ============================================
-// MARKET TREND (matches backend)
-// ============================================
-export interface MarketTrend {
-  averageSalePrice: number;
-  medianSalePrice: number;
-  averageDaysOnMarket: number;
-  marketTrend: string; // e.g. "up (+3.2%)"
-  inventoryLevel: 'low' | 'balanced' | 'high';
-}
+import { BaseMarketAnalysis } from './baseMarketAnalysis';
 
 // ============================================
 // INPUT STRUCTURE (Shared Across Flows)
 // ============================================
 export interface AnalysisInput {
   leadData: LeadSubmission;
-  comparableHomes: ComparableHome[];
-  marketTrends: MarketTrend;
-  agentAdvice: AgentAdviceScenario[];
+  // comparableHomes: ComparableHome[];
+  // // marketSummary: MarketSummary;
+  // agentAdvice: AgentAdviceScenario[];
   formConfig: FormConfig;
 }
+
+// Optional helper for flow selection
+export type FlowType = 'sell' | 'buy' | 'browse';
 
 // ============================================
 // BASE ANALYSIS (Shared Output Structure)
 // ============================================
 export interface BaseAnalysis {
-  marketSummary: MarketTrend;     // ← NOW OBJECT
-  personalizedAdvice: string;
-  recommendedActions: string[];
-  generatedAt: string | Date;     // ← backend sends string
+  marketSummary: string;                    // ← AI-written narrative
+  personalizedAdvice: string[];             // ← always array
+  recommendedActions: string[];             // ← always array
+  generatedAt: string;                      // ← ISO string
   tokensUsed: number;
 }
 
 // ============================================
-// SELLER ANALYSIS (matches backend)
+// SELLER ANALYSIS
 // ============================================
 export interface SellerAnalysis extends BaseAnalysis {
-  estimatedValue: number;         // ← NOW NUMBER
+  estimatedValue: number;
   comparablesSummary: {
     address: string;
     details: string;
     soldPrice: number;
-  }[];                            // ← ARRAY OF OBJECTS
+  }[];
 }
 
 // ============================================
 // BUYER ANALYSIS
 // ============================================
 export interface BuyerAnalysis extends BaseAnalysis {
-  bestNeighborhoods: string[];
+  recommendedNeighborhoods: string[];
   financingTips: string[];
-  comparablesSummary?: {
-    address: string;
-    details: string;
-    soldPrice: number;
-  }[];
 }
 
 // ============================================
@@ -70,7 +59,7 @@ export interface BuyerAnalysis extends BaseAnalysis {
 export interface BrowseAnalysis extends BaseAnalysis {
   highlights: string[];
   suggestedFilters: string[];
-  neighborhoodInsights?: string;
+  neighborhoodInsights: Record<string, string>;
 }
 
 // ============================================
@@ -78,26 +67,15 @@ export interface BrowseAnalysis extends BaseAnalysis {
 // ============================================
 export type FlowAnalysis = SellerAnalysis | BuyerAnalysis | BrowseAnalysis;
 
-export type FlowType = 'sell' | 'buy' | 'browse';
-
-export interface FlowAnalysisInput {
-  leadData: LeadSubmission;
-  comparableHomes: ComparableHome[];
-  marketTrends: MarketTrend;
-  agentAdvice: AgentAdviceScenario[];
-  formConfig: FormConfig;
-}
-
 // ============================================
-// FINAL OUTPUT (matches backend response)
+// FINAL OUTPUT (Consistent Across Flows)
 // ============================================
 export interface FlowAnalysisOutput {
   flowType: FlowType;
   analysis: FlowAnalysis;
-  comparableHomes: ComparableHome[];
-  marketTrends?: MarketTrend;           // ← optional (backend may omit)
-  agentAdvice?: AgentAdviceScenario[];  // ← optional
-  formConfig?: FormConfig;              // ← optional
+
+
+  agentAdvice?: AgentAdviceScenario[];      // ← optional
   leadId?: string;
   generatedAt: Date;
   tokensUsed?: number;

@@ -100,7 +100,7 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
           comparableHomes: data.comparableHomes,
           marketTrends: data.marketTrends,
           agentAdvice: data.agentAdvice,
-          formConfig: data.formConfig,
+          // formConfig: data.formConfig,
           leadId: data.leadId,
           generatedAt: new Date(),
         };
