@@ -8,12 +8,12 @@ import {
   ExtractedAnswer,
   ChatButton,
   ChatMessage,
-} from '@/types/chat.types';
+} from '@/types/chat/chat.types';
 import { INITIAL_MESSAGE } from '@/data/conversationFlows/conversationFlows';
 import { FlowAnalysisOutput } from '@/types/analysis.types';
-import { ComparableHome } from '@/types';
-import { useEffect } from 'react';
 
+import { useEffect } from 'react';
+import axios from 'axios'
 
 
 // =========================
@@ -32,7 +32,7 @@ export interface ChatStateData {
 
   // ✅ New: store full results for easy access on results page
   analysisResult: FlowAnalysisOutput | null;
-  comparableHomes: ComparableHome[];
+  
   userEmail: string | null;
 }
 
@@ -50,7 +50,7 @@ export interface ChatStateActions {
   // ✅ New actions for result data
   setResults: (data: {
     analysis: FlowAnalysisOutput;
-    comparableHomes?: ComparableHome[];
+
     email?: string;
   }) => void;
 
@@ -79,7 +79,7 @@ const initialState: ChatStateData = {
 
   // ✅ new
   analysisResult: null,
-  comparableHomes: [],
+
   userEmail: null,
 };
 
@@ -138,17 +138,17 @@ export const useChatStore = create<ChatState>()(
       // =========================
       // ✅ Results Management
       // =========================
-      setResults: ({ analysis, comparableHomes = [], email }) =>
+      setResults: ({ analysis , email }) =>
         set({
           analysisResult: analysis,
-          comparableHomes,
+       
           userEmail: email || null,
         }),
 
       clearResults: () =>
         set({
           analysisResult: null,
-          comparableHomes: [],
+         
           userEmail: null,
         }),
 
@@ -250,7 +250,6 @@ export const selectIsComplete = (state: ChatState) => state.isComplete;
 
 // ✅ New Selectors
 export const selectAnalysisResult = (state: ChatState) => state.analysisResult;
-export const selectComparableHomes = (state: ChatState) =>
-  state.comparableHomes;
+
 export const selectUserEmail = (state: ChatState) => state.userEmail;
 

@@ -94,18 +94,18 @@ export default function ChatWithTracker({ onComplete }: ChatWithTrackerProps) {
         }
 
         // Build the result object for the FlowResultStore
-        const result: FlowAnalysisOutput = {
-          flowType: data.flowType,
-          analysis: data.analysis,
-          comparableHomes: data.comparableHomes,
-          marketTrends: data.marketTrends,
-          agentAdvice: data.agentAdvice,
-          // formConfig: data.formConfig,
-          leadId: data.leadId,
-          generatedAt: new Date(),
-        };
+        // const result: FlowAnalysisOutput = {
+        //   flowType: data.flowType,
+        //   analysis: data.analysis,
+        //   comparableHomes: data.comparableHomes,
+        //   marketTrends: data.marketTrends,
+        //   agentAdvice: data.agentAdvice,
+        //   // formConfig: data.formConfig,
+        //   leadId: data.leadId,
+        //   generatedAt: new Date(),
+        // };
 
-        useFlowResultStore.getState().setResult(result,currentFlow);
+        // useFlowResultStore.getState().setResult(result,currentFlow);
 
         // Optionally trigger any parent callback
         if (onComplete) onComplete(extractedAnswers);

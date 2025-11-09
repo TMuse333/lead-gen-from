@@ -1,7 +1,8 @@
 // app/api/market-analysis/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { MarketData } from '@/types/market.types';
-import { analyzeMarket, calculateConfidence } from '@/lib/calc/marketAnalyzer';
+import { MarketData } from '@/types/dataTypes/market.types';
+import { analyzeMarket, calculateConfidence } from '@/lib/calc/marketAnalzyer';
+
 
 /**
  * API Route: Market Analysis

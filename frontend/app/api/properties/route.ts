@@ -21,7 +21,7 @@ PropertySearchFilters,
 
 PropertyStatus 
 
-} from '@/types/property.types';
+} from '@/types/dataTypes/property.types';
 
 import { analyzeProperty, toPropertySummary } from '@/lib/calc/propertyAnalyzer';
 

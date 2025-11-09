@@ -11,7 +11,7 @@ import { fetchComparableHomes, fetchMarketTrends } from '@/data/realEstateData/r
 import { buildUserProfileText, generateEmbedding, generateFlowAnalysis } from '@/lib/openai/openai';
 import { sendAgentNotificationEmail, sendUserAnalysisEmail } from '@/lib/emails/emailLead';
 import { flowConfigs } from '@/lib/config/flowConfig';
-import { buildUserProfile } from '@/lib/openai/buildUserProfile';
+import { buildUserProfile } from '@/lib/openai/prompts';
 import { mapFlowConfigToFormConfig } from '@/lib/config/formFactory';
 
 export const runtime = "nodejs";

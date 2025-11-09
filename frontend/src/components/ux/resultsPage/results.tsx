@@ -12,7 +12,7 @@
 import type { FlowAnalysisOutput, FlowType } from '@/types/analysis.types';
 import { flowConfigs } from '@/lib/config/flowConfig';
 import { HeroBanner } from './herobanner';
-import { useSeedResult } from '@/lib/hooks/useSeedResult';
+
 
 interface ResultLayoutProps {
   flowType: FlowType;

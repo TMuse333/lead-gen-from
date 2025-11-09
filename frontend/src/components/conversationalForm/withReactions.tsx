@@ -131,7 +131,7 @@ export default function ConversationalForm({
         <div className="flex flex-col md:flex-row-reverse gap-6">
           {/* Analysis Tracker */}
           {answers.length >= 2 && (
-            <AnalysisTracker answers={answers} />
+            <AnalysisTracker />
           )}
 
           {/* Question Card */}

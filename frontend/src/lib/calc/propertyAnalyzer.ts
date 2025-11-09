@@ -3,7 +3,7 @@
 // Analyzes individual properties and generates insights
 // ============================================
 
-import { PropertyData, PropertyComparison, PropertySummary } from '@/types/property.types';
+import { PropertyData, PropertyComparison, PropertySummary } from '@/types/dataTypes/property.types';
 
 /**
  * Property Analysis Result

@@ -4,7 +4,7 @@
 // Nova Scotia areas: Halifax, Dartmouth, Bedford, Clayton Park
 // ============================================
 
-import { PropertyData, PropertyStatus } from "@/types/property.types";
+import { PropertyData, PropertyStatus } from "@/types/dataTypes/property.types";
 
 
 

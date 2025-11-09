@@ -3,8 +3,8 @@
 // Processes raw MarketData into BaseMarketAnalysis
 // ============================================
 
-import { MarketData, MarketCondition, TrendDirection, InventoryLevel, MarketVelocity } from './market.types';
-import { BaseMarketAnalysis, AnalysisConfidence } from './baseMarketAnalysis.types';
+import { BaseMarketAnalysis } from '@/types/analysis/baseMarketAnalysis';
+import { MarketData, MarketCondition, TrendDirection, InventoryLevel, MarketVelocity } from '@/types/dataTypes/market.types';
 
 /**
  * Main analyzer function - converts raw market data to analyzed insights

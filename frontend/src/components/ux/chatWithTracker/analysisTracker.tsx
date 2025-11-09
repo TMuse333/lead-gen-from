@@ -4,7 +4,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Trophy, Gift, Award, Zap } from 'lucide-react';
 import { useChatStore, selectExtractedAnswers } from '@/stores/chatStore';
-import { ExtractedAnswer } from '@/types/chat.types';
+import { ExtractedAnswer } from '@/types/chat/chat.types';
 import { useState, useEffect } from 'react';
 import {
   PropertyCollecting,

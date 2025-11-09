@@ -4,9 +4,9 @@
 import { useRouter } from 'next/navigation';
 
 import { useChatStore } from '@/stores/chatStore';
-import { ExtractedAnswer } from '@/types/chat.types';
+
 import ChatWithTracker from '@/components/ux/chatWithTracker/chatWithTracker';
-import { FlowAnalysisOutput } from '@/types';
+
 import { useFlowResultStore } from '@/stores/flowResultStore';
 import axios from 'axios'
 import { useEffect , useRef, useState} from 'react';
