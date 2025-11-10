@@ -8,7 +8,7 @@ import { PropertyData, PropertyStatus } from "@/types/dataTypes/property.types";
 
 
 
-/**
+/** 
  * Placeholder Properties Database
  * TODO: Replace with real MLS API integration
  */

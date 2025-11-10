@@ -15,7 +15,7 @@ import {
 } from '@/stores/chatStore';
 import AnalysisTracker from './analysisTracker';
 import { useFlowResultStore } from '@/stores/flowResultStore';
-import { ExtractedAnswer, FlowAnalysisOutput } from '@/types';
+
 
 interface ChatWithTrackerProps {
   onComplete?: (answers: ExtractedAnswer[]) => void;

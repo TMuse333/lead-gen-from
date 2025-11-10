@@ -3,7 +3,7 @@
 // ============================================
 
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { AgentAdviceScenario, UserProfile } from '@/types';
+import { AgentAdviceScenario,  } from '@/types';
 
 // Initialize Qdrant client
 const qdrantClient = new QdrantClient({
@@ -86,7 +86,7 @@ export async function storeAgentAdvice(
  */
 export async function queryRelevantAdvice(
   agentId: string,
-  userProfile: UserProfile,
+
   embedding: number[],
   limit: number = 3
 ): Promise<AgentAdviceScenario[]> {

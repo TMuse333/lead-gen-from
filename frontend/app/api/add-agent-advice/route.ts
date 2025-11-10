@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Store in Qdrant
     console.log('⏳ Storing in Qdrant...');
     const adviceId = await storeAgentAdvice(
-      '82ae0d4d-c3d7-4997-bc7b-12b2261d167e', // TODO: Get from session/auth when multi-agent
+      process.env.AGENT_ID,
       scenario,
       advice,
       embedding,

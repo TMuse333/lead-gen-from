@@ -3,20 +3,22 @@
 
 import { useRouter } from 'next/navigation';
 
-import { useChatStore } from '@/stores/chatStore';
+
 
 import ChatWithTracker from '@/components/ux/chatWithTracker/chatWithTracker';
 
-import { useFlowResultStore } from '@/stores/flowResultStore';
+
 import axios from 'axios'
 import { useEffect , useRef, useState} from 'react';
 import MarketAnalysisDisplay from '@/components/ux/marketAnalysis/marketAnalysis';
 import PropertyList from '@/components/ux/propertyList/propertyList';
+import ViewAgentAdvice from '@/components/client/adviceDashboard/viewAgentAdvice';
+import AgentAdviceUploader from '@/components/client/adviceDashboard/agentAdviceUploader';
 
 
 export default function FormPage() {
   const router = useRouter();
-  const reset = useChatStore((state) => state.reset);
+
 
 
   const [pageUrl, setPageUrl] = useState<string>('');
@@ -56,6 +58,8 @@ export default function FormPage() {
 
         {/* Chat Component */}
         {/* <ChatWithTracker  /> */}
+        {/* <ViewAgentAdvice/> */}
+        {/* <AgentAdviceUploader/> */}
         <PropertyList/>
         <MarketAnalysisDisplay/>
       </div>

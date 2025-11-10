@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FormQuestion, FormAnswer } from '@/types';
+
 import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 import QuestionCard from './questionCard';
