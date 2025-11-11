@@ -15,5 +15,7 @@ export * from './advice.types'
 
 export * from './analysis'
 
+export * from './resultsPageComponents'
+
 
 

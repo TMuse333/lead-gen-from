@@ -6,6 +6,7 @@ import { ComponentSchema } from "./schemas";
 export interface LlmOutput {
     hero: LlmHeroBanner;
     profileHighlight:LlmProfileSummary
+    
     // profileSummary?: LlmProfileSummary;     // Add as you build
     // personalizedAdvice?: LlmPersonalizedAdvice;
     // marketInsights?: LlmMarketInsights;

@@ -1,8 +1,7 @@
 // ============================================
 // API ROUTE: /api/add-agent-advice
-// Handles adding agent advice from frontend uploader
+// Handles adding agent advice from frontend uploader (NEW FORMAT)
 // ============================================
-
 import { NextRequest, NextResponse } from 'next/server';
 import { storeAgentAdvice } from '@/lib/qdrant/qdrant';
 import { getEmbedding } from '@/lib/openai/embedding';
@@ -11,26 +10,37 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      scenario,
+      title,
       advice,
       tags = [],
-      propertyTypes = [],
-      sellingReasons = [],
-      timelines = [],
+      flow = [],
+      conditions = {},
     } = body;
 
     // Validate required fields
-    if (!scenario || !advice) {
+    if (!title || !advice) {
       return NextResponse.json(
-        { success: false, error: 'Scenario and advice are required' },
+        { success: false, error: 'Title and advice are required' },
         { status: 400 }
       );
     }
 
-    console.log('📝 Adding agent advice:', scenario);
+    // Validate flow if provided
+    if (flow.length > 0) {
+      const validFlows = ['sell', 'buy', 'browse'];
+      const invalidFlows = flow.filter((f: string) => !validFlows.includes(f));
+      if (invalidFlows.length > 0) {
+        return NextResponse.json(
+          { success: false, error: `Invalid flow(s): ${invalidFlows.join(', ')}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    console.log('📝 Adding agent advice:', title);
 
     // Generate embedding for semantic search
-    const textToEmbed = `${scenario}. ${advice}`;
+    const textToEmbed = `${title}. ${advice}`;
     console.log('⏳ Generating embedding...');
     const embedding = await getEmbedding(textToEmbed);
     console.log('✅ Embedding generated');
@@ -38,17 +48,17 @@ export async function POST(request: NextRequest) {
     // Store in Qdrant
     console.log('⏳ Storing in Qdrant...');
     const adviceId = await storeAgentAdvice(
-      process.env.AGENT_ID,
-      scenario,
+      process.env.AGENT_ID!,
+      title,
       advice,
       embedding,
       {
         tags,
-        propertyType: propertyTypes,
-        sellingReason: sellingReasons,
-        timeline: timelines,
+        flow,
+        conditions,
       }
     );
+
     console.log('✅ Stored in Qdrant with ID:', adviceId);
 
     return NextResponse.json({
@@ -56,10 +66,8 @@ export async function POST(request: NextRequest) {
       adviceId,
       message: 'Advice added successfully',
     });
-
   } catch (error) {
     console.error('❌ Error adding agent advice:', error);
-    
     return NextResponse.json(
       {
         success: false,

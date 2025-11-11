@@ -1,12 +1,9 @@
-// ============================================
-// API ROUTE: /api/get-agent-advice
-// Fetch all agent advice from Qdrant
-// ============================================
+// app/api/get-agent-advice/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { QdrantClient } from '@qdrant/js-client-rest';
 
-export const runtime = "nodejs"; // Ensure Node.js runtime
+export const runtime = "nodejs";
 
 const client = new QdrantClient({
   url: process.env.QDRANT_URL!,
@@ -33,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Found ${response.points.length} points`);
 
-    // Transform to friendly format
+    // Transform to friendly format (FIXED - properly extract applicableWhen)
     const adviceList = response.points
       .filter((point) => {
         // Filter by agentId if provided
@@ -42,26 +39,33 @@ export async function GET(request: NextRequest) {
         }
         return true;
       })
-      .map((point) => ({
-        id: point.id,
-        scenario: point.payload?.scenario as string,
-        advice: point.payload?.advice as string,
-        tags: (point.payload?.tags as string[]) || [],
-        propertyType: (point.payload?.propertyType as string[]) || [],
-        sellingReason: (point.payload?.sellingReason as string[]) || [],
-        timeline: (point.payload?.timeline as string[]) || [],
-        createdAt: point.payload?.createdAt as string,
-      }));
+      .map((point) => {
+        const payload = point.payload;
+        
+        // Log to debug
+        console.log('Raw payload applicableWhen:', payload?.applicableWhen);
+        
+        return {
+          id: point.id,
+          title: payload?.title as string,
+          advice: payload?.advice as string,
+          tags: (payload?.tags as string[]) || [],
+          applicableWhen: payload?.applicableWhen as any, // Pass through the entire object
+          createdAt: payload?.createdAt as string,
+          updatedAt: payload?.updatedAt as string | undefined,
+          usageCount: payload?.usageCount as number | undefined,
+        };
+      });
+
+    console.log('Sample advice item:', JSON.stringify(adviceList[0], null, 2));
 
     return NextResponse.json({
       success: true,
       count: adviceList.length,
       advice: adviceList,
     });
-
   } catch (error) {
     console.error('❌ Error fetching agent advice:', error);
-    
     return NextResponse.json(
       {
         success: false,
@@ -97,10 +101,8 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Advice deleted successfully',
     });
-
   } catch (error) {
     console.error('❌ Error deleting advice:', error);
-    
     return NextResponse.json(
       {
         success: false,

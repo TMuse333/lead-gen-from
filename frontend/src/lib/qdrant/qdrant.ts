@@ -3,7 +3,7 @@
 // ============================================
 
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { AgentAdviceScenario,  } from '@/types';
+import { AgentAdviceScenario } from '@/types';
 
 // Initialize Qdrant client
 const qdrantClient = new QdrantClient({
@@ -41,18 +41,17 @@ export async function initializeQdrantCollection() {
 }
 
 /**
- * Store agent advice in Qdrant with vector embedding
+ * Store agent advice in Qdrant with vector embedding (NEW STRUCTURE)
  */
 export async function storeAgentAdvice(
   agentId: string,
-  scenario: string,
+  title: string,
   advice: string,
   embedding: number[],
   metadata: {
     tags?: string[];
-    propertyType?: string[];
-    sellingReason?: string[];
-    timeline?: string[];
+    flow?: string[];
+    conditions?: Record<string, string[]>;
   }
 ) {
   try {
@@ -61,10 +60,14 @@ export async function storeAgentAdvice(
       vector: embedding,
       payload: {
         agentId,
-        scenario,
+        title,
         advice,
-        ...metadata,
+        tags: metadata.tags || [],
+        flow: metadata.flow || [],
+        conditions: metadata.conditions || {},
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        usageCount: 0,
       },
     };
 
@@ -73,7 +76,7 @@ export async function storeAgentAdvice(
       points: [point],
     });
 
-    console.log('✅ Stored advice in Qdrant:', scenario);
+    console.log('✅ Stored advice in Qdrant:', title);
     return point.id;
   } catch (error) {
     console.error('Error storing advice in Qdrant:', error);
@@ -82,44 +85,80 @@ export async function storeAgentAdvice(
 }
 
 /**
- * Query Qdrant for relevant agent advice based on user profile
+ * Query Qdrant for relevant agent advice based on user profile (NEW STRUCTURE)
  */
 export async function queryRelevantAdvice(
   agentId: string,
-
   embedding: number[],
-  limit: number = 3
+  flow: string,
+  userInput: Record<string, string>,
+  limit: number = 5
 ): Promise<AgentAdviceScenario[]> {
   try {
-    console.log(`🔍 Searching Qdrant for advice matching: ${agentId}`);
+    console.log(`🔍 Searching Qdrant for advice matching flow: ${flow}`);
     
-    // Simple semantic search - no complex filters
+    // Semantic search with agentId filter
     const searchResult = await qdrantClient.search(COLLECTION_NAME, {
       vector: embedding,
-      limit: 10, // Get more, then filter in JS
+      limit: limit * 3, // Get more results for filtering
       with_payload: true,
+      filter: {
+        must: [
+          {
+            key: 'agentId',
+            match: { value: agentId },
+          },
+        ],
+      },
     });
 
     console.log(`📋 Qdrant returned ${searchResult.length} results`);
 
-    // Filter by agentId in JavaScript (like your working GET route)
+    // Filter by applicability in JavaScript
     const filtered = searchResult
-      .filter((result) => result.payload?.agentId === agentId)
-      .slice(0, limit); // Take only the top N after filtering
+      .filter((result) => {
+        const payload = result.payload;
+        
+        // Check flow match
+        const adviceFlows = payload?.flow as string[] | undefined;
+        if (adviceFlows && adviceFlows.length > 0 && !adviceFlows.includes(flow)) {
+          return false;
+        }
+
+        // Check conditions match (OR logic - at least one condition must match)
+        const conditions = payload?.conditions as Record<string, string[]> | undefined;
+        
+        if (!conditions || Object.keys(conditions).length === 0) {
+          // No conditions = applies to all
+          return true;
+        }
+
+        // Check if any condition matches
+        for (const [key, allowedValues] of Object.entries(conditions)) {
+          const userValue = userInput[key];
+          if (userValue && allowedValues.includes(userValue)) {
+            return true; // At least one condition matched
+          }
+        }
+
+        return false; // No conditions matched
+      })
+      .slice(0, limit);
 
     // Map results to AgentAdviceScenario type
     const adviceScenarios: AgentAdviceScenario[] = filtered.map((result) => ({
       id: result.id as string,
       agentId: result.payload?.agentId as string,
-      scenario: result.payload?.scenario as string,
+      title: result.payload?.title as string,
       tags: (result.payload?.tags as string[]) || [],
       advice: result.payload?.advice as string,
       applicableWhen: {
-        propertyType: result.payload?.propertyType as string[],
-        sellingReason: result.payload?.sellingReason as string[],
-        timeline: result.payload?.timeline as string[],
+        flow: result.payload?.flow as string[] | undefined,
+        conditions: result.payload?.conditions as Record<string, string[]> | undefined,
       },
       createdAt: new Date(result.payload?.createdAt as string),
+      updatedAt: result.payload?.updatedAt ? new Date(result.payload.updatedAt as string) : undefined,
+      usageCount: result.payload?.usageCount as number | undefined,
       embedding: undefined,
     }));
 
@@ -133,7 +172,7 @@ export async function queryRelevantAdvice(
 }
 
 /**
- * Get all advice for a specific agent (for admin/dashboard)
+ * Get all advice for a specific agent (for admin/dashboard) (NEW STRUCTURE)
  */
 export async function getAgentAdvice(
   agentId: string,
@@ -157,19 +196,101 @@ export async function getAgentAdvice(
     return result.points.map((point) => ({
       id: point.id as string,
       agentId: point.payload?.agentId as string,
-      scenario: point.payload?.scenario as string,
+      title: point.payload?.title as string,
       tags: (point.payload?.tags as string[]) || [],
       advice: point.payload?.advice as string,
       applicableWhen: {
-        propertyType: point.payload?.propertyType as string[],
-        sellingReason: point.payload?.sellingReason as string[],
-        timeline: point.payload?.timeline as string[],
+        flow: point.payload?.flow as string[] | undefined,
+        conditions: point.payload?.conditions as Record<string, string[]> | undefined,
       },
       createdAt: new Date(point.payload?.createdAt as string),
+      updatedAt: point.payload?.updatedAt ? new Date(point.payload.updatedAt as string) : undefined,
+      usageCount: point.payload?.usageCount as number | undefined,
     }));
   } catch (error) {
     console.error('Error fetching agent advice:', error);
     return [];
+  }
+}
+
+/**
+ * Increment usage count when advice is used in generation
+ */
+export async function incrementAdviceUsage(adviceId: string) {
+  try {
+    // Fetch current point
+    const points = await qdrantClient.retrieve(COLLECTION_NAME, {
+      ids: [adviceId],
+      with_payload: true,
+    });
+
+    if (points.length === 0) {
+      console.warn(`⚠️  Advice ${adviceId} not found for usage increment`);
+      return;
+    }
+
+    const currentCount = (points[0].payload?.usageCount as number) || 0;
+
+    // Update with incremented count
+    await qdrantClient.setPayload(COLLECTION_NAME, {
+      points: [adviceId],
+      payload: {
+        usageCount: currentCount + 1,
+        lastUsed: new Date().toISOString(),
+      },
+    });
+
+    console.log(`✅ Incremented usage count for advice ${adviceId}: ${currentCount + 1}`);
+  } catch (error) {
+    console.error('Error incrementing advice usage:', error);
+    // Don't throw - this is non-critical
+  }
+}
+
+/**
+ * Update existing advice
+ */
+export async function updateAdvice(
+  adviceId: string,
+  updates: {
+    title?: string;
+    advice?: string;
+    tags?: string[];
+    flow?: string[];
+    conditions?: Record<string, string[]>;
+    embedding?: number[];
+  }
+) {
+  try {
+    const payload: any = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // If embedding provided, update vector too
+    if (updates.embedding) {
+      await qdrantClient.upsert(COLLECTION_NAME, {
+        wait: true,
+        points: [
+          {
+            id: adviceId,
+            vector: updates.embedding,
+            payload,
+          },
+        ],
+      });
+    } else {
+      // Just update payload
+      await qdrantClient.setPayload(COLLECTION_NAME, {
+        points: [adviceId],
+        payload,
+      });
+    }
+
+    console.log('✅ Updated advice:', adviceId);
+  } catch (error) {
+    console.error('Error updating advice:', error);
+    throw error;
   }
 }
 

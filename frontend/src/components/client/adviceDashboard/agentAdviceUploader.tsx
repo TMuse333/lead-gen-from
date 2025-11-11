@@ -2,35 +2,80 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
-import { HelpCircle, Plus, Trash2 } from 'lucide-react';
+import { HelpCircle, Plus, Trash2, X } from 'lucide-react';
+import RuleBuilder from './ruleBuilder';
+
+// Import types
+type MatchOperator = 'equals' | 'includes' | 'not_equals' | 'greater_than' | 'less_than' | 'between';
+type LogicOperator = 'AND' | 'OR';
+
+interface ConditionRule {
+  field: string;
+  operator: MatchOperator;
+  value: string | string[];
+  weight?: number;
+}
+
+interface RuleGroup {
+  logic: LogicOperator;
+  rules: (ConditionRule | RuleGroup)[];
+}
 
 export default function AgentAdviceUploader() {
-  const [scenario, setScenario] = useState('');
+  // Basic fields
+  const [title, setTitle] = useState('');
   const [advice, setAdvice] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
-  const [sellingReasons, setSellingReasons] = useState<string[]>([]);
-  const [timelines, setTimelines] = useState<string[]>([]);
+  
+  // Flow selection
+  const [selectedFlows, setSelectedFlows] = useState<string[]>([]);
+  
+  // Simple rule builder state
+  const [rules, setRules] = useState<ConditionRule[]>([]);
+  const [ruleLogic, setRuleLogic] = useState<LogicOperator>('AND');
+  
+  // UI state
   const [status, setStatus] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showAdvancedRules, setShowAdvancedRules] = useState(false);
 
   // Predefined options
-  const PROPERTY_TYPE_OPTIONS = ['house', 'condo', 'townhouse', 'multi_unit'];
-  const SELLING_REASON_OPTIONS = [
-    'upsizing',
-    'downsizing',
-    'relocating',
-    'investment',
-    'lifestyle',
-    'exploring',
+  const FLOW_OPTIONS = ['sell', 'buy', 'browse'];
+  
+  const FIELD_OPTIONS = [
+    { value: 'propertyType', label: 'Property Type' },
+    { value: 'timeline', label: 'Timeline' },
+    { value: 'sellingReason', label: 'Selling Reason' },
+    { value: 'buyingReason', label: 'Buying Reason' },
+    { value: 'renovations', label: 'Renovations' },
+    { value: 'budget', label: 'Budget' },
+    { value: 'bedrooms', label: 'Bedrooms' },
+    { value: 'interest', label: 'Interest' },
   ];
-  const TIMELINE_OPTIONS = ['0-3', '3-6', '6-12', 'exploring'];
+
+  const VALUE_OPTIONS: Record<string, string[]> = {
+    propertyType: ['single-family house', 'condo', 'townhouse', 'multi-family'],
+    timeline: ['0-3', '3-6', '6-12', '12+'],
+    sellingReason: ['upsizing', 'downsizing', 'relocating', 'investment'],
+    buyingReason: ['first-home', 'upgrade', 'downsize', 'investment'],
+    renovations: ['kitchen', 'bathroom', 'kitchen and bathroom', 'none'],
+    budget: ['under-400k', '400k-600k', '600k-800k', 'over-800k'],
+    bedrooms: ['1-2', '3', '4', '5+'],
+    interest: ['market-trends', 'investment', 'neighborhood', 'general'],
+  };
+
+  const OPERATOR_OPTIONS: MatchOperator[] = ['equals', 'includes', 'not_equals'];
 
   const handleSubmit = async () => {
-    if (!scenario.trim() || !advice.trim()) {
-      setStatus('❌ Please fill in both scenario and advice.');
+    if (!title.trim() || !advice.trim()) {
+      setStatus('❌ Please fill in both title and advice.');
+      return;
+    }
+
+    if (selectedFlows.length === 0) {
+      setStatus('❌ Please select at least one flow.');
       return;
     }
 
@@ -38,24 +83,33 @@ export default function AgentAdviceUploader() {
     setStatus('⏳ Generating embedding and uploading...');
 
     try {
+      // Build ruleGroups from simple rules
+      const ruleGroups: RuleGroup[] = rules.length > 0 ? [
+        {
+          logic: ruleLogic,
+          rules: rules,
+        }
+      ] : [];
+
       const res = await axios.post('/api/add-agent-advice', {
-        scenario: scenario.trim(),
+        title: title.trim(),
         advice: advice.trim(),
         tags,
-        propertyTypes,
-        sellingReasons,
-        timelines,
+        flow: selectedFlows,
+        conditions: {
+          flow: selectedFlows,
+          ruleGroups: ruleGroups.length > 0 ? ruleGroups : undefined,
+        }
       });
 
       if (res.data.success) {
         setStatus('✅ Advice uploaded successfully!');
         // Reset form
-        setScenario('');
+        setTitle('');
         setAdvice('');
         setTags([]);
-        setPropertyTypes([]);
-        setSellingReasons([]);
-        setTimelines([]);
+        setSelectedFlows([]);
+        setRules([]);
         setNewTag('');
       } else {
         setStatus(`❌ Upload failed: ${res.data.error || 'Unknown error'}`);
@@ -79,16 +133,34 @@ export default function AgentAdviceUploader() {
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  const toggleSelection = (
-    value: string,
-    array: string[],
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) => {
-    if (array.includes(value)) {
-      setter(array.filter((v) => v !== value));
+  const toggleFlow = (flow: string) => {
+    if (selectedFlows.includes(flow)) {
+      setSelectedFlows(selectedFlows.filter((f) => f !== flow));
     } else {
-      setter([...array, value]);
+      setSelectedFlows([...selectedFlows, flow]);
     }
+  };
+
+  const addRule = () => {
+    setRules([
+      ...rules,
+      {
+        field: 'propertyType',
+        operator: 'equals',
+        value: '',
+        weight: 5,
+      }
+    ]);
+  };
+
+  const updateRule = (index: number, updates: Partial<ConditionRule>) => {
+    const newRules = [...rules];
+    newRules[index] = { ...newRules[index], ...updates };
+    setRules(newRules);
+  };
+
+  const removeRule = (index: number) => {
+    setRules(rules.filter((_, i) => i !== index));
   };
 
   return (
@@ -103,25 +175,25 @@ export default function AgentAdviceUploader() {
 
       <h1 className="text-2xl font-bold mb-4">Add Your Expertise</h1>
       <p className="mb-6 text-gray-700">
-        Share your advice for different seller situations. This will be used to personalize the
+        Share your advice for different situations. This will be used to personalize the
         AI-generated analysis for your leads.
       </p>
 
-      {/* Scenario Input */}
+      {/* Title Input */}
       <div className="mb-6">
         <label className="block mb-2 font-semibold text-lg">
-          Scenario / Situation
+          Advice Title
           <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
-          value={scenario}
-          onChange={(e) => setScenario(e.target.value)}
-          placeholder="e.g., First-time seller worried about market timing"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g., Urgent Relocation Selling Strategy"
           className="w-full border-2 border-gray-300 p-3 rounded-lg focus:border-blue-500 focus:outline-none"
         />
         <p className="text-sm text-gray-500 mt-1">
-          Describe the seller's situation or concern in one sentence
+          Give this advice a clear, descriptive title
         </p>
       </div>
 
@@ -134,11 +206,37 @@ export default function AgentAdviceUploader() {
         <textarea
           value={advice}
           onChange={(e) => setAdvice(e.target.value)}
-          placeholder="What would you tell this seller? Share your expertise, strategies, and guidance..."
+          placeholder="Share your expertise, strategies, and guidance..."
           className="w-full border-2 border-gray-300 p-3 rounded-lg h-48 focus:border-blue-500 focus:outline-none resize-none"
         />
         <p className="text-sm text-gray-500 mt-1">
           The more specific and detailed, the better! This will be woven into personalized analysis.
+        </p>
+      </div>
+
+      {/* Flow Selection */}
+      <div className="mb-6">
+        <label className="block mb-2 font-semibold text-lg">
+          Applies to Flows
+          <span className="text-red-500">*</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {FLOW_OPTIONS.map((flow) => (
+            <button
+              key={flow}
+              onClick={() => toggleFlow(flow)}
+              className={`px-4 py-2 rounded-lg border-2 transition ${
+                selectedFlows.includes(flow)
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
+              }`}
+            >
+              {flow}
+            </button>
+          ))}
+        </div>
+        <p className="text-sm text-gray-500 mt-1">
+          Select which user flows this advice applies to
         </p>
       </div>
 
@@ -151,7 +249,7 @@ export default function AgentAdviceUploader() {
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTag()}
-            placeholder="Add a tag (e.g., timing, renovations, urgent)"
+            placeholder="Add a tag (e.g., urgent, renovation, first-time)"
             className="flex-1 border-2 border-gray-300 p-2 rounded-lg focus:border-blue-500 focus:outline-none"
           />
           <button
@@ -180,84 +278,171 @@ export default function AgentAdviceUploader() {
         </p>
       </div>
 
-      {/* When to Apply This Advice */}
+      {/* Rule Builder */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h3 className="font-semibold text-lg mb-3">When to use this advice?</h3>
+      <RuleBuilder
+          rules={rules}
+          logic={ruleLogic}
+          onRulesChange={setRules}
+          onLogicChange={setRuleLogic}
+        />
+        
         <p className="text-sm text-gray-600 mb-4">
-          Select which situations this advice applies to (optional but recommended)
+          {rules.length === 0 
+            ? 'No conditions set - this advice will apply to all users in the selected flows'
+            : `This advice will apply when ${ruleLogic} of the following conditions match:`
+          }
         </p>
 
-        {/* Property Types */}
-        <div className="mb-4">
-          <p className="font-medium mb-2">Property Types:</p>
-          <div className="flex flex-wrap gap-2">
-            {PROPERTY_TYPE_OPTIONS.map((type) => (
-              <button
-                key={type}
-                onClick={() => toggleSelection(type, propertyTypes, setPropertyTypes)}
-                className={`px-4 py-2 rounded-lg border-2 transition ${
-                  propertyTypes.includes(type)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                }`}
-              >
-                {type.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
-        </div>
+        {showAdvancedRules && (
+          <>
+            {/* Logic Selector */}
+            {rules.length > 1 && (
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-sm">Matching Logic:</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setRuleLogic('AND')}
+                    className={`px-4 py-2 rounded-lg border-2 transition ${
+                      ruleLogic === 'AND'
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    AND (all must match)
+                  </button>
+                  <button
+                    onClick={() => setRuleLogic('OR')}
+                    className={`px-4 py-2 rounded-lg border-2 transition ${
+                      ruleLogic === 'OR'
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    OR (any can match)
+                  </button>
+                </div>
+              </div>
+            )}
 
-        {/* Selling Reasons */}
-        <div className="mb-4">
-          <p className="font-medium mb-2">Selling Reasons:</p>
-          <div className="flex flex-wrap gap-2">
-            {SELLING_REASON_OPTIONS.map((reason) => (
-              <button
-                key={reason}
-                onClick={() => toggleSelection(reason, sellingReasons, setSellingReasons)}
-                className={`px-4 py-2 rounded-lg border-2 transition ${
-                  sellingReasons.includes(reason)
-                    ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
-                }`}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        </div>
+            {/* Rules List */}
+            <div className="space-y-3 mb-4">
+              {rules.map((rule, index) => (
+                <div key={index} className="bg-white p-3 rounded-lg border-2 border-gray-300">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 space-y-2">
+                      {/* Field */}
+                      <select
+                        value={rule.field}
+                        onChange={(e) => updateRule(index, { field: e.target.value, value: '' })}
+                        className="w-full border border-gray-300 p-2 rounded text-sm"
+                      >
+                        {FIELD_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
 
-        {/* Timelines */}
-        <div>
-          <p className="font-medium mb-2">Timelines:</p>
-          <div className="flex flex-wrap gap-2">
-            {TIMELINE_OPTIONS.map((timeline) => (
-              <button
-                key={timeline}
-                onClick={() => toggleSelection(timeline, timelines, setTimelines)}
-                className={`px-4 py-2 rounded-lg border-2 transition ${
-                  timelines.includes(timeline)
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'
-                }`}
-              >
-                {timeline === '0-3'
-                  ? '0-3 months'
-                  : timeline === '3-6'
-                  ? '3-6 months'
-                  : timeline === '6-12'
-                  ? '6-12 months'
-                  : 'exploring'}
-              </button>
-            ))}
-          </div>
-        </div>
+                      {/* Operator */}
+                      <select
+                        value={rule.operator}
+                        onChange={(e) => updateRule(index, { operator: e.target.value as MatchOperator })}
+                        className="w-full border border-gray-300 p-2 rounded text-sm"
+                      >
+                        {OPERATOR_OPTIONS.map((op) => (
+                          <option key={op} value={op}>
+                            {op}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Value */}
+                      {rule.operator === 'includes' ? (
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-600">Select multiple values:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {VALUE_OPTIONS[rule.field]?.map((val) => {
+                              const selectedValues = Array.isArray(rule.value) ? rule.value : [];
+                              const isSelected = selectedValues.includes(val);
+                              return (
+                                <button
+                                  key={val}
+                                  onClick={() => {
+                                    const current = Array.isArray(rule.value) ? rule.value : [];
+                                    const updated = isSelected
+                                      ? current.filter(v => v !== val)
+                                      : [...current, val];
+                                    updateRule(index, { value: updated });
+                                  }}
+                                  className={`px-2 py-1 text-xs rounded ${
+                                    isSelected
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-200 text-gray-700'
+                                  }`}
+                                >
+                                  {val}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <select
+                          value={Array.isArray(rule.value) ? rule.value[0] : rule.value}
+                          onChange={(e) => updateRule(index, { value: e.target.value })}
+                          className="w-full border border-gray-300 p-2 rounded text-sm"
+                        >
+                          <option value="">Select value...</option>
+                          {VALUE_OPTIONS[rule.field]?.map((val) => (
+                            <option key={val} value={val}>
+                              {val}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      {/* Weight */}
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-600">Weight:</label>
+                        <input
+                          type="number"
+                          value={rule.weight || 5}
+                          onChange={(e) => updateRule(index, { weight: parseInt(e.target.value) })}
+                          min="1"
+                          max="10"
+                          className="w-20 border border-gray-300 p-1 rounded text-sm"
+                        />
+                        <span className="text-xs text-gray-500">(1-10)</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => removeRule(index)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Rule Button */}
+            <button
+              onClick={addRule}
+              className="w-full border-2 border-dashed border-gray-300 p-3 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition"
+            >
+              + Add Condition
+            </button>
+          </>
+        )}
       </div>
 
       {/* Submit Button */}
       <button
         onClick={handleSubmit}
-        disabled={isUploading || !scenario.trim() || !advice.trim()}
+        disabled={isUploading || !title.trim() || !advice.trim() || selectedFlows.length === 0}
         className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg"
       >
         {isUploading ? '⏳ Uploading...' : '✅ Add Advice to Knowledge Base'}
@@ -296,17 +481,15 @@ export default function AgentAdviceUploader() {
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-xl font-bold mb-4">How This Works</h2>
-              
               <div className="space-y-4 text-gray-700">
                 <div>
                   <h3 className="font-semibold text-black mb-1">🎯 What is this for?</h3>
                   <p className="text-sm">
-                    This tool lets you add your expertise to the AI system. When sellers fill out
-                    the form, the AI will find and use YOUR advice that's most relevant to their
+                    This tool lets you add your expertise to the AI system. When users complete
+                    the chat, the AI will find and use YOUR advice that's most relevant to their
                     situation.
                   </p>
                 </div>
-
                 <div>
                   <h3 className="font-semibold text-black mb-1">💡 What to write?</h3>
                   <p className="text-sm">
@@ -314,27 +497,23 @@ export default function AgentAdviceUploader() {
                     you'd give them in person. Be specific, personal, and helpful.
                   </p>
                 </div>
-
                 <div>
-                  <h3 className="font-semibold text-black mb-1">🔍 How it's used?</h3>
+                  <h3 className="font-semibold text-black mb-1">🔍 Flows & Rules</h3>
                   <p className="text-sm">
-                    When a seller describes their situation, the AI searches through all your advice
-                    and finds the 2-3 most relevant pieces. It then weaves your expertise into a
-                    personalized analysis for that specific seller.
+                    Select which flows (sell/buy/browse) this applies to. Add optional rules to
+                    make the advice more targeted (e.g., only for urgent timelines or specific
+                    property types).
                   </p>
                 </div>
-
                 <div>
-                  <h3 className="font-semibold text-black mb-1">📝 Examples:</h3>
-                  <ul className="text-sm list-disc pl-5 space-y-1">
-                    <li>"First-time seller worried about timing"</li>
-                    <li>"Empty nesters downsizing with emotional attachment"</li>
-                    <li>"Investor looking to maximize rental property profit"</li>
-                    <li>"Urgent sale needed within 3 months"</li>
-                  </ul>
+                  <h3 className="font-semibold text-black mb-1">📝 Example:</h3>
+                  <p className="text-sm">
+                    <strong>Title:</strong> "Urgent Relocation Selling Strategy"<br />
+                    <strong>Flows:</strong> sell<br />
+                    <strong>Rules:</strong> timeline equals "0-3" AND sellingReason equals "relocating"
+                  </p>
                 </div>
               </div>
-
               <button
                 onClick={() => setShowHelp(false)}
                 className="mt-6 w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
