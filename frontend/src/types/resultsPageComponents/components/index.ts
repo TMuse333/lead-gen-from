@@ -8,3 +8,7 @@ export * from './profileSummary'
 
 export * from './actionPlan/index'
 
+export * from './marketInsights'
+
+export * from './cta'
+

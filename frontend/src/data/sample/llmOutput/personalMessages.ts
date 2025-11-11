@@ -216,3 +216,66 @@ export function getAllPersonalMessageSamplesForFlow(
 ): LlmPersonalMessage[] {
   return Object.values(PERSONAL_MESSAGE_SAMPLES[flow]);
 }
+
+export const SELLER_PREPARATION_PLAN: LlmActionPlan = {
+    sectionTitle: 'Prepare Your Home for Market',
+    introText:
+      'These steps will help you get your home ready to attract serious buyers and maximize your sale price.',
+    steps: [
+      {
+        stepNumber: 1,
+        title: 'Declutter and Deep Clean',
+        description:
+          'Remove personal items, organize spaces, and ensure your home is spotless. First impressions are critical to attract serious buyers.',
+        benefit: 'Clean, clutter-free homes sell faster and appear more valuable',
+        resourceLink: '/resources/home-prep-checklist',
+        resourceText: 'Download Prep Checklist',
+        imageUrl: '/images/steps/preparation.jpg',
+        priority: 2,
+        urgency: 'soon',
+        timeline: 'Next 2 weeks',
+      },
+      {
+        stepNumber: 2,
+        title: 'Minor Repairs and Maintenance',
+        description:
+          'Fix leaky faucets, squeaky doors, chipped paint, and other small issues. Buyers notice details, and addressing them increases perceived value.',
+        benefit: 'Homes with all repairs done sell more confidently and quickly',
+        resourceLink: '/resources/home-repair-tips',
+        resourceText: 'Repair Tips',
+        imageUrl: '/images/steps/repairs.jpg',
+        priority: 2,
+        urgency: 'soon',
+        timeline: 'Next 2 weeks',
+      },
+      {
+        stepNumber: 3,
+        title: 'Stage Key Rooms',
+        description:
+          'Arrange furniture to highlight spaciousness and natural flow. Emphasize the living areas, kitchen, and master bedroom. Consider renting accent pieces if needed.',
+        benefit: 'Staged rooms photograph better and help buyers visualize living there',
+        resourceLink: '/resources/home-staging-tips',
+        resourceText: 'Staging Guide',
+        imageUrl: '/images/steps/staging.jpg',
+        priority: 1,
+        urgency: 'immediate',
+        timeline: 'Next week',
+      },
+      {
+        stepNumber: 4,
+        title: 'Enhance Curb Appeal',
+        description:
+          'Ensure the exterior looks inviting: mow the lawn, trim hedges, plant flowers, and clean the entrance. First impressions start outside.',
+        benefit: 'Homes with strong curb appeal attract more buyers and better offers',
+        resourceLink: '/resources/curb-appeal-tips',
+        resourceText: 'Curb Appeal Guide',
+        imageUrl: '/images/steps/curb-appeal.jpg',
+        priority: 2,
+        urgency: 'soon',
+        timeline: 'Next 1–2 weeks',
+      },
+    ],
+    closingNote:
+      'Following these preparation steps will increase buyer interest and help you achieve the best possible sale price.',
+    overallUrgency: 'medium',
+  };

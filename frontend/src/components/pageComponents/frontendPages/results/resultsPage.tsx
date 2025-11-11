@@ -1,9 +1,11 @@
 import { ActionPlan } from "@/components/ux/resultsComponents/actionPlan";
 import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
+import { MarketInsights } from "@/components/ux/resultsComponents/marketInsights";
 import { PersonalMessage } from "@/components/ux/resultsComponents/personalMessage";
 import { LlmProfileSummary } from "@/components/ux/resultsComponents/profileSummary";
 import { SELLER_PREPARATION_PLAN, SELLER_STEP_PREPARATION } from "@/data/sample/llmOutput/actionPlans";
 import { SELLER_URGENT_SAMPLE } from "@/data/sample/llmOutput/hero";
+import { SELLER_HOT_MARKET_SAMPLE } from "@/data/sample/llmOutput/marketInsights";
 import { SELLER_PLANNED_UPSIZE_SAMPLE } from "@/data/sample/llmOutput/personalMessages";
 import { SELLER_URGENT_PROFILE } from "@/data/sample/llmOutput/profileSummary";
 import React from "react";
@@ -31,6 +33,9 @@ export default function ResultsPage () {
         <ActionPlan
         
         data={SELLER_PREPARATION_PLAN}
+        />
+        <MarketInsights
+        data={SELLER_HOT_MARKET_SAMPLE}
         />
       </main>
   )

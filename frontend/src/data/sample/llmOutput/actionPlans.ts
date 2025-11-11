@@ -466,39 +466,39 @@ export const BROWSER_STEP_CONSULTATION: ActionStepScenario = {
 
 // ==================== EXPORT ALL STEPS ====================
 
-export const MVP_ACTION_STEPS: ActionStepScenario[] = [
-  // Seller steps
-  SELLER_STEP_VALUATION,
-  SELLER_STEP_PREPARATION,
-  SELLER_STEP_PHOTOGRAPHY,
-  SELLER_STEP_LISTING,
+// export const MVP_ACTION_STEPS: ActionStepScenario[] = [
+//   // Seller steps
+//   SELLER_STEP_VALUATION,
+//   SELLER_STEP_PREPARATION,
+//   SELLER_STEP_PHOTOGRAPHY,
+//   SELLER_STEP_LISTING,
   
-  // Buyer steps
-  BUYER_STEP_PREAPPROVAL,
-  BUYER_STEP_SEARCH_CRITERIA,
-  BUYER_STEP_VIEWINGS,
-  BUYER_STEP_OFFER,
+//   // Buyer steps
+//   BUYER_STEP_PREAPPROVAL,
+//   BUYER_STEP_SEARCH_CRITERIA,
+//   BUYER_STEP_VIEWINGS,
+//   BUYER_STEP_OFFER,
   
-  // Browser steps
-  BROWSER_STEP_MARKET_REPORT,
-  BROWSER_STEP_CONSULTATION,
-];
+//   // Browser steps
+//   BROWSER_STEP_MARKET_REPORT,
+//   BROWSER_STEP_CONSULTATION,
+// ];
 
-/**
- * Helper to get steps by flow
- */
-export function getStepsByFlow(flow: 'sell' | 'buy' | 'browse'): ActionStepScenario[] {
-  return MVP_ACTION_STEPS.filter(step => 
-    step.applicableWhen.flow?.includes(flow)
-  );
-}
+// /**
+//  * Helper to get steps by flow
+//  */
+// export function getStepsByFlow(flow: 'sell' | 'buy' | 'browse'): ActionStepScenario[] {
+//   return MVP_ACTION_STEPS.filter(step => 
+//     step.applicableWhen.flow?.includes(flow)
+//   );
+// }
 
-/**
- * Helper to seed Qdrant with these steps
- */
-export async function seedActionSteps() {
-  // This will be implemented in lib/qdrant/actionSteps.ts
-  // Similar to how you seed AgentAdvice
-  console.log('Seeding action steps to Qdrant...');
-  // Implementation will use your Qdrant client
-}
+// /**
+//  * Helper to seed Qdrant with these steps
+//  */
+// export async function seedActionSteps() {
+//   // This will be implemented in lib/qdrant/actionSteps.ts
+//   // Similar to how you seed AgentAdvice
+//   console.log('Seeding action steps to Qdrant...');
+//   // Implementation will use your Qdrant client
+// }
