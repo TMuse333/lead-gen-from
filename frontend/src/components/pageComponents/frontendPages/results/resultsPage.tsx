@@ -1,4 +1,3 @@
-// app/results/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -13,6 +12,11 @@ import { MarketInsights } from "@/components/ux/resultsComponents/marketInsights
 // import { NextStepsCTA } from "@/components/ux/resultsComponents/cta";
 
 import type { LlmOutput } from "@/types";
+
+/* --------------------------------------------------------------
+   LOCAL STORAGE KEY
+   -------------------------------------------------------------- */
+const STORAGE_KEY = "llmResultsCache";
 
 /* --------------------------------------------------------------
    MAIN PAGE
@@ -38,10 +42,43 @@ export default function ResultsPage() {
   };
 
   /* -----------------------------------------------------------
-     API call
+     1. Try to load from localStorage first
      ----------------------------------------------------------- */
   useEffect(() => {
-    const fetchData = async () => {
+    const loadFromCache = (): LlmOutput | null => {
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (!cached) return null;
+
+        const parsed = JSON.parse(cached);
+        // Basic shape validation
+        if (
+          parsed &&
+          typeof parsed.hero === "object" &&
+          typeof parsed.profileSummary === "object" &&
+          typeof parsed.personalMessage === "object" &&
+          typeof parsed.marketInsights === "object"
+        ) {
+          console.log("Loaded LLM data from localStorage");
+          return parsed as LlmOutput;
+        }
+      } catch (err) {
+        console.warn("Failed to parse cached LLM data:", err);
+      }
+      return null;
+    };
+
+    const cachedData = loadFromCache();
+    if (cachedData) {
+      setLlmData(cachedData);
+      setLoading(false);
+      return;
+    }
+
+    /* ---------------------------------------------------------
+       2. No cache → call API
+       --------------------------------------------------------- */
+    const fetchFromApi = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -52,8 +89,15 @@ export default function ResultsPage() {
           { headers: { "Content-Type": "application/json" } }
         );
 
+        // Save to localStorage
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          console.log("Saved LLM result to localStorage");
+        } catch (storageErr) {
+          console.warn("Could not save to localStorage (quota?)", storageErr);
+        }
+
         setLlmData(data);
-        console.log('data',data)
       } catch (err: any) {
         const msg = err.response?.data?.error ?? err.message ?? "Unknown error";
         console.error("[LLM API] error:", err);
@@ -63,25 +107,25 @@ export default function ResultsPage() {
       }
     };
 
-    fetchData();
+    fetchFromApi();
   }, []);
 
   /* -----------------------------------------------------------
-     Render – Loading with Lucide spinner
+     Render – Loading
      ----------------------------------------------------------- */
   if (loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-blue-100 p-6">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
         <p className="text-lg font-medium text-blue-900">
-          Generating your personalized report…
+          {llmData ? "Loading from cache…" : "Generating your personalized report…"}
         </p>
       </main>
     );
   }
 
   /* -----------------------------------------------------------
-     Render – Error state
+     Render – Error
      ----------------------------------------------------------- */
   if (error) {
     return (
@@ -101,7 +145,7 @@ export default function ResultsPage() {
   }
 
   /* -----------------------------------------------------------
-     Render – Success (ActionPlan & NextStepsCTA commented out)
+     Render – Success
      ----------------------------------------------------------- */
   const data = llmData!;
 
