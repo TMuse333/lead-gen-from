@@ -1,0 +1,12 @@
+{
+    "flow": "sell",
+    "userInput": {
+      "email": "mike.wilson@gmail.com",
+      "propertyType": "condo",
+      "propertyAge": "0-10",
+      "renovations": "none",
+      "timeline": "6-12",
+      "sellingReason": "upsizing"
+    },
+    "agentId": "82ae0d4d-c3d7-4997-bc7b-12b2261d167e"
+  }

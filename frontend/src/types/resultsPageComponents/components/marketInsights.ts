@@ -194,7 +194,7 @@ export interface MarketInsight {
   icon: string;
 }
 
-export interface LlmMarketInsights {
+export interface LlmMarketInsightsProps {
   sectionTitle: string;
   headline: string;
   summary?: string;

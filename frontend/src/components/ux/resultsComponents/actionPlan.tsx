@@ -2,12 +2,12 @@
 
 'use client';
 
-import { LlmActionPlan, ActionStep } from "@/types/resultsPageComponents/components/actionPlan";
+import { LlmActionPlanProps, ActionStep } from "@/types/resultsPageComponents/components/actionPlan";
 import { ChevronLeft, ChevronRight, CheckCircle2, ExternalLink, Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
 interface ActionPlanProps {
-  data: LlmActionPlan;
+  data: LlmActionPlanProps;
 }
 
 export function ActionPlan({ data }: ActionPlanProps) {
@@ -211,7 +211,7 @@ function StepCard({ step, isActive }: StepCardProps) {
     <div
       className={`
         step-card relative overflow-hidden rounded-2xl border-2 
-        ${styles.borderColor} ${styles.gradient}
+        ${styles.borderColor || 'border-blue'} ${styles.gradient || 'bg-blue-100'}
         shadow-xl p-8 md:p-12 transition-all duration-300
         ${isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
       `}

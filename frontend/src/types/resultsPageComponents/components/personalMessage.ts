@@ -117,7 +117,7 @@ export interface CredibilityPoint {
   text: string;
 }
 
-export interface LlmPersonalMessage {
+export interface LlmPersonalMessageProps {
   agentName: string;
   greeting: string;
   messageBody: string;

@@ -1,10 +1,15 @@
 // lib/promptBuilder.ts
 
-import { LANDING_PAGE_SCHEMAS } from "@/types/resultsPageComponents/components";
+import { LANDING_PAGE_SCHEMAS, LlmHeroBanner } from "@/types";
 import { ComponentSchema } from "@/types/resultsPageComponents/schemas";
 
 
-
+interface LlmComponentsMap {
+  hero: LlmHeroBanner;
+  // Add other components here:
+  // ctaSection: LlmCtaSection;
+  // testimonial: LlmTestimonial;
+}
 /**
  * Builds prompt text for a single schema
  */
@@ -52,6 +57,104 @@ function buildSingleSchemaPrompt(schema: ComponentSchema): string {
   return prompt;
 }
 
+
+// Generic version
+// lib/promptBuilder.ts
+
+export function buildPrompt(
+  schema: ComponentSchema,
+  flow: string,
+  userInput: Record<string, string>,
+  agentKnowledge: string[]
+): string {
+  const userName = userInput.email
+    ? userInput.email.split('@')[0].charAt(0).toUpperCase() + userInput.email.split('@')[0].slice(1)
+    : null;
+
+  const schemaPrompt = buildSingleSchemaPrompt(schema);
+
+  return `You are Chris's AI assistant generating a personalized landing page section.
+
+USER CONTEXT:
+- Flow: ${flow}
+- Name: ${userName || 'Not provided'}
+- Property Type: ${userInput.propertyType || 'N/A'}
+- Timeline: ${userInput.timeline || 'N/A'}
+${flow === 'sell' ? `- Selling Reason: ${userInput.sellingReason || 'N/A'}
+- Property Age: ${userInput.propertyAge || 'N/A'}
+- Renovations: ${userInput.renovations || 'N/A'}` : ''}
+
+AGENT KNOWLEDGE:
+${agentKnowledge.map((k, i) => `${i + 1}. ${k}`).join('\n') || 'None provided'}
+
+---
+
+INSTRUCTIONS:
+Generate ONLY a valid JSON object for the "${schema.componentName}" component.
+
+${schemaPrompt}
+
+CRITICAL RULES:
+- Output ONLY the JSON object (no \`\`\`json, no extra text)
+- Make every field personal using user answers
+- Respect REQUIRED vs OPTIONAL
+- Match tone and urgency to timeline
+- Include first name if available
+- Omit optional fields if not confident
+- Follow all word counts, tones, and constraints exactly
+`;
+}
+
+export function buildMultiComponentPrompt(
+  schemas: ComponentSchema[],
+  flow: string,
+  userInput: Record<string, string>,
+  agentKnowledge: string[]
+): string {
+  const userName = userInput.email
+    ? userInput.email.split('@')[0].charAt(0).toUpperCase() + userInput.email.split('@')[0].slice(1)
+    : null;
+
+  const schemaPrompts = schemas
+    .map(schema => buildSingleSchemaPrompt(schema))
+    .join(',\n');
+
+  return `You are Chris's AI assistant generating a personalized landing page.
+
+USER CONTEXT:
+- Flow: ${flow}
+- Name: ${userName || 'Not provided'}
+- Property Type: ${userInput.propertyType || 'N/A'}
+- Timeline: ${userInput.timeline || 'N/A'}
+${flow === 'sell' ? `- Selling Reason: ${userInput.sellingReason || 'N/A'}
+- Property Age: ${userInput.propertyAge || 'N/A'}
+- Renovations: ${userInput.renovations || 'N/A'}` : ''}
+
+AGENT KNOWLEDGE:
+${agentKnowledge.map((k, i) => `${i + 1}. ${k}`).join('\n') || 'None'}
+
+---
+
+INSTRUCTIONS:
+Generate ONLY a valid JSON object with the following components:
+
+{
+${schemaPrompts}
+}
+
+CRITICAL RULES:
+- Output ONLY the JSON (no markdown, no extra text)
+- Make every field personal using user answers
+- Respect REQUIRED vs OPTIONAL
+- Match tone and urgency to timeline
+- Include first name if available
+- Omit optional fields if not confident
+- Follow all constraints (word count, tone, etc.)
+`;
+}
+
+
+
 /**
  * Builds prompt text for multiple schemas
  */
@@ -76,50 +179,3 @@ export function buildSchemasPrompt(schemas: ComponentSchema[]): string {
 /**
  * Generates the full prompt for landing page generation
  */
-export function generateLandingPagePrompt(
-  flow: string,
-  userInput: Record<string, string>,
-  marketData: any,
-  agentKnowledge: string[],
-  schemas: ComponentSchema[] = LANDING_PAGE_SCHEMAS  // Use registry by default
-): string {
-  // Extract user's first name from email if available
-  const userName = userInput.email 
-    ? userInput.email.split('@')[0].charAt(0).toUpperCase() + userInput.email.split('@')[0].slice(1)
-    : null;
-  
-  const schemaPrompt = buildSchemasPrompt(schemas);
-  
-  return `You are Chris's AI assistant generating a personalized real estate landing page.
-
-USER CONTEXT:
-- Flow: ${flow}
-- Name: ${userName || 'Not provided'}
-- Property Type: ${userInput.propertyType || 'N/A'}
-- Timeline: ${userInput.timeline || 'N/A'}
-${flow === 'sell' ? `- Selling Reason: ${userInput.sellingReason || 'N/A'}
-- Property Age: ${userInput.propertyAge || 'N/A'}
-- Renovations: ${userInput.renovations || 'N/A'}` : ''}
-
-AGENT KNOWLEDGE (from Chris's expertise):
-${agentKnowledge.map((knowledge, i) => `${i + 1}. ${knowledge}`).join('\n')}
-
-MARKET DATA:
-${JSON.stringify(marketData, null, 2)}
-
-Generate a JSON response with the following structure:
-
-${schemaPrompt}
-
-CRITICAL INSTRUCTIONS:
-- Respond with ONLY valid JSON - no markdown, no code blocks, no explanatory text
-- Use the user's specific answers to make every section personal
-- Reference market conditions when relevant to build confidence
-- Match urgency and tone to their timeline across all sections
-- If user's name is available, use it naturally (but don't overuse it)
-- Make it feel like Chris personally wrote this for them
-- For OPTIONAL fields, only include them if they add meaningful value
-- Omit optional fields if you're uncertain or they feel forced
-
-Your entire response must be a single valid JSON object matching the structure above.`;
-}

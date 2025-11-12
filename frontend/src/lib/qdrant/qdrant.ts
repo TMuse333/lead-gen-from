@@ -102,14 +102,14 @@ export async function queryRelevantAdvice(
       vector: embedding,
       limit: limit * 3, // Get more results for filtering
       with_payload: true,
-      filter: {
-        must: [
-          {
-            key: 'agentId',
-            match: { value: agentId },
-          },
-        ],
-      },
+      // filter: {
+      //   must: [
+      //     {
+      //       key: 'agentId',
+      //       match: { value: agentId }
+      //     },
+      //   ],
+      // },
     });
 
     console.log(`📋 Qdrant returned ${searchResult.length} results`);

@@ -1,10 +1,10 @@
 // components/landing/PersonalMessage.tsx
 
-import { LlmPersonalMessage } from "@/types/resultsPageComponents/components/personalMessage";
+import { LlmPersonalMessageProps } from "@/types/resultsPageComponents/components/personalMessage";
 import { Quote, CheckCircle } from 'lucide-react';
 
 interface PersonalMessageProps {
-  data: LlmPersonalMessage;
+  data: LlmPersonalMessageProps;
 }
 
 export function PersonalMessage({ data }: PersonalMessageProps) {

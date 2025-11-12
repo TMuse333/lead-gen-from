@@ -58,7 +58,7 @@ export const HERO_BANNER_SCHEMA: ComponentSchema = {
   };
 
 
-  export interface LlmHeroBanner {
+  export interface LlmHeroBannerProps {
     headline: string;
     subheadline: string;
     urgencyLevel: 'high' | 'medium' | 'low';

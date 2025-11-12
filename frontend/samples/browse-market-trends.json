@@ -1,0 +1,15 @@
+{
+    "flow": "browse",
+    "userInput": {
+      "email": "alex.rivera@gmail.com",
+      "interest": "market-trends",
+      "location": "downtown-halifax",
+      "priceRange": "400k-600k",
+      "timeline": "24+",
+      "goal": "learn"
+    },
+    "agentKnowledge": [
+      "Publishes monthly market reports",
+      "Featured in local real estate podcast"
+    ]
+  }

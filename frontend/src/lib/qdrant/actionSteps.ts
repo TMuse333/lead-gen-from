@@ -4,8 +4,8 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import { ActionStepScenario } from '@/types';
 
 const qdrant = new QdrantClient({
-  url: process.env.QDRANT_URL || 'http://localhost:6333',
-  apiKey: process.env.QDRANT_API_KEY,
+  url: process.env.QDRANT_URL! ,
+  apiKey: process.env.QDRANT_API_KEY!,
 });
 
 const ACTION_STEPS_COLLECTION = 'agent-action-steps';
@@ -169,21 +169,27 @@ export async function queryActionSteps(
   maxSteps: number = 5
 ): Promise<ActionStepMatch[]> {
   try {
+
+    // console.log('qdrant url',ACTION_STEPS_COLLECTION,)
+    console.log('qdrant url',process.env.QDRANT_URL! || 'problem here')
     // Step 1: Get ALL steps for this agent and flow from Qdrant
     // (We can't do rule matching in Qdrant, so we fetch all and filter in code)
     const scrollResult = await qdrant.scroll(ACTION_STEPS_COLLECTION, {
-      limit: 100, // Adjust based on your total step count
+      limit: 100,
       with_payload: true,
       with_vector: false,
-      filter: {
-        must: [
-          {
-            key: 'agentId',
-            match: { value: agentId }
-          }
-        ]
-      }
+      // filter: {
+      //   must: [
+      //     {
+      //       key: 'agentId',
+      //       match: { value: agentId },
+      //     },
+      //   ],
+      // },
     });
+
+    
+    
 
     // Step 2: Convert to ActionStepScenario objects
     const allSteps = scrollResult.points.map(point => {
@@ -249,17 +255,9 @@ export async function queryActionSteps(
 export async function getAllActionSteps(agentId: string): Promise<ActionStepScenario[]> {
   try {
     const scrollResult = await qdrant.scroll(ACTION_STEPS_COLLECTION, {
-      limit: 1000,
+      limit: 100,
       with_payload: true,
       with_vector: false,
-      filter: {
-        must: [
-          {
-            key: 'agentId',
-            match: { value: agentId }
-          }
-        ]
-      }
     });
 
     return scrollResult.points.map(point => {
@@ -301,7 +299,7 @@ export async function storeActionStep(step: Omit<ActionStepScenario, 'id'>): Pro
       points: [
         {
           id: crypto.randomUUID(),
-          vector: [0, 0, 0, 0], // Dummy vector
+          vector: [0,0,0,0], // Dummy vector
           payload: {
             ...step,
             stepId,

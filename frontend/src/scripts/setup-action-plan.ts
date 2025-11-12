@@ -432,15 +432,15 @@ async function main() {
     // Show breakdown by flow
     const byFlow = {
       sell: scrollResult.points.filter(p => {
-        const payload = p.payload as any;
+        const payload = p.payload as unknown as ActionStepScenario;
         return payload?.applicableWhen?.flow?.includes('sell');
       }).length,
       buy: scrollResult.points.filter(p => {
-        const payload = p.payload as any;
+        const payload = p.payload as unknown as ActionStepScenario;
         return payload?.applicableWhen?.flow?.includes('buy');
       }).length,
       browse: scrollResult.points.filter(p => {
-        const payload = p.payload as any;
+        const payload = p.payload as unknown as ActionStepScenario;
         return payload?.applicableWhen?.flow?.includes('browse');
       }).length,
     };
@@ -453,11 +453,16 @@ async function main() {
     // Step 6: Show sample steps
     console.log('\n📋 Sample action steps:');
     scrollResult.points.slice(0, 3).forEach((point, idx) => {
-      console.log(`\n   ${idx + 1}. ${point.payload?.title}`);
-      console.log(`      Category: ${point.payload?.category}`);
-      console.log(`      Priority: ${point.payload?.defaultPriority}`);
-      console.log(`      Urgency: ${point.payload?.defaultUrgency}`);
-      // console.log(`      Flow: ${point.payload?.applicableWhen?.flow?.join(', ')}`);
+
+
+
+     const payload = point.payload as unknown as ActionStepScenario;
+
+  console.log(`\n ${idx + 1}. ${payload.title}`);
+  console.log(` Category: ${payload.category}`);
+  console.log(` Priority: ${payload.defaultPriority}`);
+  console.log(` Urgency: ${payload.defaultUrgency}`);
+  console.log(` Flow: ${payload.applicableWhen?.flow?.join(', ') ?? 'none'}`);
     });
 
     console.log('\n\n🎉 Action Steps setup complete!');

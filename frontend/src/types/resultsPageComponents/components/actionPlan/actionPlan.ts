@@ -248,7 +248,7 @@ export interface ActionStep {
   timeline: string;
 }
 
-export interface LlmActionPlan {
+export interface LlmActionPlanProps {
   sectionTitle: string;
   introText?: string;
   steps: ActionStep[];

@@ -51,7 +51,7 @@ export const PROFILE_SUMMARY_SCHEMA: ComponentSchema = {
     variant: 'urgent' | 'planned' | 'exploring';
   }
   
-  export interface LlmProfileSummary {
+  export interface LlmProfileSummaryProps {
     overview: string;
     keyHighlights: ProfileHighlight[];
     timelineBadge?: TimelineBadge;

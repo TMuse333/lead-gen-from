@@ -1,0 +1,16 @@
+{
+    "flow": "sell",
+    "userInput": {
+      "email": "sarah.jones@gmail.com",
+      "propertyType": "single-family house",
+      "propertyAge": "10-20",
+      "renovations": "kitchen and bathroom",
+      "timeline": "0-3",
+      "sellingReason": "relocating"
+    },
+    "agentKnowledge": [
+      "Top 1% in local sales",
+      "Specialist in fast-turnaround listings",
+      "Uses professional staging and 4K photography"
+    ]
+  }

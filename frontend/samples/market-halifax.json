@@ -1,0 +1,26 @@
+{
+    "area": "Halifax",
+    "flow": "sell",
+    "properties": [
+      {
+        "id": "prop-001",
+        "mlsNumber": "HL12345",
+        "address": { "street": "1456 South Park Street", "city": "Halifax", "neighborhood": "South End" },
+        "propertyType": "single_family",
+        "status": "active",
+        "specs": { "bedrooms": 4, "bathrooms": 3, "squareFeet": 2400 },
+        "pricing": { "listPrice": 875000 },
+        "marketTiming": { "listedDate": "2025-10-15T00:00:00.000Z", "daysOnMarket": 24 }
+      },
+      {
+        "id": "prop-002",
+        "mlsNumber": "HL12346",
+        "address": { "street": "892 Tower Road", "city": "Halifax", "neighborhood": "South End" },
+        "propertyType": "condo",
+        "status": "sold",
+        "specs": { "bedrooms": 2, "bathrooms": 2, "squareFeet": 1200 },
+        "pricing": { "soldPrice": 492000 },
+        "marketTiming": { "soldDate": "2025-10-12T00:00:00.000Z", "daysOnMarket": 22 }
+      }
+    ]
+  }

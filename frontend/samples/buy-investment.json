@@ -1,0 +1,15 @@
+{
+    "flow": "buy",
+    "userInput": {
+      "email": "david.lee@gmail.com",
+      "propertyType": "multi-family",
+      "budget": "over-800k",
+      "bedrooms": "5+",
+      "timeline": "0-3",
+      "buyingReason": "investment"
+    },
+    "agentKnowledge": [
+      "ROI-focused investor advisor",
+      "Manages 12 rental properties"
+    ]
+  }

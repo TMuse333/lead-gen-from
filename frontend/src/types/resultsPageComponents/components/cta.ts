@@ -198,7 +198,7 @@ export interface PersonalNote {
   signature: string;
 }
 
-export interface LlmNextStepsCTA {
+export interface LlmNextStepsCTAProps {
   hook: string;
   keyRecap: KeyRecapItem[];
   transitionText: string;

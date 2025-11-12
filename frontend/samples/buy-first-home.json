@@ -1,0 +1,15 @@
+{
+    "flow": "buy",
+    "userInput": {
+      "email": "lisa.chen@gmail.com",
+      "propertyType": "townhouse",
+      "budget": "400k-600k",
+      "bedrooms": "3",
+      "timeline": "3-6",
+      "buyingReason": "first-home"
+    },
+    "agentKnowledge": [
+      "First-time buyer specialist",
+      "Access to pre-approval partners"
+    ]
+  }
