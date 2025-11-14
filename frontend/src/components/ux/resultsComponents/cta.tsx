@@ -43,7 +43,7 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
 
   // === SAFE: personalNote with fallbacks ===
   const personalNote = data.personalNote ;
-  const signature = personalNote!.signature || 'agent43' ;
+  const signature = personalNote!.signature  ;
   const message = personalNote!.message ;
 
   // === SAFE: CTA with fallbacks ===
@@ -163,7 +163,7 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
           <div className="flex flex-col md:flex-row items-start gap-6">
             <div className="flex-shrink-0">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-3xl font-bold text-indigo-600 border-4 border-white shadow-md">
-                {signature.charAt(0)}
+                {signature!.charAt(0)}
               </div>
             </div>
             <div className="flex-1">

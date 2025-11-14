@@ -1,108 +1,89 @@
-import { SchemaField } from '../schemas';
+import { ComponentSchema, SchemaField } from '../schemas';
 
 // ------------------------------------------
 // Next Steps CTA Schema
 // ------------------------------------------
 
-export const NEXT_STEPS_CTA_SCHEMA: {
-  componentName: string;
-  description: string;
-  fields: Record<string, SchemaField>;
-} = {
+export const NEXT_STEPS_CTA_SCHEMA: ComponentSchema = {
   componentName: 'nextStepsCTA',
-  description:
-    'The final call-to-action component that creates momentum and drives the user to take action. This is LLM-generated based on all preceding components and user data to ensure perfect personalization and tone consistency.',
-
+  description: 'Final CTA with momentum, recap, and personal touch',
   fields: {
     hook: {
       type: 'string',
-      description:
-        'Opening line that creates urgency/momentum specific to their situation',
+      description: 'Opening line that creates urgency/momentum',
       required: true,
-      constraints: {
-        wordCount: '15-25 words',
-        tone: 'urgent but not pushy, specific to their situation',
-      },
-      example:
-        'With homes selling in 28 days and your 3-month timeline, every week counts. Let\'s get you positioned to sell quickly and profitably.',
-      context:
-        'Must reference: (1) their specific timeline/urgency, (2) market condition, (3) their goal. Should create FOMO without being aggressive.',
+      constraints: { wordCount: '15-25 words', tone: 'urgent but not pushy' },
+      example: 'With a 6-12 month timeline, now is the perfect time...'
     },
-
     keyRecap: {
       type: 'array',
-      description:
-        'Quick visual recap of 3-4 key points (their situation + our plan)',
+      description: '3-4 key recap points with icon, label, value',
       required: true,
-      constraints: {
-        minLength: 3,
-        maxLength: 4,
+      constraints: { minLength: 3, maxLength: 4 },
+      items: {
+        type: 'object',
+        fields: {
+          icon: { type: 'string', description: 'Emoji icon', required: true, example: 'home' },
+          label: { type: 'string', description: 'Short label', required: true, example: 'Timeline' },
+          value: { type: 'string', description: 'Value', required: true, example: '6-12 months' }
+        }
       },
-      context:
-        'Ultra-short bullets that remind them what we learned and what we\'re doing. Visual and scannable with emojis.',
-      example: [
-        {
-          icon: '⏰',
-          label: 'Timeline',
-          value: '0-3 months',
-        },
-      ],
+      example: [{ icon: 'clock', label: 'Timeline', value: '0-3 months' }]
     },
-
     transitionText: {
       type: 'string',
-      description: 'Bridge from recap to CTA',
+      description: 'Bridge to CTA',
       required: true,
-      constraints: {
-        wordCount: '10-15 words',
-        tone: 'confident, forward-looking',
-      },
-      example: 'Now let\'s make it happen. Here\'s how we get started:',
-      context:
-        'Smooth transition that builds confidence and points toward action.',
+      constraints: { wordCount: '10-15 words' },
+      example: 'Now let\'s make it happen. Here\'s how we get started:'
     },
-
     primaryCTA: {
       type: 'object',
-      description: 'Main call-to-action button',
+      description: 'Main CTA button',
       required: true,
-      context:
-        'The primary action you want them to take. Must be flow-specific and compelling.',
+      fields: {
+        text: { type: 'string', required: true, example: 'Schedule a Consultation' },
+        subtext: { type: 'string', required: true, example: 'Free 15-min call' },
+        urgencyNote: { type: 'string', required: false, example: 'Limited spots this week' }
+      }
     },
-
     secondaryCTA: {
       type: 'object',
-      description: 'Lower-commitment alternative CTA',
+      description: 'Alternative CTA',
       required: true,
-      context:
-        'Always provide an alternative path. Some users aren\'t ready for primary action.',
+      fields: {
+        text: { type: 'string', required: true, example: 'Browse Listings' },
+        subtext: { type: 'string', required: true, example: 'See what’s available now' }
+      }
     },
-
     trustElements: {
       type: 'array',
-      description: 'Trust/credibility points to overcome objections',
+      description: '2-3 trust signals',
       required: true,
-      constraints: {
-        minLength: 2,
-        maxLength: 3,
-      },
-      context:
-        'Specific, credible statements that build confidence. Use numbers when possible.',
-      example: [
-        'No obligation, ever',
-        '150+ families helped',
-        'Free 15-minute consultation',
-      ],
+      constraints: { minLength: 2, maxLength: 3 },
+      items: { type: 'string' },
+      example: ['No obligation', '150+ families helped']
     },
-
     personalNote: {
       type: 'object',
-      description: 'Final personal message from Chris',
+      description: 'Personal message from Chris',
       required: true,
-      context:
-        'Warm, authentic, direct message that makes them feel like Chris is personally invested in helping them.',
-    },
-  },
+      fields: {
+        message: {
+          type: 'string',
+          required: true,
+          description: 'Warm, authentic message',
+          example: "I'm excited to help you find the perfect condo."
+        },
+        signature: {
+          type: 'string',
+          required: true,
+          description: 'Agent name',
+          example: 'Chris'
+        }
+      }
+    }
+  }
 };
 
 // ------------------------------------------

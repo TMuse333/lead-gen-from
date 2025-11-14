@@ -9,7 +9,7 @@ export interface SchemaField {
       tone?: string;
       options?: string[];
     };
-    example?: any;
+    example?:any
     context?: string;
   }
   
