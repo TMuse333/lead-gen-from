@@ -1,10 +1,10 @@
 // lib/sampleData/nextStepsCTASamples.ts
 
-import { LlmNextStepsCTA } from "@/types"
+import { LlmNextStepsCTAProps } from "@/types"
 
 // ==================== SELLER FLOW SAMPLES ====================
 
-export const SELLER_URGENT_CTA_SAMPLE: LlmNextStepsCTA = {
+export const SELLER_URGENT_CTA_SAMPLE: LlmNextStepsCTAProps = {
   hook: "With homes selling in 28 days and your 3-month relocation timeline, every week matters. Your renovated kitchen gives you an edge—let's capitalize on it now.",
   
   keyRecap: [

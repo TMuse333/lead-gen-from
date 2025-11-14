@@ -14,6 +14,7 @@ import MarketAnalysisDisplay from '@/components/ux/marketAnalysis/marketAnalysis
 import PropertyList from '@/components/ux/propertyList/propertyList';
 import ViewAgentAdvice from '@/components/client/adviceDashboard/viewAgentAdvice';
 import AgentAdviceUploader from '@/components/client/adviceDashboard/agentAdviceUploader';
+import { useChatStore } from '@/stores/chatStore';
 
 
 export default function FormPage() {
@@ -36,7 +37,7 @@ export default function FormPage() {
 // console.log('Page URL:', pageUrl);
 
   // Handle form completion with redirect
-  const { extractedAnswers, currentFlow } = useChatStore();
+
 
   const calledRef = useRef(false);
   
@@ -57,11 +58,8 @@ export default function FormPage() {
         </div>
 
         {/* Chat Component */}
-        {/* <ChatWithTracker  /> */}
-        {/* <ViewAgentAdvice/> */}
-        {/* <AgentAdviceUploader/> */}
-        <PropertyList/>
-        <MarketAnalysisDisplay/>
+        <ChatWithTracker  />
+       
       </div>
     </main>
   );

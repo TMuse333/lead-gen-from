@@ -80,7 +80,7 @@ export function LlmProfileSummary({ data }: ProfileSummaryProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-black uppercase tracking-wide mb-1">
-                    {highlight}
+                    {highlight.label}
                   </p>
                   <p className="text-sm font-semibold text-gray-900 leading-snug">
                     {highlight.value}

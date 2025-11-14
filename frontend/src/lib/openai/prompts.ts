@@ -1,18 +1,11 @@
 // lib/promptBuilder.ts
 
-import { LANDING_PAGE_SCHEMAS, LlmHeroBanner } from "@/types";
+
 import { ComponentSchema } from "@/types/resultsPageComponents/schemas";
 
 
-interface LlmComponentsMap {
-  hero: LlmHeroBanner;
-  // Add other components here:
-  // ctaSection: LlmCtaSection;
-  // testimonial: LlmTestimonial;
-}
-/**
- * Builds prompt text for a single schema
- */
+
+
 function buildSingleSchemaPrompt(schema: ComponentSchema): string {
   let prompt = `  "${schema.componentName}": {\n`;
   prompt += `    // ${schema.description}\n`;
@@ -65,13 +58,16 @@ export function buildPrompt(
   schema: ComponentSchema,
   flow: string,
   userInput: Record<string, string>,
-  agentKnowledge: string[]
+  // agentKnowledge: string[]
 ): string {
   const userName = userInput.email
     ? userInput.email.split('@')[0].charAt(0).toUpperCase() + userInput.email.split('@')[0].slice(1)
     : null;
 
   const schemaPrompt = buildSingleSchemaPrompt(schema);
+
+  // AGENT KNOWLEDGE:
+// ${agentKnowledge.map((k, i) => `${i + 1}. ${k}`).join('\n') || 'None provided'}
 
   return `You are Chris's AI assistant generating a personalized landing page section.
 
@@ -84,8 +80,7 @@ ${flow === 'sell' ? `- Selling Reason: ${userInput.sellingReason || 'N/A'}
 - Property Age: ${userInput.propertyAge || 'N/A'}
 - Renovations: ${userInput.renovations || 'N/A'}` : ''}
 
-AGENT KNOWLEDGE:
-${agentKnowledge.map((k, i) => `${i + 1}. ${k}`).join('\n') || 'None provided'}
+
 
 ---
 
@@ -109,11 +104,14 @@ export function buildMultiComponentPrompt(
   schemas: ComponentSchema[],
   flow: string,
   userInput: Record<string, string>,
-  agentKnowledge: string[]
+  // agentKnowledge: string[]
 ): string {
   const userName = userInput.email
     ? userInput.email.split('@')[0].charAt(0).toUpperCase() + userInput.email.split('@')[0].slice(1)
     : null;
+
+//     AGENT KNOWLEDGE:
+// ${agentKnowledge.map((k, i) => `${i + 1}. ${k}`).join('\n') || 'None'}
 
   const schemaPrompts = schemas
     .map(schema => buildSingleSchemaPrompt(schema))
@@ -130,8 +128,7 @@ ${flow === 'sell' ? `- Selling Reason: ${userInput.sellingReason || 'N/A'}
 - Property Age: ${userInput.propertyAge || 'N/A'}
 - Renovations: ${userInput.renovations || 'N/A'}` : ''}
 
-AGENT KNOWLEDGE:
-${agentKnowledge.map((k, i) => `${i + 1}. ${k}`).join('\n') || 'None'}
+
 
 ---
 

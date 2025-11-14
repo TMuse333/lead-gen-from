@@ -1,56 +1,38 @@
-// components/AnalysisTracker.tsx
 'use client';
 
+import { useChatStore, selectUserInput, selectProgress, selectCurrentFlow } from '@/stores/chatStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Trophy, Gift, Award, Zap } from 'lucide-react';
-import { useChatStore, selectExtractedAnswers } from '@/stores/chatStore';
-import { ExtractedAnswer } from '@/types/chat/chat.types';
+import { Check, Loader2, Sparkles, Trophy, Gift, Award, Zap } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import {
-  PropertyCollecting,
-  SearchingHomes,
-  AnalyzingTrends,
-  CalculatingValue,
-  GeneratingRecommendations,
-  PendingIcon,
-} from '../../conversationalForm/icons/calculatingIcon';
 
 const TOTAL_QUESTIONS = 6;
 
 export default function AnalysisTracker() {
-  const answers = useChatStore(selectExtractedAnswers);
+  const userInput = useChatStore(selectUserInput);
+  const progress = useChatStore(selectProgress);
+  const currentFlow = useChatStore(selectCurrentFlow);
   const [showModal, setShowModal] = useState(false);
   const [calculationStep, setCalculationStep] = useState(0);
 
-  const progress = (answers.length / TOTAL_QUESTIONS) * 100;
-  const isComplete = answers.length >= TOTAL_QUESTIONS;
+  const answersArray = Object.entries(userInput);
+  const isComplete = answersArray.length >= TOTAL_QUESTIONS;
 
   // Glow intensity based on progress
   const glowIntensity = Math.min(progress / 100, 1);
   
   // Trophy scale based on progress
-  const trophyScale = 0.5 + (progress / 100) * 0.5; // 0.5 to 1
+  const trophyScale = 0.5 + (progress / 100) * 0.5;
 
   // Show modal when complete
   useEffect(() => {
     if (isComplete) {
       setShowModal(true);
       
-      // Cycle through calculation steps
-      const steps = [
-        "Analyzing property details...",
-        "Searching comparable homes...",
-        "Processing market data...",
-        "Calculating value range...",
-        "Generating recommendations...",
-        "Finalizing your report..."
-      ];
-      
       let step = 0;
       const interval = setInterval(() => {
         step++;
         setCalculationStep(step);
-        if (step >= steps.length) {
+        if (step >= 6) {
           clearInterval(interval);
         }
       }, 500);
@@ -59,12 +41,26 @@ export default function AnalysisTracker() {
     }
   }, [isComplete]);
 
+  const formatKey = (key: string): string => {
+    return key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
+  };
+
+  const formatValue = (value: string): string => {
+    if (value.includes('-') && !value.includes('@')) {
+      return value.replace('-', ' - ');
+    }
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  };
+
   return (
     <>
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="md:w-80 bg-white rounded-xl shadow-lg p-5 border border-blue-100 relative overflow-hidden"
+        className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 relative overflow-hidden"
         style={{
           boxShadow: `0 0 ${20 + glowIntensity * 30}px rgba(59, 130, 246, ${0.1 + glowIntensity * 0.3})`
         }}
@@ -104,7 +100,7 @@ export default function AnalysisTracker() {
                 <Sparkles className="text-blue-400 opacity-50" size={20} />
               </motion.div>
             </div>
-            <h3 className="font-semibold text-gray-900">Building Your Analysis</h3>
+            <h3 className="font-semibold text-gray-900">Your Information</h3>
           </div>
 
           {/* Growing reward icon */}
@@ -144,6 +140,17 @@ export default function AnalysisTracker() {
           </motion.div>
         </div>
 
+        {/* Flow Type Badge */}
+        {currentFlow && (
+          <div className="mb-4">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {currentFlow === 'sell' && '🏠 Selling'}
+              {currentFlow === 'buy' && '🔑 Buying'}
+              {currentFlow === 'browse' && '👀 Browsing'}
+            </span>
+          </div>
+        )}
+
         {/* Animated progress bar */}
         <div className="mb-4">
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden relative">
@@ -166,72 +173,50 @@ export default function AnalysisTracker() {
           </p>
         </div>
 
-        {/* Progress Tasks */}
+        {/* Answers List */}
         <div className="space-y-3">
-          <AnalysisTask
-            icon={<PropertyCollecting size={20} isComplete={answers.length >= 1} duration={1500} />}
-            text="Property profile collected"
-            completed={answers.length >= 1}
-            detail={answers.length >= 1 ? getPropertyDetail(answers) : ''}
-          />
-
-          <AnalysisTask
-            icon={
-              answers.length >= 2 ? (
-                <SearchingHomes size={20} isComplete={answers.length >= 3} duration={1500} />
-              ) : (
-                <PendingIcon size={20} />
-              )
-            }
-            text="Searching comparable homes"
-            completed={answers.length >= 3}
-            detail={answers.length >= 2 ? `Found ${12 + answers.length * 8} similar properties` : ''}
-          />
-
-          <AnalysisTask
-            icon={
-              answers.length >= 3 ? (
-                <AnalyzingTrends size={20} isComplete={answers.length >= 4} duration={1500} />
-              ) : (
-                <PendingIcon size={20} />
-              )
-            }
-            text="Analyzing market trends"
-            completed={answers.length >= 4}
-            detail={answers.length >= 3 ? 'Halifax market data: 1,247 points' : ''}
-          />
-
-          <AnalysisTask
-            icon={
-              answers.length >= 4 ? (
-                <CalculatingValue size={20} isComplete={answers.length >= 5} duration={1500} />
-              ) : (
-                <PendingIcon size={20} />
-              )
-            }
-            text="Calculating property value"
-            completed={answers.length >= 5}
-            detail={answers.length >= 5 ? getValueRangeTeaser(answers) : ''}
-          />
-
-          <AnalysisTask
-            icon={
-              answers.length >= 5 ? (
-                <GeneratingRecommendations size={20} isComplete={answers.length >= 6} duration={1500} />
-              ) : (
-                <PendingIcon size={20} />
-              )
-            }
-            text="Generating recommendations"
-            completed={answers.length >= 6}
-            detail={answers.length >= 6 ? 'Custom strategy ready' : ''}
-          />
+          {answersArray.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+              <p className="text-sm">Waiting for your responses...</p>
+            </div>
+          ) : (
+            answersArray.map(([key, value], index) => (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gray-50 rounded-lg p-3 border border-gray-200"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: index * 0.1 + 0.2, type: 'spring' }}
+                    >
+                      <Check className="w-4 h-4 text-green-600" />
+                    </motion.div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                      {formatKey(key)}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 break-words">
+                      {formatValue(value)}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* Progress Footer */}
         {!isComplete ? (
           <motion.div 
-            className="mt-4 pt-4 border-t border-gray-100"
+            className="mt-6 pt-4 border-t border-gray-100"
             animate={{
               backgroundColor: progress > 70 ? 
                 ['rgba(239, 246, 255, 0)', 'rgba(239, 246, 255, 0.5)', 'rgba(239, 246, 255, 0)'] : 
@@ -241,16 +226,27 @@ export default function AnalysisTracker() {
           >
             <p className="text-sm text-gray-600 text-center">
               <span className="font-semibold text-blue-600">
-                {answers.length} of {TOTAL_QUESTIONS}
+                {answersArray.length} of {TOTAL_QUESTIONS}
               </span>
               {' '}questions answered
               <br />
               <span className="text-xs">
-                {TOTAL_QUESTIONS - answers.length} more to unlock your treasure! 💎
+                {TOTAL_QUESTIONS - answersArray.length} more to unlock your treasure! 💎
               </span>
             </p>
           </motion.div>
-        ) : null}
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-6 pt-4 border-t border-gray-200"
+          >
+            <div className="flex items-center justify-center gap-2 text-green-600">
+              <Check className="w-5 h-5" />
+              <p className="text-sm font-semibold">All information collected!</p>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* CALCULATION MODAL */}
@@ -261,7 +257,6 @@ export default function AnalysisTracker() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => {}} // Prevent close on click
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -396,78 +391,4 @@ export default function AnalysisTracker() {
       </AnimatePresence>
     </>
   );
-}
-
-/* -----------------------------------------------------------------
-   AnalysisTask Component
-   ----------------------------------------------------------------- */
-interface AnalysisTaskProps {
-  icon: React.ReactNode;
-  text: string;
-  completed: boolean;
-  detail?: string;
-}
-
-function AnalysisTask({ icon, text, completed, detail }: AnalysisTaskProps) {
-  return (
-    <motion.div 
-      className="flex items-start gap-3"
-      initial={{ opacity: 0.5 }}
-      animate={{ opacity: completed ? 1 : 0.5 }}
-    >
-      <span className="flex-shrink-0 mt-0.5">{icon}</span>
-      <div className="flex-1">
-        <div
-          className={`text-sm font-medium transition-colors ${
-            completed ? 'text-gray-900' : 'text-gray-500'
-          }`}
-        >
-          {text}
-        </div>
-        <AnimatePresence>
-          {detail && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="text-xs text-blue-600 mt-1 font-medium"
-            >
-              {detail}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
-}
-
-/* -----------------------------------------------------------------
-   Helper Functions
-   ----------------------------------------------------------------- */
-function getPropertyDetail(answers: ExtractedAnswer[]): string {
-  const propertyType = answers.find((a) => a.questionId === 'propertyType')?.value;
-  if (!propertyType) return 'Property type recorded';
-  
-  if (propertyType.includes('house') || propertyType.includes('single')) {
-    return 'Single-family home identified';
-  }
-  if (propertyType.includes('condo')) {
-    return 'Condo/apartment identified';
-  }
-  if (propertyType.includes('townhouse')) {
-    return 'Townhouse identified';
-  }
-  return 'Property type recorded';
-}
-
-function getValueRangeTeaser(answers: ExtractedAnswer[]): string {
-  const hasRenovations = answers.find((a) => 
-    a.questionId === 'renovations' && 
-    (a.value.includes('kitchen') || a.value.includes('bathroom'))
-  );
-  
-  if (hasRenovations) {
-    return 'Range: $XXX,XXX - $XXX,XXX (+renovations!)';
-  }
-  return 'Range: $XXX,XXX - $XXX,XXX';
 }

@@ -37,32 +37,32 @@ const SAMPLES_DIR = path.join(process.cwd(), "samples");
    -------------------------------------------------------------- */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const {flow, userInput} = await req.json();
 
     /* -----------------------------------------------------------
        1. Optional sample file
        ----------------------------------------------------------- */
-    let payload: {
-      flow: string;
-      userInput: Record<string, string>;
-      agentKnowledge?: string[];
-      sample?: string;
-    } = body;
+    // let payload: {
+    //   flow: string;
+    //   userInput: Record<string, string>;
+    //   agentKnowledge?: string[];
+    //   sample?: string;
+    // } = body;
 
-    if (payload.sample) {
-      const filePath = path.join(SAMPLES_DIR, payload.sample);
-      const fileContent = await readFile(filePath, "utf-8");
-      payload = JSON.parse(fileContent);
-    }
+    // if (payload.sample) {
+    //   const filePath = path.join(SAMPLES_DIR, payload.sample);
+    //   const fileContent = await readFile(filePath, "utf-8");
+    //   payload = JSON.parse(fileContent);
+    // }
 
-    const { flow, userInput, agentKnowledge = [] } = payload;
+    // const { flow, userInput, agentKnowledge = [] } = payload;
 
-    if (!flow || !userInput) {
-      return NextResponse.json(
-        { error: "Missing flow or userInput" },
-        { status: 400 }
-      );
-    }
+    // if (!flow || !userInput) {
+    //   return NextResponse.json(
+    //     { error: "Missing flow or userInput" },
+    //     { status: 400 }
+    //   );
+    // }
 
     /* -----------------------------------------------------------
        2. Build prompt & call OpenAI
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       DEFAULT_SCHEMAS,
       flow,
       userInput,
-      agentKnowledge
+      // agentKnowledge
     );
 
     const completion = await openai.chat.completions.create({

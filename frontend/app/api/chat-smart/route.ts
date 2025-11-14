@@ -1,49 +1,68 @@
 // app/api/chat-smart/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { CONVERSATION_FLOWS, FLOW_CONFIG, FlowType } from '@/data/conversationFlows/conversationFlows';
+import { CONVERSATION_FLOWS } from '@/data/conversationFlows/conversationFlows';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+type FlowType = 'sell' | 'buy' | 'browse';
+
+const FLOW_CONFIG = {
+  sell: {
+    name: 'Selling',
+    totalQuestions: 6,
+    questionOrder: ['propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason', 'email'],
+    completionMessage: "Perfect! I have everything I need."
+  },
+  buy: {
+    name: 'Buying',
+    totalQuestions: 6,
+    questionOrder: ['propertyType', 'budget', 'bedrooms', 'timeline', 'buyingReason', 'email'],
+    completionMessage: "Excellent! I have all the information."
+  },
+  browse: {
+    name: 'Browsing',
+    totalQuestions: 6,
+    questionOrder: ['interest', 'location', 'priceRange', 'timeline', 'goal', 'email'],
+    completionMessage: "Great! I have what I need to help you."
+  }
+};
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log('📨 Request body:', JSON.stringify(body, null, 2));
+    const { messages, currentAnswers = {}, currentFlow = null } = body;
 
-    const { messages, currentAnswers = [], currentFlow = null } = body;
-
-    // Get the active flow or default to 'sell'
     const activeFlow: FlowType = currentFlow || 'sell';
     const flowConfig = FLOW_CONFIG[activeFlow];
     const flow = CONVERSATION_FLOWS[activeFlow];
     
-    const isFirstMessage = currentAnswers.length === 0 && !currentFlow;
+    const isFirstMessage = Object.keys(currentAnswers).length === 0 && !currentFlow;
+    const answeredKeys = Object.keys(currentAnswers);
 
     const systemPrompt = `You are Chris's AI assistant helping with ${flowConfig.name.toLowerCase()} in Halifax.
 
-Current answers collected: ${currentAnswers.length}/${flowConfig.totalQuestions}
+Current answers collected: ${answeredKeys.length}/${flowConfig.totalQuestions}
 
 VALID QUESTIONS FOR THIS FLOW (${activeFlow.toUpperCase()}):
-${flowConfig.questionOrder.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+${flowConfig.questionOrder.map((q, i) => `${i + 1}. ${q} (mappingKey: "${q}")`).join('\n')}
 
-YOU MUST ONLY USE THESE QUESTION IDs IN nextQuestion!
+YOU MUST ONLY USE THESE mappingKeys IN nextQuestion!
 
 ${isFirstMessage ? `
 FIRST MESSAGE: The user just selected "${activeFlow}". You MUST:
 1. Set flowType: "${activeFlow}"
 2. Ask the FIRST question: "${flowConfig.questionOrder[0]}"
+3. Return nextQuestion: "${flowConfig.questionOrder[0]}"
 ` : `
 NEXT STEPS:
-- Extract the answer if user provided one
-- Ask the NEXT question from the list above
+- Extract the answer if user provided one (use the mappingKey from current question)
+- Ask the NEXT unanswered question from the list above
 - NEVER use questions from other flows
 `}
 
 CRITICAL: Provide a SHORT conversational response (1-2 sentences).
-Then call determine_next_step with the correct nextQuestion from the list above.`;
-
-    console.log('🤖 Calling OpenAI... Flow:', activeFlow, 'Is First:', isFirstMessage);
+Then call determine_next_step with the correct nextQuestion mappingKey from the list above.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -65,20 +84,16 @@ Then call determine_next_step with the correct nextQuestion from the list above.
               extractedAnswer: {
                 type: 'object',
                 properties: {
-                  questionId: { type: 'string' },
+                  mappingKey: { type: 'string' },
                   value: { type: 'string' },
                 }
               },
               nextQuestion: { 
                 type: 'string',
                 enum: [
-                  // Seller questions
                   'propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason',
-                  // Buyer questions
                   'budget', 'bedrooms', 'buyingReason',
-                  // Browser questions
                   'interest', 'location', 'priceRange', 'goal',
-                  // Common
                   'email', 'none'
                 ]
               },
@@ -91,81 +106,56 @@ Then call determine_next_step with the correct nextQuestion from the list above.
           }
         }
       }],
-      // Force it to call the function
       tool_choice: {
         type: 'function',
         function: { name: 'determine_next_step' }
       },
     });
 
-    // console.log('✅ OpenAI Response received');
-    // console.log('📝 Content:', completion.choices[0].message.content);
-    // console.log('🔧 Tool calls:', completion.choices[0].message.tool_calls);
-
     let reply = completion.choices[0].message.content || '';
     let buttons: any[] = [];
     let extracted = null;
     let flowType = null;
 
-    // Handle tool calls
     const toolCalls = completion.choices[0].message.tool_calls;
     if (toolCalls && toolCalls.length > 0) {
-      console.log('🔍 Processing tool call...');
       const toolCall = toolCalls[0];
       
       if (toolCall.type === 'function') {
         const func = toolCall.function;
-        // console.log('📦 Function name:', func.name);
-        // console.log('📦 Function args:', func.arguments);
-        
         const args = JSON.parse(func.arguments);
 
         if (args.flowType) {
           flowType = args.flowType;
-          console.log('🎯 Flow type detected from AI:', flowType);
         }
 
         if (args.extractedAnswer) {
           extracted = {
-            questionId: args.extractedAnswer.questionId,
-            question: 'Question',
+            mappingKey: args.extractedAnswer.mappingKey,
             value: args.extractedAnswer.value,
-            answeredAt: new Date(),
           };
-          console.log('✅ Extracted:', extracted);
         }
 
         if (args.nextQuestion && args.nextQuestion !== 'none') {
           const currentFlow: FlowType = flowType || activeFlow;
-          // console.log('📍 Using flow for buttons:', currentFlow);
-          
           const flowData = CONVERSATION_FLOWS[currentFlow];
           const questionData = flowData[args.nextQuestion as keyof typeof flowData];
           
           if (questionData) {
-            buttons = questionData.buttons;
-            // console.log('🔘 Buttons:', buttons.length);
-          } else {
-            // console.warn('⚠️ No question data found for:', args.nextQuestion, 'in flow:', currentFlow);
+            buttons = questionData.buttons || [];
           }
         }
       }
     }
 
-    // CRITICAL CHECK
+    // Construct reply if empty
     if (!reply || reply.trim() === '') {
-      // console.log('⚠️ Empty reply - constructing from question...');
-      
-      // Check if we're done collecting answers
-      const totalAnswersAfter = currentAnswers.length + (extracted ? 1 : 0);
+      const totalAnswersAfter = answeredKeys.length + (extracted ? 1 : 0);
       const isComplete = totalAnswersAfter >= flowConfig.totalQuestions;
       
       if (isComplete) {
-        // COMPLETION MESSAGE - use flow-specific message
         reply = flowConfig.completionMessage + "\n\nI'm now generating your personalized report. This will just take a moment...";
-        // console.log('✅ Form complete! Sending completion message');
       } else if (toolCalls && toolCalls.length > 0) {
-        // Regular question flow
         const toolCall = toolCalls[0];
         if (toolCall.type === 'function') {
           const args = JSON.parse(toolCall.function.arguments);
@@ -175,7 +165,6 @@ Then call determine_next_step with the correct nextQuestion from the list above.
             const questionData = flowData[args.nextQuestion as keyof typeof flowData];
             
             if (questionData) {
-              // Construct a natural reply
               if (args.flowType && !currentFlow) {
                 reply = `Great! I'd love to help you with ${FLOW_CONFIG[args.flowType as FlowType].name.toLowerCase()}. ${questionData.question}`;
               } else if (extracted) {
@@ -183,28 +172,25 @@ Then call determine_next_step with the correct nextQuestion from the list above.
               } else {
                 reply = questionData.question;
               }
-              // console.log('✅ Constructed reply:', reply);
             }
           }
         }
       }
       
-      // Final fallback
       if (!reply || reply.trim() === '') {
         reply = "Let me help you with that!";
       }
     }
 
+    const newAnswerCount = answeredKeys.length + (extracted ? 1 : 0);
     const response = {
       reply,
       buttons,
       extracted,
-      flowType: flowType || activeFlow,  // ← Always return current flow
-      progress: Math.round(((currentAnswers.length + (extracted ? 1 : 0)) / flowConfig.totalQuestions) * 100),
-      isComplete: (currentAnswers.length + (extracted ? 1 : 0)) >= flowConfig.totalQuestions
+      flowType: flowType || activeFlow,
+      progress: Math.round((newAnswerCount / flowConfig.totalQuestions) * 100),
+      isComplete: newAnswerCount >= flowConfig.totalQuestions
     };
-
-    // console.log('📤 Sending response:', JSON.stringify(response, null, 2));
 
     return NextResponse.json(response);
 

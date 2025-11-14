@@ -12,6 +12,8 @@ import { MarketInsights } from "@/components/ux/resultsComponents/marketInsights
 // import { NextStepsCTA } from "@/components/ux/resultsComponents/cta";
 
 import type { LlmOutput } from "@/types";
+import { ActionPlan } from "@/components/ux/resultsComponents/actionPlan";
+import { selectCurrentFlow, selectUserInput, useChatStore } from "@/stores/chatStore";
 
 /* --------------------------------------------------------------
    LOCAL STORAGE KEY
@@ -26,20 +28,23 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const userInput = useChatStore(selectUserInput);
+  const currentFlow = useChatStore(selectCurrentFlow);
+
   /* -----------------------------------------------------------
      Payload – replace with your real source (context, store, etc.)
      ----------------------------------------------------------- */
-  const payload = {
-    flow: "sell",
-    userInput: {
-      propertyType: "single-family house",
-      propertyAge: "10-20",
-      renovations: "kitchen",
-      timeline: "0-3",
-      sellingReason: "relocating",
-      email: "jane@example.com",
-    },
-  };
+  // const payload = {
+  //   flow: "sell",
+  //   userInput: {
+  //     propertyType: "single-family house",
+  //     propertyAge: "10-20",
+  //     renovations: "kitchen",
+  //     timeline: "0-3",
+  //     sellingReason: "relocating",
+  //     email: "jane@example.com",
+  //   },
+  // };
 
   /* -----------------------------------------------------------
      1. Try to load from localStorage first
@@ -68,12 +73,12 @@ export default function ResultsPage() {
       return null;
     };
 
-    const cachedData = loadFromCache();
-    if (cachedData) {
-      setLlmData(cachedData);
-      setLoading(false);
-      return;
-    }
+    // const cachedData = loadFromCache();
+    // if (cachedData) {
+    //   setLlmData(cachedData);
+    //   setLoading(false);
+    //   return;
+    // }
 
     /* ---------------------------------------------------------
        2. No cache → call API
@@ -85,7 +90,10 @@ export default function ResultsPage() {
 
         const { data } = await axios.post<LlmOutput>(
           "/api/test-component",
-          payload,
+          {
+            flow:currentFlow,
+            userInput
+          },
           { headers: { "Content-Type": "application/json" } }
         );
 
@@ -155,7 +163,7 @@ export default function ResultsPage() {
       <LlmProfileSummary data={data.profileSummary} />
       <PersonalMessage data={data.personalMessage} />
       {/* <ActionPlan data={data.actionPlan} /> */}
-      <MarketInsights data={data.marketInsights} />
+      {/* <MarketInsights data={data.marketInsights} /> */}
       {/* <NextStepsCTA data={data.nextStepsCTA} /> */}
     </main>
   );

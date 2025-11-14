@@ -17,5 +17,7 @@ export * from './analysis'
 
 export * from './resultsPageComponents'
 
+export * from './chat.types'
+
 
 
