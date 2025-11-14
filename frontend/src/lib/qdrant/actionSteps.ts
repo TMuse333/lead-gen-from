@@ -174,19 +174,19 @@ export async function queryActionSteps(
     console.log('qdrant url',process.env.QDRANT_URL! || 'problem here')
     // Step 1: Get ALL steps for this agent and flow from Qdrant
     // (We can't do rule matching in Qdrant, so we fetch all and filter in code)
-    const scrollResult = await qdrant.scroll(ACTION_STEPS_COLLECTION, {
-      limit: 100,
-      with_payload: true,
-      with_vector: false,
-      // filter: {
-      //   must: [
-      //     {
-      //       key: 'agentId',
-      //       match: { value: agentId },
-      //     },
-      //   ],
-      // },
-    });
+    const scrollResult = await qdrant.scroll(ACTION_STEPS_COLLECTION,{
+      filter: {
+        must: [
+          {
+            key: 'agentId',
+            match: { value: agentId }
+          }
+        ]
+      },
+      with_vector:false,
+      with_payload:true,
+      limit:200
+    })
 
     
     

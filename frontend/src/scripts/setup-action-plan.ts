@@ -390,9 +390,14 @@ async function main() {
     // Create a minimal collection structure
     await qdrant.createCollection(ACTION_STEPS_COLLECTION, {
       vectors: {
-        size: 4, // Minimal vector size (we won't use it)
-        distance: 'Cosine',
+        size: 1,           // Smallest possible
+        distance: 'Cosine' as const,
+        on_disk: true,     // Saves memory
       },
+      // Optional: make it clear this is metadata-only
+      optimizers_config: {
+        memmap_threshold: 100000,
+      }
     });
     console.log('✅ Collection created');
 

@@ -130,7 +130,7 @@ export function buildMultiComponentPrompt(
     .map(schema => buildSingleSchemaPrompt(schema))
     .join(',\n');
 
-  return `You are Chris's AI assistant generating a personalized landing page.
+  return `You are The agents AI assistant generating a personalized landing page.
 
 USER CONTEXT:
 - Flow: ${flow}

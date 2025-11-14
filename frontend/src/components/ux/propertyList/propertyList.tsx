@@ -217,7 +217,7 @@ export default function PropertiesDisplay() {
         }
         setMetadata(result.metadata);
       } else {
-        setError('error' || 'Failed to load properties');
+        setError('error' );
       }
     } catch (err) {
       console.error('Error fetching properties:', err);
