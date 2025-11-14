@@ -1,13 +1,13 @@
 // components/landing/HeroBanner.tsx
 
-import { LlmHeroBanner } from "@/types/resultsPageComponents/components/herobanner";
+import { LlmHeroBannerProps } from "@/types/resultsPageComponents/components/herobanner";
 import { Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
 
-interface LlmHeroBannerProps {
-  data: LlmHeroBanner;
+interface LlmHeroBannerData {
+  data: LlmHeroBannerProps;
 }
 
-export function LlmHerobanner({ data }: LlmHeroBannerProps) {
+export function LlmHerobanner({ data }: LlmHeroBannerData) {
   // Map urgency to gradient and styling - more neutral, easier on eyes
   const urgencyStyles = {
     high: {

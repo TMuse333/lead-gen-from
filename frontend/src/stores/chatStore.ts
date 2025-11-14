@@ -4,8 +4,9 @@ import { devtools } from 'zustand/middleware';
 import confetti from 'canvas-confetti';
 import { ChatButton, LlmInput } from '@/types/chat.types';
 import { INITIAL_MESSAGE_NODE } from '@/data/conversationFlows/conversationFlows';
+import { LlmOutput } from '@/types';
 
-// ChatMessage is ONLY for UI display - NOT the source of truth
+// ChatMessage is ONLY for UI display
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -13,9 +14,18 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+/* --------------------------------------------------------------
+   STATE INTERFACES
+   -------------------------------------------------------------- */
+export interface LlmResultState {
+  llmOutput: LlmOutput | null;
+  setLlmOutput: (data: LlmOutput | Partial<LlmOutput>) => void;
+  clearLlmOutput: () => void;
+}
+
 export interface ChatStateData {
-  messages: ChatMessage[]; // UI only - for displaying conversation
-  userInput: LlmInput; // ✅ SOURCE OF TRUTH for all user data
+  messages: ChatMessage[];
+  userInput: LlmInput;
   loading: boolean;
   showTracker: boolean;
   currentFlow: 'sell' | 'buy' | 'browse' | null;
@@ -38,8 +48,11 @@ export interface ChatStateActions {
   handleButtonClick: (button: ChatButton) => Promise<void>;
 }
 
-export type ChatState = ChatStateData & ChatStateActions;
+export type ChatState = ChatStateData & ChatStateActions & LlmResultState;
 
+/* --------------------------------------------------------------
+   INITIAL STATE
+   -------------------------------------------------------------- */
 const INITIAL_MESSAGE: ChatMessage = {
   role: 'assistant',
   content: INITIAL_MESSAGE_NODE.question,
@@ -47,43 +60,54 @@ const INITIAL_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
-const initialState: ChatStateData = {
+const initialState: ChatStateData & Pick<LlmResultState, 'llmOutput'> = {
   messages: [INITIAL_MESSAGE],
-  userInput: {}, // ✅ Empty LlmInput object
+  userInput: {},
   loading: false,
   showTracker: false,
   currentFlow: null,
   progress: 0,
   shouldCelebrate: false,
   isComplete: false,
+  llmOutput: null,
 };
 
+/* --------------------------------------------------------------
+   STORE
+   -------------------------------------------------------------- */
 export const useChatStore = create<ChatState>()(
   devtools(
     (set, get) => ({
       ...initialState,
 
-      addMessage: (message: ChatMessage) => {
-        set((state) => ({
-          messages: [...state.messages, message],
-        }));
+      // LlmOutput actions
+      setLlmOutput: (data: LlmOutput | Partial<LlmOutput>) => {
+        set((state) => {
+          const current = state.llmOutput || {};
+          const updated = { ...current, ...data } as LlmOutput;
+          console.log("[ChatStore] llmOutput updated:", updated);
+          return { llmOutput: updated };
+        });
       },
+
+      clearLlmOutput: () => set({ llmOutput: null }),
+
+      // Existing actions...
+      addMessage: (message: ChatMessage) =>
+        set((state) => ({ messages: [...state.messages, message] })),
 
       addAnswer: (key: string, value: string) => {
         set((state) => {
-          // ✅ Add to userInput (source of truth)
           const newUserInput = { ...state.userInput, [key]: value };
           const totalQuestions = 6;
           const progress = Math.round((Object.keys(newUserInput).length / totalQuestions) * 100);
 
           console.log(`[ChatStore] Answer added → ${key}: "${value}"`);
-    console.log(`[ChatStore] Full userInput:`, newUserInput);
-
+          console.log(`[ChatStore] Full userInput:`, newUserInput);
 
           if (Object.keys(newUserInput).length === 1 && !state.showTracker) {
             return { userInput: newUserInput, progress, showTracker: true };
           }
-
           if (Object.keys(newUserInput).length === 2) {
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             return {
@@ -93,7 +117,6 @@ export const useChatStore = create<ChatState>()(
               shouldCelebrate: true,
             };
           }
-
           return { userInput: newUserInput, progress };
         });
       },
@@ -117,7 +140,6 @@ export const useChatStore = create<ChatState>()(
       sendMessage: async (message: string, displayText?: string) => {
         const state = get();
         if (!message.trim()) return;
-
         set({ loading: true });
 
         const userMsg: ChatMessage = {
@@ -130,7 +152,7 @@ export const useChatStore = create<ChatState>()(
         try {
           const payload = {
             messages: [...state.messages, userMsg],
-            currentAnswers: state.userInput, // ✅ Send userInput (LlmInput)
+            currentAnswers: state.userInput,
             currentFlow: state.currentFlow,
           };
 
@@ -144,7 +166,6 @@ export const useChatStore = create<ChatState>()(
           const data = await response.json();
 
           if (data.extracted) {
-            // ✅ Add to userInput (source of truth)
             get().addAnswer(data.extracted.mappingKey, data.extracted.value);
           }
           if (data.flowType) set({ currentFlow: data.flowType });
@@ -158,9 +179,11 @@ export const useChatStore = create<ChatState>()(
           set((state) => ({ messages: [...state.messages, aiMsg] }));
 
           if (data.progress !== undefined) set({ progress: data.progress });
+          if (data.isComplete) set({ isComplete: true });
 
-          if (data.isComplete) {
-            set({ isComplete: true });
+          // Optional: Store partial LLM output
+          if (data.llmPartial) {
+            get().setLlmOutput(data.llmPartial);
           }
         } catch (error) {
           console.error('Error sending message:', error);
@@ -179,11 +202,18 @@ export const useChatStore = create<ChatState>()(
   )
 );
 
-// ✅ Selectors
+/* --------------------------------------------------------------
+   SELECTORS
+   -------------------------------------------------------------- */
 export const selectMessages = (state: ChatState) => state.messages;
-export const selectUserInput = (state: ChatState) => state.userInput; // ✅ Source of truth
+export const selectUserInput = (state: ChatState) => state.userInput;
 export const selectLoading = (state: ChatState) => state.loading;
 export const selectShowTracker = (state: ChatState) => state.showTracker;
 export const selectProgress = (state: ChatState) => state.progress;
 export const selectCurrentFlow = (state: ChatState) => state.currentFlow;
 export const selectIsComplete = (state: ChatState) => state.isComplete;
+
+// New selectors
+export const selectLlmOutput = (state: ChatState) => state.llmOutput;
+export const selectLlmOutputPartial = (state: ChatState): Partial<LlmOutput> | null =>
+  state.llmOutput ? (state.llmOutput as Partial<LlmOutput>) : null;

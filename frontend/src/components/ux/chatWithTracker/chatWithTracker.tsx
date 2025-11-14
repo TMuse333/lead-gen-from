@@ -15,6 +15,7 @@ import {
   selectCurrentFlow
 } from '@/stores/chatStore';
 import AnalysisTracker from './analysisTracker';
+import { FastTrackButton } from './fastTrackButton';
 
 export default function ChatWithTracker() {
   const router = useRouter();
@@ -113,6 +114,7 @@ export default function ChatWithTracker() {
 
   return (
     <div className="flex flex-col md:flex-row gap-6 max-w-7xl mx-auto p-4 text-black">
+      <FastTrackButton/>
       {/* Chat Messages */}
       <div className="flex-1 flex flex-col h-[600px] bg-white rounded-xl shadow-lg">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">

@@ -14,7 +14,11 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 interface ProfileSummaryProps {
-  data: LlmProfileSummaryProps;
+  data: {
+    overview: string;
+    keyHighlights: string[]; // LLM gives strings
+    timelineBadge?: { text: string; variant: 'urgent' | 'planned' | 'exploring' };
+  };
 }
 
 // Map label text → Lucide icon
@@ -54,6 +58,24 @@ export function LlmProfileSummary({ data }: ProfileSummaryProps) {
     },
   };
 
+  // TRANSFORM: Convert string[] → ProfileHighlight[]
+  const highlights = data.keyHighlights.map((item: string) => {
+    // Split only on first ":" to allow values with colons
+    const firstColonIndex = item.indexOf(':');
+    if (firstColonIndex === -1) {
+      // Fallback: treat whole string as label, empty value
+      return {
+        label: item.trim(),
+        value: '',
+      };
+    }
+
+    const label = item.slice(0, firstColonIndex).trim();
+    const value = item.slice(firstColonIndex + 1).trim();
+
+    return { label, value };
+  });
+
   return (
     <section className="text-black profile-summary bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
       {/* Section Header */}
@@ -64,8 +86,7 @@ export function LlmProfileSummary({ data }: ProfileSummaryProps) {
 
       {/* Key Highlights Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {data.keyHighlights.map((highlight, index) => {
-          // Use label to pick icon
+        {highlights.map((highlight, index) => {
           const IconComponent = labelToIcon[highlight.label] || Home;
 
           return (
@@ -83,19 +104,19 @@ export function LlmProfileSummary({ data }: ProfileSummaryProps) {
                     {highlight.label}
                   </p>
                   <p className="text-sm font-semibold text-gray-900 leading-snug">
-                    {highlight.value}
+                    {highlight.value || '—'}
                   </p>
                 </div>
               </div>
 
-              {/* Optional Expert Insight */}
-              {highlight.context && (
+              {/* Optional Expert Insight (not in LLM output yet) */}
+              {/* {highlight.context && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-xs text-gray-600 italic leading-relaxed">
                     Expert Tip: {highlight.context}
                   </p>
                 </div>
-              )}
+              )} */}
             </div>
           );
         })}

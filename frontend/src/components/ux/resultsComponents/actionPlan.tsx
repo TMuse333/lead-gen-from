@@ -1,7 +1,5 @@
-// components/landing/ActionPlan.tsx
-
+// components/ux/resultsComponents/actionPlan.tsx
 'use client';
-
 import { LlmActionPlanProps, ActionStep } from "@/types/resultsPageComponents/components/actionPlan";
 import { ChevronLeft, ChevronRight, CheckCircle2, ExternalLink, Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
@@ -10,25 +8,22 @@ interface ActionPlanProps {
   data: LlmActionPlanProps;
 }
 
+// === UPDATE: Make urgency optional in incoming data ===
+interface SafeActionStep extends Omit<ActionStep, 'urgency'> {
+  urgency?: 'immediate' | 'soon' | 'later';
+}
+
 export function ActionPlan({ data }: ActionPlanProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  
   const totalSteps = data.steps.length;
-  
-  // Navigation functions
-  const goToNext = () => {
-    setCurrentStep((prev) => (prev + 1) % totalSteps);
-  };
-  
-  const goToPrevious = () => {
-    setCurrentStep((prev) => (prev - 1 + totalSteps) % totalSteps);
-  };
-  
-  const goToStep = (index: number) => {
-    setCurrentStep(index);
-  };
 
-  // Map overall urgency to styling
+  const goToNext = () => setCurrentStep((prev) => (prev + 1) % totalSteps);
+  const goToPrevious = () => setCurrentStep((prev) => (prev - 1 + totalSteps) % totalSteps);
+  const goToStep = (index: number) => setCurrentStep(index);
+
+  // === SAFE: Fallback to 'medium' if overallUrgency missing ===
+  const overallUrgency = data.overallUrgency || 'medium';
+
   const urgencyStyles = {
     high: {
       gradient: 'bg-gradient-to-br from-orange-50 via-red-50 to-pink-50',
@@ -53,8 +48,7 @@ export function ActionPlan({ data }: ActionPlanProps) {
     }
   };
 
-  const overallStyle = urgencyStyles[data.overallUrgency || 'medium'];
-  const OverallIcon = overallStyle.icon;
+  const overallStyle = urgencyStyles[overallUrgency];
 
   return (
     <section className="action-plan py-16 px-6">
@@ -63,59 +57,38 @@ export function ActionPlan({ data }: ActionPlanProps) {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Sparkles className={`h-7 w-7 ${overallStyle.accentColor}`} />
-            <h2 className="text-4xl font-bold text-gray-900">
-              {data.sectionTitle}
-            </h2>
+            <h2 className="text-4xl font-bold text-gray-900">{data.sectionTitle}</h2>
             <Sparkles className={`h-7 w-7 ${overallStyle.accentColor}`} />
           </div>
-          
           {data.introText && (
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              {data.introText}
-            </p>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">{data.introText}</p>
           )}
-
-          {/* Overall urgency indicator */}
           {data.overallUrgency && (
             <div className="flex justify-center mt-6">
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${overallStyle.badgeBg} border ${overallStyle.borderColor}`}>
-                <OverallIcon className={`h-5 w-5 ${overallStyle.accentColor}`} />
+                <overallStyle.icon className={`h-5 w-5 ${overallStyle.accentColor}`} />
                 <span className={`text-sm font-medium ${overallStyle.accentColor}`}>
-                  {data.overallUrgency === 'high' && 'Time-Sensitive Plan'}
-                  {data.overallUrgency === 'medium' && 'Strategic Roadmap'}
-                  {data.overallUrgency === 'low' && 'Flexible Timeline'}
+                  {overallUrgency === 'high' && 'Time-Sensitive Plan'}
+                  {overallUrgency === 'medium' && 'Strategic Roadmap'}
+                  {overallUrgency === 'low' && 'Flexible Timeline'}
                 </span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Carousel Container */}
+        {/* Carousel */}
         <div className="relative">
-          {/* Step Card */}
           <div className="overflow-hidden">
-            <StepCard 
-              step={data.steps[currentStep]} 
-              isActive={true}
-            />
+            <StepCard step={data.steps[currentStep] as SafeActionStep} isActive={true} />
           </div>
 
-          {/* Navigation Arrows */}
           {totalSteps > 1 && (
             <>
-              <button
-                onClick={goToPrevious}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-gray-200 z-10"
-                aria-label="Previous step"
-              >
+              <button onClick={goToPrevious} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-gray-200 z-10">
                 <ChevronLeft className="h-6 w-6 text-gray-700" />
               </button>
-              
-              <button
-                onClick={goToNext}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-gray-200 z-10"
-                aria-label="Next step"
-              >
+              <button onClick={goToNext} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-gray-200 z-10">
                 <ChevronRight className="h-6 w-6 text-gray-700" />
               </button>
             </>
@@ -129,22 +102,14 @@ export function ActionPlan({ data }: ActionPlanProps) {
               <button
                 key={index}
                 onClick={() => goToStep(index)}
-                className={`transition-all ${
-                  index === currentStep
-                    ? 'w-12 h-3 bg-indigo-600'
-                    : 'w-3 h-3 bg-gray-300 hover:bg-gray-400'
-                } rounded-full`}
-                aria-label={`Go to step ${index + 1}`}
+                className={`transition-all ${index === currentStep ? 'w-12 h-3 bg-indigo-600' : 'w-3 h-3 bg-gray-300 hover:bg-gray-400'} rounded-full`}
               />
             ))}
           </div>
         )}
 
-        {/* Step Counter */}
         <div className="text-center mt-4">
-          <p className="text-sm text-gray-500 font-medium">
-            Step {currentStep + 1} of {totalSteps}
-          </p>
+          <p className="text-sm text-gray-500 font-medium">Step {currentStep + 1} of {totalSteps}</p>
         </div>
 
         {/* Closing Note */}
@@ -152,9 +117,7 @@ export function ActionPlan({ data }: ActionPlanProps) {
           <div className="mt-12 text-center">
             <div className={`inline-flex items-center gap-3 px-8 py-4 ${overallStyle.gradient} rounded-xl border-2 ${overallStyle.borderColor} shadow-sm`}>
               <CheckCircle2 className={`h-6 w-6 ${overallStyle.accentColor} flex-shrink-0`} />
-              <p className="text-base font-medium text-gray-700">
-                {data.closingNote}
-              </p>
+              <p className="text-base font-medium text-gray-700">{data.closingNote}</p>
             </div>
           </div>
         )}
@@ -163,15 +126,24 @@ export function ActionPlan({ data }: ActionPlanProps) {
   );
 }
 
-// ==================== STEP CARD COMPONENT ====================
-
+// ==================== STEP CARD (SAFE VERSION) ====================
 interface StepCardProps {
-  step: ActionStep;
+  step: SafeActionStep;
   isActive: boolean;
 }
 
 function StepCard({ step, isActive }: StepCardProps) {
-  // Map urgency to styling
+  // === INFER URGENCY FROM TIMELINE IF MISSING ===
+  const inferUrgency = (): 'immediate' | 'soon' | 'later' => {
+    if (!step.timeline) return 'soon';
+    const tl = step.timeline.toLowerCase();
+    if (tl.includes('now') || tl.includes('immediate') || tl.includes('week')) return 'immediate';
+    if (tl.includes('month') || tl.includes('soon')) return 'soon';
+    return 'later';
+  };
+
+  const urgency = step.urgency || inferUrgency();
+
   const urgencyStyles = {
     immediate: {
       gradient: 'bg-gradient-to-br from-red-50 via-orange-50 to-amber-50',
@@ -205,13 +177,13 @@ function StepCard({ step, isActive }: StepCardProps) {
     }
   };
 
-  const styles = urgencyStyles[step.urgency];
+  const styles = urgencyStyles[urgency] || urgencyStyles.soon; // ← SAFE FALLBACK
 
   return (
     <div
       className={`
-        step-card relative overflow-hidden rounded-2xl border-2 
-        ${styles.borderColor || 'border-blue'} ${styles.gradient || 'bg-blue-100'}
+        step-card relative overflow-hidden rounded-2xl border-2
+        ${styles.borderColor} ${styles.gradient}
         shadow-xl p-8 md:p-12 transition-all duration-300
         ${isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
       `}
@@ -229,96 +201,64 @@ function StepCard({ step, isActive }: StepCardProps) {
             </span>
           )}
         </div>
-
-        {/* Priority indicator */}
         <div className={`text-xs font-medium ${styles.accentColor} flex items-center gap-1`}>
           <span>Priority {step.priority}</span>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* Title */}
-        <h3 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-          {step.title}
-        </h3>
+      {/* Title */}
+      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+        {step.title || step.action} {/* ← Support old `action` field */}
+      </h3>
 
-        {/* Image (if provided) */}
-        {step.imageUrl && (
-          <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden shadow-md border-2 border-white">
-            <img
-              src={step.imageUrl}
-              alt={step.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
+      {/* Description */}
+      <p className="text-lg text-gray-700 leading-relaxed mt-4">
+        {step.description || step.details} {/* ← Support old `details` field */}
+      </p>
 
-        {/* Description */}
-        <p className="text-lg text-gray-700 leading-relaxed">
-          {step.description}
-        </p>
-
-        {/* Benefit */}
-        {step.benefit && (
-          <div className="flex items-start gap-3 p-4 bg-white bg-opacity-60 rounded-lg border border-gray-200 backdrop-blur-sm">
-            <CheckCircle2 className={`h-6 w-6 ${styles.accentColor} flex-shrink-0 mt-0.5`} />
-            <div>
-              <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                Why This Matters
-              </p>
-              <p className="text-base font-medium text-gray-800">
-                {step.benefit}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Timeline & Urgency Row */}
-        <div className="flex flex-wrap gap-4">
-          {/* Timeline */}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${styles.iconBg} border ${styles.borderColor}`}>
-            <Clock className={`h-5 w-5 ${styles.accentColor}`} />
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">Timeline</p>
-              <p className={`text-sm font-bold ${styles.accentColor}`}>{step.timeline}</p>
-            </div>
-          </div>
-
-          {/* Urgency Level */}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${styles.iconBg} border ${styles.borderColor}`}>
-            <TrendingUp className={`h-5 w-5 ${styles.accentColor}`} />
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">Urgency</p>
-              <p className={`text-sm font-bold ${styles.accentColor} capitalize`}>{step.urgency}</p>
-            </div>
+      {/* Rest of content (benefit, timeline, etc.) */}
+      {step.benefit && (
+        <div className="flex items-start gap-3 p-4 bg-white bg-opacity-60 rounded-lg border border-gray-200 backdrop-blur-sm mt-6">
+          <CheckCircle2 className={`h-6 w-6 ${styles.accentColor} flex-shrink-0 mt-0.5`} />
+          <div>
+            <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">Why This Matters</p>
+            <p className="text-base font-medium text-gray-800">{step.benefit}</p>
           </div>
         </div>
+      )}
 
-        {/* Resource Link/CTA */}
-        {step.resourceLink && step.resourceText && (
-          <div className="pt-4">
-            <a
-              href={step.resourceLink}
-              target={step.resourceLink.startsWith('http') ? '_blank' : '_self'}
-              rel={step.resourceLink.startsWith('http') ? 'noopener noreferrer' : ''}
-              className={`
-                inline-flex items-center gap-2 px-6 py-3 rounded-lg 
-                ${styles.buttonBg} text-white font-semibold
-                shadow-md hover:shadow-lg transition-all
-                transform hover:scale-105
-              `}
-            >
-              <span>{step.resourceText}</span>
-              <ExternalLink className="h-5 w-5" />
-            </a>
+      {/* Timeline & Urgency */}
+      <div className="flex flex-wrap gap-4 mt-6">
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${styles.iconBg} border ${styles.borderColor}`}>
+          <Clock className={`h-5 w-5 ${styles.accentColor}`} />
+          <div>
+            <p className="text-xs font-semibold text-gray-600 uppercase">Timeline</p>
+            <p className={`text-sm font-bold ${styles.accentColor}`}>{step.timeline || 'Flexible'}</p>
           </div>
-        )}
+        </div>
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${styles.iconBg} border ${styles.borderColor}`}>
+          <TrendingUp className={`h-5 w-5 ${styles.accentColor}`} />
+          <div>
+            <p className="text-xs font-semibold text-gray-600 uppercase">Urgency</p>
+            <p className={`text-sm font-bold ${styles.accentColor} capitalize`}>{urgency}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Decorative elements */}
-      <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-white rounded-full blur-3xl opacity-30"></div>
-      <div className="absolute -top-24 -left-24 w-64 h-64 bg-white rounded-full blur-3xl opacity-30"></div>
+      {/* CTA */}
+      {(step.resourceLink && step.resourceText) && (
+        <div className="pt-4 mt-6">
+          <a
+            href={step.resourceLink}
+            target={step.resourceLink.startsWith('http') ? '_blank' : '_self'}
+            rel={step.resourceLink.startsWith('http') ? 'noopener noreferrer' : ''}
+            className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg ${styles.buttonBg} text-white font-semibold shadow-md hover:shadow-lg transition-all transform hover:scale-105`}
+          >
+            <span>{step.resourceText}</span>
+            <ExternalLink className="h-5 w-5" />
+          </a>
+        </div>
+      )}
     </div>
   );
 }

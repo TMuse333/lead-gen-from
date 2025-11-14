@@ -1,13 +1,13 @@
 // components/landing/MarketInsights.tsx
 
-import { LlmMarketInsights, MarketInsight } from "@/types/resultsPageComponents/components/marketInsights";
+import { LlmMarketInsightsProps, MarketInsight } from "@/types/resultsPageComponents/components/marketInsights";
 import { TrendingUp, Info, AlertCircle, CheckCircle2, BarChart3 } from 'lucide-react';
 
-interface MarketInsightsProps {
-  data: LlmMarketInsights;
+interface MarketInsightsData {
+  data: LlmMarketInsightsProps;
 }
 
-export function MarketInsights({ data }: MarketInsightsProps) {
+export function MarketInsights({ data }: MarketInsightsData) {
   return (
     <section className="market-insights py-12 px-6">
       <div className="max-w-6xl mx-auto">
