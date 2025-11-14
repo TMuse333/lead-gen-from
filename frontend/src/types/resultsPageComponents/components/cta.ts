@@ -4,86 +4,154 @@ import { ComponentSchema, SchemaField } from '../schemas';
 // Next Steps CTA Schema
 // ------------------------------------------
 
+// Updated NEXT_STEPS_CTA_SCHEMA
+// lib/llmSchemas.ts → NEXT_STEPS_CTA_SCHEMA (FINAL VERSION)
+
 export const NEXT_STEPS_CTA_SCHEMA: ComponentSchema = {
   componentName: 'nextStepsCTA',
-  description: 'Final CTA with momentum, recap, and personal touch',
+  description: 'Final CTA section with momentum, recap, and personal touch from Chris',
   fields: {
     hook: {
       type: 'string',
-      description: 'Opening line that creates urgency/momentum',
+      description: 'Opening hook that creates urgency and momentum based on user timeline and market',
       required: true,
-      constraints: { wordCount: '15-25 words', tone: 'urgent but not pushy' },
-      example: 'With a 6-12 month timeline, now is the perfect time...'
+      constraints: {
+        wordCount: '15-25 words',
+        tone: 'confident, personalized, forward-looking',
+      },
+      example: 'With a 6-12 month timeline and rising condo demand, now is the perfect window to find your ideal home.',
     },
+
     keyRecap: {
       type: 'array',
-      description: '3-4 key recap points with icon, label, value',
+      description: '3–4 visual recap cards summarizing the user’s situation and our plan',
       required: true,
       constraints: { minLength: 3, maxLength: 4 },
       items: {
         type: 'object',
+        description: 'Single recap card',
+        required: true,
         fields: {
-          icon: { type: 'string', description: 'Emoji icon', required: true, example: 'home' },
-          label: { type: 'string', description: 'Short label', required: true, example: 'Timeline' },
-          value: { type: 'string', description: 'Value', required: true, example: '6-12 months' }
-        }
+          icon: {
+            type: 'string',
+            description: 'Lucide icon name (e.g. home, calendar, dollar-sign, target)',
+            required: true,
+            example: 'home',
+            context: 'Use lowercase hyphenated names: home, calendar, dollar-sign, map-pin, target, clock',
+          },
+          label: {
+            type: 'string',
+            description: 'Short descriptive label',
+            required: true,
+            example: 'Property Type',
+          },
+          value: {
+            type: 'string',
+            description: 'Exact value from user input',
+            required: true,
+            example: 'Condo/Apartment',
+          },
+        },
       },
-      example: [{ icon: 'clock', label: 'Timeline', value: '0-3 months' }]
+      example: [
+        { icon: 'home', label: 'Property Type', value: 'Condo/Apartment' },
+        { icon: 'dollar-sign', label: 'Budget', value: '$600K - $800K' },
+        { icon: 'calendar', label: 'Timeline', value: '6-12 months' },
+        { icon: 'target', label: 'Goal', value: 'Upgrading' },
+      ],
     },
+
     transitionText: {
       type: 'string',
-      description: 'Bridge to CTA',
+      description: 'Confident bridge from recap to action',
       required: true,
-      constraints: { wordCount: '10-15 words' },
-      example: 'Now let\'s make it happen. Here\'s how we get started:'
+      constraints: { wordCount: '8-15 words' },
+      example: "Now let's make it happen. Here's how we get started:",
     },
+
     primaryCTA: {
       type: 'object',
-      description: 'Main CTA button',
+      description: 'Main call-to-action button (highest commitment)',
       required: true,
       fields: {
-        text: { type: 'string', required: true, example: 'Schedule a Consultation' },
-        subtext: { type: 'string', required: true, example: 'Free 15-min call' },
-        urgencyNote: { type: 'string', required: false, example: 'Limited spots this week' }
-      }
+        text: {
+          type: 'string',
+          description: 'Button text',
+          required: true,
+          example: 'Schedule a Free Consultation',
+        },
+        subtext: {
+          type: 'string',
+          description: 'Small text below button',
+          required: true,
+          example: '15-minute call · No obligation',
+        },
+        urgencyNote: {
+          type: 'string',
+          description: 'Optional urgency line (only if truly limited)',
+          required: false,
+          example: 'Limited spots this week',
+        },
+      },
     },
+
     secondaryCTA: {
       type: 'object',
-      description: 'Alternative CTA',
+      description: 'Lower-commitment alternative CTA',
       required: true,
       fields: {
-        text: { type: 'string', required: true, example: 'Browse Listings' },
-        subtext: { type: 'string', required: true, example: 'See what’s available now' }
-      }
+        text: {
+          type: 'string',
+          required: true,
+          example: 'Browse Current Listings',
+          description:'Call to action'
+        },
+        subtext: {
+          type: 'string',
+          required: true,
+          example: 'See what’s available in your range',
+          description:'Call to action'
+        },
+      },
     },
+
     trustElements: {
       type: 'array',
-      description: '2-3 trust signals',
+      description: '2–3 trust signals to reduce hesitation',
       required: true,
       constraints: { minLength: 2, maxLength: 3 },
-      items: { type: 'string' },
-      example: ['No obligation', '150+ families helped']
+      items: { type: 'string',
+      description:'Call to action',
+      required:true
     },
+      example: [
+        '100% free consultation',
+        'No pressure, ever',
+        'Local market expert since 2015',
+      ],
+    },
+
     personalNote: {
       type: 'object',
-      description: 'Personal message from Chris',
+      description: 'Warm, authentic closing message from the agent',
       required: true,
       fields: {
         message: {
           type: 'string',
+          description: 'Personal, caring message that makes the user feel seen',
           required: true,
-          description: 'Warm, authentic message',
-          example: "I'm excited to help you find the perfect condo."
+          constraints: { wordCount: '25-45 words', tone: 'warm, genuine, excited' },
+          example: "Jonathan, I’m truly excited to help you find the perfect condo that fits your lifestyle and budget. I’ve helped dozens of buyers just like you — let’s make this smooth and stress-free.",
         },
         signature: {
           type: 'string',
+          description: 'Agent name (usually "chris")',
           required: true,
-          description: 'Agent name',
-          example: 'Chris'
-        }
-      }
-    }
-  }
+          example: 'Chris',
+        },
+      },
+    },
+  },
 };
 
 // ------------------------------------------

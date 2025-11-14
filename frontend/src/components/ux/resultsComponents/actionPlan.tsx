@@ -80,7 +80,7 @@ export function ActionPlan({ data }: ActionPlanProps) {
         {/* Carousel */}
         <div className="relative">
           <div className="overflow-hidden">
-            <StepCard step={data.steps[currentStep] as SafeActionStep} isActive={true} />
+            <StepCard step={data.steps[currentStep] } isActive={true} />
           </div>
 
           {totalSteps > 1 && (
@@ -132,18 +132,7 @@ interface StepCardProps {
   isActive: boolean;
 }
 
-function StepCard({ step, isActive }: StepCardProps) {
-  // === INFER URGENCY FROM TIMELINE IF MISSING ===
-  const inferUrgency = (): 'immediate' | 'soon' | 'later' => {
-    if (!step.timeline) return 'soon';
-    const tl = step.timeline.toLowerCase();
-    if (tl.includes('now') || tl.includes('immediate') || tl.includes('week')) return 'immediate';
-    if (tl.includes('month') || tl.includes('soon')) return 'soon';
-    return 'later';
-  };
-
-  const urgency = step.urgency || inferUrgency();
-
+function StepCard({ step, isActive }: { step: ActionStep; isActive: boolean }) {
   const urgencyStyles = {
     immediate: {
       gradient: 'bg-gradient-to-br from-red-50 via-orange-50 to-amber-50',
@@ -153,7 +142,7 @@ function StepCard({ step, isActive }: StepCardProps) {
       accentColor: 'text-orange-600',
       buttonBg: 'bg-orange-600 hover:bg-orange-700',
       iconBg: 'bg-orange-100',
-      pulse: true
+      pulse: true,
     },
     soon: {
       gradient: 'bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50',
@@ -163,7 +152,7 @@ function StepCard({ step, isActive }: StepCardProps) {
       accentColor: 'text-blue-600',
       buttonBg: 'bg-blue-600 hover:bg-blue-700',
       iconBg: 'bg-blue-100',
-      pulse: false
+      pulse: false,
     },
     later: {
       gradient: 'bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50',
@@ -173,11 +162,11 @@ function StepCard({ step, isActive }: StepCardProps) {
       accentColor: 'text-emerald-600',
       buttonBg: 'bg-emerald-600 hover:bg-emerald-700',
       iconBg: 'bg-emerald-100',
-      pulse: false
-    }
+      pulse: false,
+    },
   };
 
-  const styles = urgencyStyles[urgency] || urgencyStyles.soon; // ← SAFE FALLBACK
+  const styles = urgencyStyles[step.urgency]; // No fallback needed — guaranteed to exist
 
   return (
     <div
@@ -188,7 +177,7 @@ function StepCard({ step, isActive }: StepCardProps) {
         ${isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
       `}
     >
-      {/* Step Number Badge */}
+      {/* Step Badge */}
       <div className="flex items-start justify-between mb-6">
         <div className={`inline-flex items-center gap-3 px-4 py-2 rounded-lg ${styles.badgeBg} border ${styles.borderColor}`}>
           <span className={`text-sm font-bold ${styles.badgeText}`}>
@@ -196,29 +185,29 @@ function StepCard({ step, isActive }: StepCardProps) {
           </span>
           {styles.pulse && (
             <span className="relative flex h-3 w-3">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${styles.badgeBg} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-3 w-3 bg-orange-600`}></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${styles.badgeBg} opacity-75`} />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-600" />
             </span>
           )}
         </div>
-        <div className={`text-xs font-medium ${styles.accentColor} flex items-center gap-1`}>
-          <span>Priority {step.priority}</span>
+        <div className={`text-xs font-medium ${styles.accentColor}`}>
+          Priority {step.priority}
         </div>
       </div>
 
       {/* Title */}
       <h3 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-        {step.title || step.action} {/* ← Support old `action` field */}
+        {step.title}
       </h3>
 
       {/* Description */}
       <p className="text-lg text-gray-700 leading-relaxed mt-4">
-        {step.description || step.details} {/* ← Support old `details` field */}
+        {step.description}
       </p>
 
-      {/* Rest of content (benefit, timeline, etc.) */}
+      {/* Benefit */}
       {step.benefit && (
-        <div className="flex items-start gap-3 p-4 bg-white bg-opacity-60 rounded-lg border border-gray-200 backdrop-blur-sm mt-6">
+        <div className="flex items-start gap-3 p-4 bg-white/60 rounded-lg border border-gray-200 backdrop-blur-sm mt-6">
           <CheckCircle2 className={`h-6 w-6 ${styles.accentColor} flex-shrink-0 mt-0.5`} />
           <div>
             <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">Why This Matters</p>
@@ -233,28 +222,26 @@ function StepCard({ step, isActive }: StepCardProps) {
           <Clock className={`h-5 w-5 ${styles.accentColor}`} />
           <div>
             <p className="text-xs font-semibold text-gray-600 uppercase">Timeline</p>
-            <p className={`text-sm font-bold ${styles.accentColor}`}>{step.timeline || 'Flexible'}</p>
+            <p className={`text-sm font-bold ${styles.accentColor}`}>{step.timeline}</p>
           </div>
         </div>
         <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${styles.iconBg} border ${styles.borderColor}`}>
           <TrendingUp className={`h-5 w-5 ${styles.accentColor}`} />
           <div>
             <p className="text-xs font-semibold text-gray-600 uppercase">Urgency</p>
-            <p className={`text-sm font-bold ${styles.accentColor} capitalize`}>{urgency}</p>
+            <p className={`text-sm font-bold ${styles.accentColor} capitalize`}>{step.urgency}</p>
           </div>
         </div>
       </div>
 
       {/* CTA */}
-      {(step.resourceLink && step.resourceText) && (
-        <div className="pt-4 mt-6">
+      {step.resourceLink && step.resourceText && (
+        <div className="mt-8">
           <a
             href={step.resourceLink}
-            target={step.resourceLink.startsWith('http') ? '_blank' : '_self'}
-            rel={step.resourceLink.startsWith('http') ? 'noopener noreferrer' : ''}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg ${styles.buttonBg} text-white font-semibold shadow-md hover:shadow-lg transition-all transform hover:scale-105`}
+            className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg ${styles.buttonBg} text-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105`}
           >
-            <span>{step.resourceText}</span>
+            {step.resourceText}
             <ExternalLink className="h-5 w-5" />
           </a>
         </div>

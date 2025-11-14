@@ -7,46 +7,55 @@ import { ComponentSchema } from "@/types/resultsPageComponents/schemas";
 
 
 function buildSingleSchemaPrompt(schema: ComponentSchema): string {
-  let prompt = `  "${schema.componentName}": {\n`;
-  prompt += `    // ${schema.description}\n`;
-  
-  Object.entries(schema.fields).forEach(([fieldName, fieldSchema]) => {
-    const required = fieldSchema.required ? 'REQUIRED' : 'OPTIONAL';
-    
-    prompt += `    "${fieldName}": `;
-    
-    // Type hint
-    if (fieldSchema.type === 'enum') {
-      prompt += `"${fieldSchema.constraints?.options?.join(' | ')}"`;
-    } else {
-      prompt += fieldSchema.type;
-    }
-    
-    prompt += ` (${required})`;
-    
-    // Constraints
-    if (fieldSchema.constraints) {
-      const parts = [];
-      if (fieldSchema.constraints.wordCount) parts.push(fieldSchema.constraints.wordCount);
-      if (fieldSchema.constraints.tone) parts.push(fieldSchema.constraints.tone);
-      if (parts.length > 0) {
-        prompt += `\n      [${parts.join(', ')}]`;
+  let prompt = ` "${schema.componentName}": {\n`;
+  prompt += `   // ${schema.description}\n\n`;
+
+  Object.entries(schema.fields).forEach(([fieldName, field]) => {
+    const required = field.required ? 'REQUIRED' : 'optional';
+    prompt += `   "${fieldName}": `;
+
+    if (field.type === 'object' && field.fields) {
+      prompt += `{\n`;
+      Object.entries(field.fields).forEach(([k, f]) => {
+        const r = f.required ? 'REQUIRED' : 'optional';
+        prompt += `     "${k}": ${f.type} (${r}) // ${f.description}\n`;
+        if (f.example) prompt += `     // Example: ${JSON.stringify(f.example)}\n`;
+      });
+      prompt += `   }`;
+    } else if (field.type === 'array' && field.items) {
+      prompt += `[\n`;
+      if (field.items.type === 'object' && field.items.fields) {
+        prompt += `     {\n`;
+        Object.entries(field.items.fields).forEach(([k, f]) => {
+          const r = f.required ? 'REQUIRED' : 'optional';
+          prompt += `       "${k}": ${f.type} (${r}) // ${f.description}\n`;
+          if (f.example) prompt += `       // Example: ${JSON.stringify(f.example)}\n`;
+        });
+        prompt += `     }\n`;
+      } else {
+        prompt += `     ${field.items.type}\n`;
       }
+      prompt += `   ]`;
+      if (field.constraints?.minLength || field.constraints?.maxLength) {
+        prompt += ` [${field.constraints.minLength || 0}-${field.constraints.maxLength || '∞'} items]`;
+      }
+    } else {
+      prompt += `${field.type}`;
     }
-    
-    // Description and context
-    prompt += `\n      // ${fieldSchema.description}`;
-    if (fieldSchema.context) {
-      prompt += `\n      // ${fieldSchema.context}`;
+
+    prompt += ` (${required})`;
+    if (field.constraints?.wordCount) prompt += ` [${field.constraints.wordCount}]`;
+    if (field.constraints?.tone) prompt += ` [tone: ${field.constraints.tone}]`;
+
+    prompt += `\n   // ${field.description}`;
+    if (field.context) prompt += `\n   // ${field.context}`;
+    if (field.example && !field.fields && !field.items) {
+      prompt += `\n   // Example: ${JSON.stringify(field.example)}`;
     }
-    if (fieldSchema.example) {
-      prompt += `\n      // Example: "${fieldSchema.example}"`;
-    }
-    
-    prompt += '\n';
+    prompt += `\n\n`;
   });
-  
-  prompt += `  }`;
+
+  prompt += ` }\n`;
   return prompt;
 }
 
@@ -97,6 +106,10 @@ CRITICAL RULES:
 - Include first name if available
 - Omit optional fields if not confident
 - Follow all word counts, tones, and constraints exactly
+- For budget: ALWAYS use the exact value the user provided, including ranges like "$600K - $800K" or "Under $500K".
+- Never replace budget with "TBD", "To be discussed", or "Not specified" unless the user Literally said nothing about budget.
+- If user says "$600K - $800K", output exactly that as the value.
+- Use "dollar-sign" as the icon for budget.
 `;
 }
 

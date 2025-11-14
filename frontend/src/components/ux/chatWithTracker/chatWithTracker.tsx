@@ -1,3 +1,4 @@
+// components/chatWithTracker.tsx
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -30,6 +31,7 @@ export default function ChatWithTracker() {
   const sendMessage = useChatStore((s) => s.sendMessage);
   const handleButtonClick = useChatStore((s) => s.handleButtonClick);
   const clearCelebration = useChatStore((s) => s.clearCelebration);
+  const setLlmOutput = useChatStore((s) => s.setLlmOutput);  // ← NEW: store result
   const resetChat = useChatStore((s) => s.reset);
 
   const [input, setInput] = useState('');
@@ -51,59 +53,44 @@ export default function ChatWithTracker() {
     }
   }, [shouldCelebrate, clearCelebration]);
 
-  // Submit to generate-landing-page when complete
+  // NEW: Submit to /api/test-component when chat is complete
   useEffect(() => {
     if (!isComplete) return;
     if (submissionCalledRef.current) return;
-
-    if (!currentFlow) {
-      console.warn('Flow not yet selected, waiting...');
-      return;
-    }
-
-    if (!userInput || Object.keys(userInput).length === 0) {
-      console.warn('No answers yet, waiting...');
-      return;
-    }
+    if (!currentFlow || !userInput || Object.keys(userInput).length === 0) return;
 
     submissionCalledRef.current = true;
 
-    const submitForm = async () => {
+    const submitFastResults = async () => {
       try {
-        console.log('🚀 Submitting to generate-landing-page...', { currentFlow, userInput });
+        console.log('Fast-tracking results via /api/test-component...', { currentFlow, userInput });
 
-        const response = await axios.post('/api/generate-landing-page', {
+        const { data } = await axios.post("/api/test-component", {
           flow: currentFlow,
-          userInput: userInput,
-          agentId: process.env.NEXT_PUBLIC_AGENT_ID || 'default-agent',
+          userInput,
         });
 
-        const data = response.data;
-        console.log('✅ Landing page generated:', data);
+        console.log('Results generated!', data);
 
-        if (!data.success) {
-          console.error('Generation failed:', data.error);
-          alert('Failed to generate your page. Please try again.');
-          return;
-        }
+        // Store in Zustand so Results page can access it
+        setLlmOutput(data);
+        localStorage.setItem("llmResultsCache", JSON.stringify(data));
 
-        // Store the result somewhere if needed, or navigate directly
-        // You can use a result store here if you want
-        
         // Reset chat for next user
         resetChat();
 
-        // Navigate to results page
+        // Go straight to results
         router.push('/results');
 
-      } catch (err) {
-        console.error('❌ Error generating landing page:', err);
-        alert('Error generating your page. Please try again.');
+      } catch (err: any) {
+        console.error('Fast track failed:', err);
+        alert(`Error: ${err.response?.data?.error || err.message || 'Unknown error'}`);
+        submissionCalledRef.current = false; // allow retry
       }
     };
 
-    submitForm();
-  }, [isComplete, currentFlow, userInput, resetChat, router]);
+    submitFastResults();
+  }, [isComplete, currentFlow, userInput, setLlmOutput, resetChat, router]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -114,7 +101,8 @@ export default function ChatWithTracker() {
 
   return (
     <div className="flex flex-col md:flex-row gap-6 max-w-7xl mx-auto p-4 text-black">
-      <FastTrackButton/>
+      <FastTrackButton />
+
       {/* Chat Messages */}
       <div className="flex-1 flex flex-col h-[600px] bg-white rounded-xl shadow-lg">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -129,8 +117,8 @@ export default function ChatWithTracker() {
                 <div className="flex items-center gap-3">
                   <Sparkles className="text-blue-600" size={24} />
                   <div>
-                    <p className="font-semibold text-blue-900">🎉 Analysis Started!</p>
-                    <p className="text-sm text-blue-700">I'm building your personalized report</p>
+                    <p className="font-semibold text-blue-900">Analysis Complete!</p>
+                    <p className="text-sm text-blue-700">Building your personalized report...</p>
                   </div>
                 </div>
               </motion.div>

@@ -1,69 +1,31 @@
 // components/ux/resultsComponents/NextStepsCTA.tsx
 import { LlmNextStepsCTAProps, KeyRecapItem } from "@/types";
-import { ArrowRight, CheckCircle2, Shield, Clock, Heart, Home, Calendar, TrendingUp, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Shield, Clock, Heart, Home, Calendar, TrendingUp, Sparkles, LucideIcon } from 'lucide-react';
 
 interface NextStepsCTAProps {
-  data: {
-    hook: string;
-    keyRecap: string[]; // ← LLM gives strings
-    transitionText: string;
-    primaryCTA: { label: string; url: string }; // ← only these
-    secondaryCTA: { label: string; url: string };
-    trustElements?: string[];
-    personalNote?: { message?: string; signature?: string }; // ← optional
-  };
+  data: LlmNextStepsCTAProps;
 }
 
+const iconMap: Record<string, LucideIcon> = {
+  home: Home,
+  calendar: Calendar,
+  'trending-up': TrendingUp,
+  sparkles: Sparkles,
+  clock: Clock,
+  heart: Heart,
+  // add more as needed
+};
+
 export function NextStepsCTA({ data }: NextStepsCTAProps) {
-  // === TRANSFORM: string[] → KeyRecapItem[] ===
-  const recapItems: KeyRecapItem[] = data.keyRecap.map((item: string) => {
-    // Try to split "Label: Value" or "Value" → infer
-    const parts = item.split(':').map(s => s.trim());
-    if (parts.length >= 2) {
-      return {
-        label: parts[0],
-        value: parts.slice(1).join(':'),
-        icon: 'sparkles' // default
-      };
-    }
+  // No more string parsing! Data is now correct
+  const recapItems = data.keyRecap || [];
 
-    // Fallback: infer from content
-    const lower = item.toLowerCase();
-    let icon = 'sparkles';
-    if (lower.includes('condo') || lower.includes('apartment')) icon = 'home';
-    if (lower.includes('timeline') || lower.includes('month')) icon = 'calendar';
-    if (lower.includes('market')) icon = 'trending-up';
-
-    return {
-      label: '',
-      value: item,
-      icon
-    };
-  });
-
-  // === SAFE: personalNote with fallbacks ===
-  const personalNote = data.personalNote ;
-  const signature = personalNote!.signature  ;
-  const message = personalNote!.message ;
-
-  // === SAFE: CTA with fallbacks ===
-  const primaryCTA = {
-    text: data.primaryCTA.label ,
-    subtext: 'Book a free consultation',
-    urgencyNote: undefined
-  };
-
-  const secondaryCTA = {
-    text: data.secondaryCTA.label ,
-    subtext: 'See what’s available'
-  };
-
-  // === SAFE: trustElements ===
-  const trustElements = data.trustElements || [
-    '100% Free Consultation',
-    'No Pressure, Just Guidance',
-    'Local Market Expert'
-  ];
+  const primaryCTA = data.primaryCTA || { text: 'Get Started', subtext: 'Free consultation' };
+  const secondaryCTA = data.secondaryCTA || { text: 'Browse Options', subtext: 'See what’s available' };
+  const trustElements = data.trustElements || ['No obligation', 'Local expert', 'Fast response'];
+  
+  const personalNote = data.personalNote || { message: "I'm here to help.", signature: "Chris" };
+  const signature = personalNote.signature || "Chris";
 
   return (
     <section className="next-steps-cta py-16 px-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
@@ -79,12 +41,7 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
         {/* Key Recap */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {recapItems.map((item, index) => {
-            const Icon = {
-              'home': Home,
-              'calendar': Calendar,
-              'trending-up': TrendingUp,
-              'sparkles': Sparkles
-            }[item.icon] || Sparkles;
+            const Icon = iconMap[item.icon] || Sparkles;
 
             return (
               <div
@@ -93,7 +50,7 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
               >
                 <div className="text-center">
                   <div className="text-3xl mb-2">
-                    <Icon className="h-8 w-8 mx-auto text-indigo-600" />
+                    <Icon className="h-10 w-10 mx-auto text-indigo-600" />
                   </div>
                   {item.label && (
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
@@ -119,41 +76,37 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
           {/* Primary */}
-          <div className="relative group">
-            <button className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3">
+          <div className="text-center">
+            <button className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3 mx-auto">
               <span>{primaryCTA.text}</span>
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="h-5 w-5" />
             </button>
-            <div className="text-center mt-2">
-              <p className="text-sm text-gray-600">{primaryCTA.subtext}</p>
-              {primaryCTA.urgencyNote && (
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <Clock className="h-3 w-3 text-orange-600" />
-                  <span className="text-xs font-semibold text-orange-600">
-                    {primaryCTA.urgencyNote}
-                  </span>
-                </div>
-              )}
-            </div>
+            <p className="text-sm text-gray-600 mt-2">{primaryCTA.subtext}</p>
+            {primaryCTA.urgencyNote && (
+              <div className="flex items-center justify-center gap-1 mt-1">
+                <Clock className="h-3 w-3 text-orange-600" />
+                <span className="text-xs font-semibold text-orange-600">
+                  {primaryCTA.urgencyNote}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Secondary */}
-          <div className="relative">
-            <button className="w-full sm:w-auto px-8 py-4 bg-white text-indigo-600 border-2 border-indigo-300 rounded-xl font-semibold text-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3">
-              <span>{secondaryCTA.text}</span>
+          <div className="text-center">
+            <button className="px-8 py-4 bg-white text-indigo-600 border-2 border-indigo-300 rounded-xl font-semibold text-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300">
+              {secondaryCTA.text}
             </button>
-            <div className="text-center mt-2">
-              <p className="text-sm text-gray-600">{secondaryCTA.subtext}</p>
-            </div>
+            <p className="text-sm text-gray-600 mt-2">{secondaryCTA.subtext}</p>
           </div>
         </div>
 
         {/* Trust Elements */}
-        <div className="flex flex-wrap items-center justify-center gap-6 mb-10 pb-10 border-b-2 border-indigo-100">
-          {trustElements.map((element, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
-              <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
-              <span className="font-medium">{element}</span>
+        <div className="flex flex-wrap justify-center gap-6 mb-10 pb-10 border-b-2 border-indigo-100">
+          {trustElements.map((text, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <span className="font-medium">{text}</span>
             </div>
           ))}
         </div>
@@ -163,7 +116,7 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
           <div className="flex flex-col md:flex-row items-start gap-6">
             <div className="flex-shrink-0">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-3xl font-bold text-indigo-600 border-4 border-white shadow-md">
-                {signature!.charAt(0)}
+                {signature.charAt(0)}
               </div>
             </div>
             <div className="flex-1">
@@ -174,7 +127,7 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
                 </h3>
               </div>
               <p className="text-base text-gray-700 leading-relaxed mb-4">
-                {message}
+                {personalNote.message}
               </p>
               <div className="flex items-center gap-2">
                 <div className="h-px flex-1 bg-gradient-to-r from-indigo-300 to-transparent"></div>
@@ -185,12 +138,13 @@ export function NextStepsCTA({ data }: NextStepsCTAProps) {
           </div>
         </div>
 
-        {/* Final Trust */}
-        <div className="flex items-center justify-center gap-2 mt-8">
-          <Shield className="h-5 w-5 text-indigo-600" />
-          <p className="text-sm text-gray-600 font-medium">
-            Your information is secure and will never be shared
-          </p>
+        <div className="text-center mt-8">
+          <div className="flex items-center justify-center gap-2">
+            <Shield className="h-5 w-5 text-indigo-600" />
+            <p className="text-sm text-gray-600 font-medium">
+              Your information is secure and will never be shared
+            </p>
+          </div>
         </div>
       </div>
     </section>
