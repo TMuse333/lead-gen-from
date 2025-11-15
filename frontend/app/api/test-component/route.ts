@@ -3,16 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { buildMultiComponentPrompt } from "@/lib/openai/prompts";
 import {
-  HERO_BANNER_SCHEMA,
-  PROFILE_SUMMARY_SCHEMA,
-  PERSONAL_MESSAGE_SCHEMA,
-  MARKET_INSIGHTS_SCHEMA,
-  ACTION_PLAN_SCHEMA,
-  NEXT_STEPS_CTA_SCHEMA,
+
   ComponentSchema,
 } from "@/types";
 
-import type { LlmOutput } from "@/types";
+
+import { ACTION_PLAN_SCHEMA, HERO_BANNER_SCHEMA, MARKET_INSIGHTS_SCHEMA, NEXT_STEPS_CTA_SCHEMA, PERSONAL_MESSAGE_SCHEMA, PROFILE_SUMMARY_SCHEMA } from "@/components/ux/resultsComponents";
+import { LlmOutput } from "@/types/componentSchema";
+
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,

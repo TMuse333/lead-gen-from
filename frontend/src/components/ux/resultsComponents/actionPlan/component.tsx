@@ -1,6 +1,6 @@
 // components/ux/resultsComponents/actionPlan.tsx
 'use client';
-import { LlmActionPlanProps, ActionStep } from "@/components/ux/resultsComponents/actionPlan";
+import { LlmActionPlanProps, ActionStep } from "./schema";
 import { ChevronLeft, ChevronRight, CheckCircle2, ExternalLink, Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
@@ -9,9 +9,7 @@ interface ActionPlanProps {
 }
 
 // === UPDATE: Make urgency optional in incoming data ===
-interface SafeActionStep extends Omit<ActionStep, 'urgency'> {
-  urgency?: 'immediate' | 'soon' | 'later';
-}
+
 
 export function ActionPlan({ data }: ActionPlanProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -127,10 +125,7 @@ export function ActionPlan({ data }: ActionPlanProps) {
 }
 
 // ==================== STEP CARD (SAFE VERSION) ====================
-interface StepCardProps {
-  step: SafeActionStep;
-  isActive: boolean;
-}
+
 
 function StepCard({ step, isActive }: { step: ActionStep; isActive: boolean }) {
   const urgencyStyles = {

@@ -21,5 +21,7 @@ export * from './chat.types'
 
 export * from './personalization.types'
 
+export * from './rules.types'
+
 
 

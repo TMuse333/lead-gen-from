@@ -1,6 +1,7 @@
 // types/personalization.types.ts
 
-import { ActionStepScenario } from '@/components/ux/resultsComponents';
+
+import { ActionStepScenario } from '@/components/ux/resultsComponents/actionPlan/types';
 import { AgentAdviceScenario } from '@/types';
 import {  } from '@/types';
 

@@ -1,4 +1,4 @@
-import { SchemaField } from '../../../../../types/schemas';
+import { SchemaField } from '@/types';
 
 // ------------------------------------------
 // Action Plan Schema

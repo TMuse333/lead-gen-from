@@ -6,4 +6,8 @@ export const qdrant = new QdrantClient({
   apiKey: process.env.QDRANT_API_KEY,
 });
 
+export const COLLECTIONS = {
+  ACTION_STEPS: 'agent-action-steps',
+} ;
+
 export { qdrant as qdrantClient };

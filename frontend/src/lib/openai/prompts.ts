@@ -168,23 +168,23 @@ CRITICAL RULES:
 /**
  * Builds prompt text for multiple schemas
  */
-export function buildSchemasPrompt(schemas: ComponentSchema[]): string {
-  let prompt = '{\n';
+// export function buildSchemasPrompt(schemas: ComponentSchema[]): string {
+//   let prompt = '{\n';
   
-  schemas.forEach((schema, index) => {
-    prompt += buildSingleSchemaPrompt(schema);
+//   schemas.forEach((schema, index) => {
+//     prompt += buildSingleSchemaPrompt(schema);
     
-    // Add comma if not last schema
-    if (index < schemas.length - 1) {
-      prompt += ',\n';
-    } else {
-      prompt += '\n';
-    }
-  });
+//     // Add comma if not last schema
+//     if (index < schemas.length - 1) {
+//       prompt += ',\n';
+//     } else {
+//       prompt += '\n';
+//     }
+//   });
   
-  prompt += '}';
-  return prompt;
-}
+//   prompt += '}';
+//   return prompt;
+// }
 
 /**
  * Generates the full prompt for landing page generation
