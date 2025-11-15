@@ -5,14 +5,12 @@ import React, { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
-import { LlmProfileSummary } from "@/components/ux/resultsComponents/profileSummary/profileSummary";
-import { PersonalMessage } from "@/components/ux/resultsComponents/personalMessage";
-import { MarketInsights } from "@/components/ux/resultsComponents/marketInsights";
-import { ActionPlan } from "@/components/ux/resultsComponents/actionPlan";
-import { NextStepsCTA } from "@/components/ux/resultsComponents/cta";
 
-import type { LlmOutput } from "@/types";
+
+
 import { useChatStore, selectLlmOutput, selectIsComplete } from "@/stores/chatStore";
+import { LlmOutput } from "@/types/componentSchema";
+import { ActionPlan, LlmProfileSummary, MarketInsights, NextStepsCTA, PersonalMessage } from "@/components/ux/resultsComponents";
 
 const STORAGE_KEY = "llmResultsCache";
 

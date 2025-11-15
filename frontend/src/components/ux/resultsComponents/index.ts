@@ -1,16 +1,9 @@
+// Export schemas
+export * from './herobanner/';  // ✅ Already correct
+export * from './personalMessage/';  // ✅ Already correct
+export * from './profileSummary/';  // ✅ Already correct
+export * from './actionPlan/';  // ⚠️ Change from 'component' to 'schema'
+export * from './marketAnalysis/';  // ✅ Already correct
+export * from './nextStepsCta/';  // ✅ Already correct
 
-
-export * from './herobanner/herobanner'
-
-export * from './personalMessage/personalMessage'
-
-export * from './profileSummary/profileSummary'
-
-export * from './actionPlan/component'
-
-export * from './marketAnalysis/marketInsights'
-
-export * from './nextStepsCta/cta'
-
-
-
+// Also export components if needed

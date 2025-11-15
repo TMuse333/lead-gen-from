@@ -64,15 +64,15 @@ export const MARKET_INSIGHTS_SCHEMA: {
       },
       context:
         'Each insight shows a metric + interpretation from their perspective. Must include sentiment (positive/neutral/caution) for visual styling. Order by importance to their flow.',
-      example: [
-        {
-          metric: 'Average Days to Sell',
-          value: '28 days',
-          interpretation: 'Homes are selling quickly - great time to list',
-          sentiment: 'positive',
-          icon: '⏱️',
-        },
-      ],
+      // example: [
+        
+      //     metric: 'Average Days to Sell',
+      //     value: '28 days',
+      //     interpretation: 'Homes are selling quickly - great time to list',
+      //     sentiment: 'positive',
+      //     icon: '⏱️',
+      //   },
+      // ],
     },
 
     recommendation: {

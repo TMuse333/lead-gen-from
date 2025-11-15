@@ -2,6 +2,23 @@
 
 import { PersonalizationContext } from "./personalization.types";
 
+export type KnowledgeSet = {
+  name:string,
+  type: 'vector' | 'rule'
+}
+
+
+export const availableCollections:KnowledgeSet[] = [
+  {
+    name:'advice',
+    type:'vector',
+  },
+  {
+    name:'actionSteps',
+    type:'rule'
+  }
+]
+
 export interface SchemaField {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum';
   description: string;
@@ -13,7 +30,7 @@ export interface SchemaField {
     tone?: string;
     options?: string[];
   };
-  example?: any;
+  example?: string | number;
   context?: string;
 
   // ADD THESE TWO — this is all you need!
@@ -29,8 +46,7 @@ export interface ComponentSchema {
   // Optional deep personalization
   personalization?: {
     // Which Qdrant collections to query before generating this component
-    retrieveFrom?: ('advice' | 'actionSteps')[];
-
+    retrieveFrom: KnowledgeSet[]
     // Simple way: append extra instructions to the generic prompt
     promptAddendum?: string;
 

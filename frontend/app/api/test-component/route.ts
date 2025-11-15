@@ -1,15 +1,21 @@
 // app/api/test-component/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { buildMultiComponentPrompt } from "@/lib/openai/prompts";
+import {  buildMultiComponentPromptWithMetadata } from "@/lib/openai/prompts";
 import {
 
   ComponentSchema,
 } from "@/types";
 
 
-import { ACTION_PLAN_SCHEMA, HERO_BANNER_SCHEMA, MARKET_INSIGHTS_SCHEMA, NEXT_STEPS_CTA_SCHEMA, PERSONAL_MESSAGE_SCHEMA, PROFILE_SUMMARY_SCHEMA } from "@/components/ux/resultsComponents";
+
 import { LlmOutput } from "@/types/componentSchema";
+import { ACTION_PLAN_SCHEMA } from "@/components/ux/resultsComponents/actionPlan/schema";
+import { HERO_BANNER_SCHEMA, PROFILE_SUMMARY_SCHEMA,
+  PERSONAL_MESSAGE_SCHEMA,
+  MARKET_INSIGHTS_SCHEMA,
+  NEXT_STEPS_CTA_SCHEMA,
+} from "@/components/ux/resultsComponents";
 
 
 const openai = new OpenAI({
@@ -24,6 +30,8 @@ const DEFAULT_SCHEMAS: ComponentSchema[] = [
   ACTION_PLAN_SCHEMA,
   NEXT_STEPS_CTA_SCHEMA,
 ];
+
+console.log('all schemas',DEFAULT_SCHEMAS)
 
 /* --------------------------------------------------------------
    Type guard: Validate LlmOutput shape
@@ -105,11 +113,28 @@ export async function POST(req: NextRequest) {
 
     // 3. Build prompt
     console.log("Building multi-component prompt...");
-    const prompt = buildMultiComponentPrompt(
+    const { prompt, metadata } = await buildMultiComponentPromptWithMetadata(
       DEFAULT_SCHEMAS,
       flow,
-      typedUserInput
+      typedUserInput,
+      process.env.AGENT_ID!
     );
+
+
+
+    console.log(`\n📊 Qdrant Retrieval Summary:`);
+    metadata.forEach(meta => {
+      console.log(`   📦 ${meta.collection} (${meta.type}): ${meta.count} items`);
+      meta.items.forEach((item, i) => {
+        if (meta.type === 'rule') {
+          console.log(`      ${i + 1}. ${item.title} (score: ${item.score?.toFixed(2)})`);
+        } else {
+          console.log(`      ${i + 1}. ${item.title}`);
+        }
+      });
+    }); 
+
+
     console.log(`Prompt built. Length: ${prompt.length} characters`);
     console.log("Prompt preview:", prompt.slice(0, 500) + "...");
 
@@ -119,7 +144,7 @@ export async function POST(req: NextRequest) {
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1200,
+      max_tokens: 4000,
     });
 
     const raw = completion.choices[0].message.content?.trim() ?? "";
@@ -135,7 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Parse JSON
-    let parsed: unknown;
+    let parsed: LlmOutput;
     try {
       parsed = JSON.parse(raw);
       console.log("JSON parsed successfully");

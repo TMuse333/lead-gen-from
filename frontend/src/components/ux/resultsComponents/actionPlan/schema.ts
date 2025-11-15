@@ -1,17 +1,64 @@
-import { SchemaField } from '@/types';
+import { availableCollections, KnowledgeSet, SchemaField } from '@/types';
+import { ActionStep } from './types';
 
 // ------------------------------------------
-// Action Plan Schema
+// Action Plan Schema with Personalization
 // ------------------------------------------
+
+
 
 export const ACTION_PLAN_SCHEMA: {
   componentName: string;
   description: string;
   fields: Record<string, SchemaField>;
+  personalization?: {
+    retrieveFrom: KnowledgeSet[],
+    
+    promptAddendum?: string;
+  };
 } = {
   componentName: 'actionPlan',
   description:
     'The action plan is the highest-value component that delivers personalized, actionable guidance. Steps are displayed as a carousel of cards, each representing a specific action the user should take. This component uses Qdrant advice to provide Chris\'s expert recommendations tailored to the user\'s situation.',
+
+  personalization: {
+   
+    retrieveFrom: [
+    availableCollections.find(c => c.name === 'actionSteps')!] ,// rule-based,
+    promptAddendum: `
+SPECIAL INSTRUCTIONS FOR ACTION PLAN:
+
+1. PRIORITIZATION RULES:
+   - For timelines 0-3 months: Focus on IMMEDIATE actions (urgency: "immediate")
+   - For timelines 3-6 months: Balance immediate and soon actions
+   - For timelines 6-12+ months: Include more "later" urgency items
+
+2. STEP ORDERING:
+   - Always start with the most critical action based on user's timeline
+   - Financial/budget steps should come early for buyers
+   - Home prep/valuation steps should come early for sellers
+   - Marketing/search steps come in the middle
+   - Legal/moving steps come towards the end
+
+3. PERSONALIZATION DEPTH:
+   - Reference specific user details in step descriptions (e.g., "your kitchen renovation")
+   - Match urgency to timeline (0-3 months = mostly "immediate")
+   - Include timeline-specific advice from Chris's knowledge base
+   - Make resource links actionable and specific
+
+4. QUALITY CHECKS:
+   - Each step must have clear, actionable title
+   - Description should explain WHAT to do and WHY
+   - Benefit should create motivation
+   - Timeline should be realistic based on user's overall timeline
+   - No generic placeholders - everything must be personalized
+
+5. USE THE ADVICE:
+   - Pull specific recommendations from Chris's expert advice
+   - Transform advice into concrete action steps
+   - Don't just repeat advice - make it actionable
+    `.trim(),
+  },
 
   fields: {
     sectionTitle: {
@@ -41,89 +88,87 @@ export const ACTION_PLAN_SCHEMA: {
         'Sets expectations and builds confidence. Should reference their specific situation (timeline, goal) and reassure them this plan is personalized.',
     },
 
-    // actionPlan.ts
-
-steps: {
-  type: 'array',
-  description: 'Array of personalized action steps in priority order',
-  required: true,
-  constraints: {
-    minLength: 2,
-    maxLength: 5,
-  },
-  items: {
-    type: 'object',
-    description: 'A single action step card',
-    required: true,
-    fields: {
-      stepNumber: {
-        type: 'number',
-        description: 'Step number (1, 2, 3...)',
-        required: true,
-        example: 1,
+    steps: {
+      type: 'array',
+      description: 'Array of personalized action steps in priority order',
+      required: true,
+      constraints: {
+        minLength: 2,
+        maxLength: 5,
       },
-      title: {
-        type: 'string',
-        description: 'Clear, action-oriented title',
+      items: {
+        type: 'object',
+        description: 'A single action step card',
         required: true,
-        constraints: { wordCount: '4-10 words' },
-        example: 'Define Your Budget and Preferences',
-      },
-      description: {
-        type: 'string',
-        description: 'Detailed explanation of what to do and why',
-        required: true,
-        constraints: { wordCount: '25-50 words' },
-        example: 'Consider your must-haves, nice-to-haves, and budget range...',
-      },
-      benefit: {
-        type: 'string',
-        description: 'Why this step matters — creates motivation',
-        required: false,
-        example: 'Helps you avoid falling in love with condos outside your range',
-      },
-      timeline: {
-        type: 'string',
-        description: 'When this should be done',
-        required: true,
-        example: 'Next 2-4 weeks',
-      },
-      urgency: {
-        type: 'enum',
-        description: 'Visual urgency styling',
-        required: true,
-        constraints: {
-          options: ['immediate', 'soon', 'later'],
+        fields: {
+          stepNumber: {
+            type: 'number',
+            description: 'Step number (1, 2, 3...)',
+            required: true,
+            example: 1,
+          },
+          title: {
+            type: 'string',
+            description: 'Clear, action-oriented title',
+            required: true,
+            constraints: { wordCount: '4-10 words' },
+            example: 'Define Your Budget and Preferences',
+          },
+          description: {
+            type: 'string',
+            description: 'Detailed explanation of what to do and why',
+            required: true,
+            constraints: { wordCount: '25-50 words' },
+            example: 'Consider your must-haves, nice-to-haves, and budget range...',
+          },
+          benefit: {
+            type: 'string',
+            description: 'Why this step matters – creates motivation',
+            required: false,
+            example: 'Helps you avoid falling in love with condos outside your range',
+          },
+          timeline: {
+            type: 'string',
+            description: 'When this should be done',
+            required: true,
+            example: 'Next 2-4 weeks',
+          },
+          urgency: {
+            type: 'enum',
+            description: 'Visual urgency styling',
+            required: true,
+            constraints: {
+              options: ['immediate', 'soon', 'later'],
+            },
+            example: 'soon',
+          },
+          priority: {
+            type: 'number',
+            description: 'Used for ordering (lower = higher priority)',
+            required: true,
+            example: 1,
+          },
+          resourceText: {
+            type: 'string',
+            description: 'CTA button text',
+            required: false,
+            example: 'Schedule a Consultation',
+          },
+          resourceLink: {
+            type: 'string',
+            description: 'URL or path for the CTA',
+            required: false,
+            example: '/schedule-consultation',
+          },
+          imageUrl: {
+            type: 'string',
+            description: 'Optional image for the card',
+            required: false,
+            example: '/images/budget.jpg',
+          },
         },
-        example: 'soon',
-      },
-      priority: {
-        type: 'number',
-        description: 'Used for ordering (lower = higher priority)',
-        required: true,
-        example: 1,
-      },
-      resourceText: {
-        type: 'string',
-        description: 'CTA button text',
-        required: false,
-        example: 'Schedule a Consultation',
-      },
-      resourceLink: {
-        type: 'string',
-        description: 'URL or path for the CTA',
-        required: false,
-        example: '/schedule-consultation',
-      },
-      imageUrl: {
-        type: 'string',
-        description: 'Optional image for the card',
-        required: false,
-        example: '/images/budget.jpg',
       },
     },
-  },
-},
 
     closingNote: {
       type: 'string',
@@ -155,33 +200,26 @@ steps: {
 };
 
 // ------------------------------------------
-// Action Step Schema (nested within steps array)
-// ------------------------------------------
-
-// This defines the structure for each individual step
-
-
-// ------------------------------------------
 // Output Interfaces
 // ------------------------------------------
 
-export interface ActionStep {
-  stepNumber: number;
-  title: string;
-  description: string;
-  benefit?: string;
-  resourceLink?: string;
-  resourceText?: string;
-  imageUrl?: string;
-  priority: number;
-  urgency: 'immediate' | 'soon' | 'later';
-  timeline: string;
-}
+// export interface ActionStep {
+//   stepNumber: number;
+//   title: string;
+//   description: string;
+//   benefit?: string;
+//   resourceLink?: string;
+//   resourceText?: string;
+//   imageUrl?: string;
+//   priority: number;
+//   urgency: 'immediate' | 'soon' | 'later';
+//   timeline: string;
+// }
 
-export interface LlmActionPlanProps {
-  sectionTitle: string;
-  introText?: string;
-  steps: ActionStep[];
-  closingNote?: string;
-  overallUrgency?: 'high' | 'medium' | 'low';
-}
+// export interface LlmActionPlanProps {
+//   sectionTitle: string;
+//   introText?: string;
+//   steps: ActionStep[];
+//   closingNote?: string;
+//   overallUrgency?: 'high' | 'medium' | 'low';
+// }

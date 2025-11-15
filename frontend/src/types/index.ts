@@ -23,5 +23,7 @@ export * from './personalization.types'
 
 export * from './rules.types'
 
+export * from './qdrant.types'
+
 
 

@@ -72,18 +72,18 @@ export const PROFILE_SUMMARY_SCHEMA: ComponentSchema = {
         },
       },
       // Strong example so the LLM copies the pattern perfectly
-      example: [
-        { icon: 'home', label: 'Property Type', value: 'Condo/Apartment' },
-        { icon: 'dollar-sign', label: 'Budget', value: '$600K - $800K' },
-        { icon: 'calendar', label: 'Timeline', value: '6-12 months' },
-        { icon: 'target', label: 'Goal', value: 'Upgrading' },
-        {
-          icon: 'map-pin',
-          label: 'Location Preference',
-          value: 'Downtown Toronto',
-          context: 'High demand area with excellent appreciation potential',
-        },
-      ],
+      // example: [
+      //   { icon: 'home', label: 'Property Type', value: 'Condo/Apartment' },
+      //   { icon: 'dollar-sign', label: 'Budget', value: '$600K - $800K' },
+      //   { icon: 'calendar', label: 'Timeline', value: '6-12 months' },
+      //   { icon: 'target', label: 'Goal', value: 'Upgrading' },
+      //   {
+      //     icon: 'map-pin',
+      //     label: 'Location Preference',
+      //     value: 'Downtown Toronto',
+      //     context: 'High demand area with excellent appreciation potential',
+      //   },
+      // ],
     },
 
     timelineBadge: {

@@ -63,10 +63,10 @@ export async function getAllActionSteps(agentId?: string): Promise<ActionStepSce
   const filter = agentId ? { must: [{ key: 'agentId', match: { value: agentId } }] } : undefined;
 
   const result = await qdrant.scroll(COLLECTIONS.ACTION_STEPS, {
-    limit: 500,
-    with_payload: true,
-    with_vector: false,
-    filter,
+    // limit: 500,
+    // with_payload: true,
+    // with_vector: false,
+    // filter,
   });
 
   return result.points.map((p) => {

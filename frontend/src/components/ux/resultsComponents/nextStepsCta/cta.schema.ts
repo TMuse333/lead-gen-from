@@ -53,12 +53,12 @@ export const NEXT_STEPS_CTA_SCHEMA: ComponentSchema = {
           },
         },
       },
-      example: [
-        { icon: 'home', label: 'Property Type', value: 'Condo/Apartment' },
-        { icon: 'dollar-sign', label: 'Budget', value: '$600K - $800K' },
-        { icon: 'calendar', label: 'Timeline', value: '6-12 months' },
-        { icon: 'target', label: 'Goal', value: 'Upgrading' },
-      ],
+      // example: [
+      //   { icon: 'home', label: 'Property Type', value: 'Condo/Apartment' },
+      //   { icon: 'dollar-sign', label: 'Budget', value: '$600K - $800K' },
+      //   { icon: 'calendar', label: 'Timeline', value: '6-12 months' },
+      //   { icon: 'target', label: 'Goal', value: 'Upgrading' },
+      // ],
     },
 
     transitionText: {
@@ -124,11 +124,11 @@ export const NEXT_STEPS_CTA_SCHEMA: ComponentSchema = {
       description:'Call to action',
       required:true
     },
-      example: [
-        '100% free consultation',
-        'No pressure, ever',
-        'Local market expert since 2015',
-      ],
+      // example: [
+      //   '100% free consultation',
+      //   'No pressure, ever',
+      //   'Local market expert since 2015',
+      // ],
     },
 
     personalNote: {

@@ -89,10 +89,10 @@ export const PERSONAL_MESSAGE_SCHEMA: {
       constraints: { minLength: 2, maxLength: 3 },
       context:
         'Use when Qdrant advice includes stats or achievements. Each should be short and specific.',
-      example: [
-        { icon: '🏆', text: '150+ homes sold in Halifax' },
-        { icon: '📊', text: 'Top 1% REALTOR® in Nova Scotia' },
-      ],
+      // example: [
+      //   { icon: '🏆', text: '150+ homes sold in Halifax' },
+      //   { icon: '📊', text: 'Top 1% REALTOR® in Nova Scotia' },
+      // ],
     },
 
     tone: {
