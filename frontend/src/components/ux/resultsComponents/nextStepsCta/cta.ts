@@ -1,4 +1,4 @@
-import { ComponentSchema, SchemaField } from '../schemas';
+import { ComponentSchema, SchemaField } from '../../../../types/schemas';
 
 // ------------------------------------------
 // Next Steps CTA Schema

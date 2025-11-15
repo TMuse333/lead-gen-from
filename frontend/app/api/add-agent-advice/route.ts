@@ -3,7 +3,7 @@
 // Handles adding agent advice from frontend uploader (NEW FORMAT)
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
-import { storeAgentAdvice } from '@/lib/qdrant/qdrant';
+import { storeAgentAdvice } from '@/lib/qdrant/client';
 import { getEmbedding } from '@/lib/openai/embedding';
 
 export async function POST(request: NextRequest) {

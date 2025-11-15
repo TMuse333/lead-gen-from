@@ -1,6 +1,6 @@
 // components/landing/HeroBanner.tsx
 
-import { LlmHeroBannerProps } from "@/types/resultsPageComponents/components/herobanner";
+import { LlmHeroBannerProps } from "@/components/ux/resultsComponents/resultsPageComponents/components/herobanner";
 import { Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
 
 interface LlmHeroBannerData {

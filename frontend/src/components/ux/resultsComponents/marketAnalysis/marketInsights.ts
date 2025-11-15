@@ -1,4 +1,4 @@
-import { SchemaField } from '../schemas';
+import { SchemaField } from '@/types';
 
 // ------------------------------------------
 // Market Insights Schema

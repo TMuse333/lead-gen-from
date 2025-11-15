@@ -1,11 +1,11 @@
 // types/resultsPageComponents/landingPageSchemas.ts
 
-import { HERO_BANNER_SCHEMA, LlmHeroBannerProps } from "./components/herobanner";
-import { PROFILE_SUMMARY_SCHEMA, LlmProfileSummaryProps } from "./components/profileSummary";
-import { PERSONAL_MESSAGE_SCHEMA, LlmPersonalMessageProps } from "./components/personalMessage";
-import { ACTION_PLAN_SCHEMA, LlmActionPlanProps } from "./components/actionPlan";
-import { MARKET_INSIGHTS_SCHEMA, LlmMarketInsightsProps } from "./components/marketInsights";
-import { NEXT_STEPS_CTA_SCHEMA, LlmNextStepsCTAProps } from "./components/cta";
+import { HERO_BANNER_SCHEMA, LlmHeroBannerProps } from "../components/ux/resultsComponents/resultsPageComponents/components/herobanner";
+import { PROFILE_SUMMARY_SCHEMA, LlmProfileSummaryProps } from "../components/ux/resultsComponents/profileSummary/profileSummary";
+import { PERSONAL_MESSAGE_SCHEMA, LlmPersonalMessageProps } from "../components/ux/resultsComponents/personalMessage/personalMessage";
+import { ACTION_PLAN_SCHEMA, LlmActionPlanProps } from "../components/ux/resultsComponents/actionPlan/actionPlanTypes/actionPlan";
+import { MARKET_INSIGHTS_SCHEMA, LlmMarketInsightsProps } from "../components/ux/resultsComponents/resultsPageComponents/components/marketInsights";
+import { NEXT_STEPS_CTA_SCHEMA, LlmNextStepsCTAProps } from "../components/ux/resultsComponents/nextStepsCta/cta";
 import { ComponentSchema } from "./schemas";
 
 // ==================== COMPLETE LLM OUTPUT ====================

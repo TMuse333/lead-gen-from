@@ -3,7 +3,7 @@
 import { buildActionPlanPrompt } from "@/lib/openai/actionPlan";
 import { generateUserEmbedding } from "@/lib/openai/userEmbedding";
 import { queryActionSteps } from "@/lib/qdrant/actionSteps";
-import { queryRelevantAdvice } from "@/lib/qdrant/qdrant";
+import { queryRelevantAdvice } from "@/lib/qdrant/client";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import path from "path";

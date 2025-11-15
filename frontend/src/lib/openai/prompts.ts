@@ -1,7 +1,7 @@
 // lib/promptBuilder.ts
 
 
-import { ComponentSchema } from "@/types/resultsPageComponents/schemas";
+import { ComponentSchema } from "@/types/schemas";
 
 
 

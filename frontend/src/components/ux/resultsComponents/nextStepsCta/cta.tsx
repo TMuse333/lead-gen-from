@@ -1,5 +1,5 @@
 // components/ux/resultsComponents/NextStepsCTA.tsx
-import { LlmNextStepsCTAProps, KeyRecapItem } from "@/types";
+import { LlmNextStepsCTAProps, KeyRecapItem } from "./cta";
 import { ArrowRight, CheckCircle2, Shield, Clock, Heart, Home, Calendar, TrendingUp, Sparkles, LucideIcon } from 'lucide-react';
 
 interface NextStepsCTAProps {

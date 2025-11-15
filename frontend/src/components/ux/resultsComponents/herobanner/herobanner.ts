@@ -1,4 +1,4 @@
-import { ComponentSchema } from "../schemas";
+import { ComponentSchema } from "../../../../../types/schemas";
 
 export const HERO_BANNER_SCHEMA: ComponentSchema = {
     componentName: 'hero',

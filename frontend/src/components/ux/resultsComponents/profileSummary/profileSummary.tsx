@@ -1,6 +1,6 @@
 // components/ux/resultsComponents/profileSummary.tsx
 
-import { LlmProfileSummaryProps } from '@/types/resultsPageComponents/components/profileSummary';
+import { LlmProfileSummaryProps } from './profileSummary';
 import {
   Home,
   Calendar,

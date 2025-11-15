@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
-import { LlmProfileSummary } from "@/components/ux/resultsComponents/profileSummary";
+import { LlmProfileSummary } from "@/components/ux/resultsComponents/profileSummary/profileSummary";
 import { PersonalMessage } from "@/components/ux/resultsComponents/personalMessage";
 import { MarketInsights } from "@/components/ux/resultsComponents/marketInsights";
 import { ActionPlan } from "@/components/ux/resultsComponents/actionPlan";

@@ -1,4 +1,4 @@
-import { SchemaField } from '../schemas'; // adjust import path as needed
+import { SchemaField } from '../../../../types/schemas'; // adjust import path as needed
 
 // ------------------------------------------
 // Personal Message Schema

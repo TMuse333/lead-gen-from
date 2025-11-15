@@ -15,9 +15,11 @@ export * from './advice.types'
 
 export * from './analysis'
 
-export * from './resultsPageComponents'
+export * from './schemas'
 
 export * from './chat.types'
+
+export * from './personalization.types'
 
 
 

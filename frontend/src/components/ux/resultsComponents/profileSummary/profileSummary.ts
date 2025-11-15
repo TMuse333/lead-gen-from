@@ -1,6 +1,6 @@
 // lib/llmSchemas.ts
 
-import { ComponentSchema } from "../schemas";
+import { ComponentSchema } from "../../../../types/schemas";
 
 // Add to your existing schemas file
 

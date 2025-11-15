@@ -1,6 +1,6 @@
 // components/ux/resultsComponents/actionPlan.tsx
 'use client';
-import { LlmActionPlanProps, ActionStep } from "@/types/resultsPageComponents/components/actionPlan";
+import { LlmActionPlanProps, ActionStep } from "@/components/ux/resultsComponents/actionPlan";
 import { ChevronLeft, ChevronRight, CheckCircle2, ExternalLink, Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
