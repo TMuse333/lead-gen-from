@@ -33,6 +33,7 @@ export default function ChatWithTracker() {
   const clearCelebration = useChatStore((s) => s.clearCelebration);
   const setLlmOutput = useChatStore((s) => s.setLlmOutput);  // ← NEW: store result
   const resetChat = useChatStore((s) => s.reset);
+  const setDebugInfo = useChatStore((s)=> s.setDebugInfo)
 
   const [input, setInput] = useState('');
   const [showCelebrationBanner, setShowCelebrationBanner] = useState(false);
@@ -64,24 +65,35 @@ export default function ChatWithTracker() {
     const submitFastResults = async () => {
       try {
         console.log('Fast-tracking results via /api/test-component...', { currentFlow, userInput });
-
+        
         const { data } = await axios.post("/api/test-component", {
           flow: currentFlow,
           userInput,
         });
-
+        
         console.log('Results generated!', data);
-
-        // Store in Zustand so Results page can access it
-        setLlmOutput(data);
-        localStorage.setItem("llmResultsCache", JSON.stringify(data));
-
+        
+        // Separate debug info from actual data
+        const { _debug, ...llmOutput } = data;
+        
+        // Store LLM output in Zustand
+        setLlmOutput(llmOutput);
+        
+        // Store debug info in Zustand (if it exists)
+        if (_debug) {
+          setDebugInfo(_debug);
+          localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
+          console.log('Debug info stored:', _debug);
+        }
+        
+        // Cache to localStorage (optional - without debug info to save space)
+        localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
+        
         // Reset chat for next user
         resetChat();
-
+        
         // Go straight to results
         router.push('/results');
-
       } catch (err: any) {
         console.error('Fast track failed:', err);
         alert(`Error: ${err.response?.data?.error || err.message || 'Unknown error'}`);

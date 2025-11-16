@@ -1,27 +1,39 @@
-// app/results/page.tsx (or wherever your ResultsPage lives)
+// app/results/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
-
-
-
 import { useChatStore, selectLlmOutput, selectIsComplete } from "@/stores/chatStore";
 import { LlmOutput } from "@/types/componentSchema";
 import { ActionPlan, LlmProfileSummary, MarketInsights, NextStepsCTA, PersonalMessage } from "@/components/ux/resultsComponents";
+import { GenerationSummary } from "@/components/ux/resultsComponents/generationSummary/generationSummary";
+import { GenerationDebugInfo } from "@/stores/chatStore";
 
 const STORAGE_KEY = "llmResultsCache";
+const DEBUG_STORAGE_KEY = "llmDebugCache";
 
 export default function ResultsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [localDebugInfo, setLocalDebugInfo] = useState<GenerationDebugInfo | null>(null);
 
   const llmOutput = useChatStore(selectLlmOutput);
   const isComplete = useChatStore(selectIsComplete);
-  const setLlmOutput = useChatStore((s) => s.setLlmOutput); // for clearing
+  const setLlmOutput = useChatStore((s) => s.setLlmOutput);
+  const zustandDebugInfo = useChatStore(state => state.debugInfo);
 
+  // Sync zustand debugInfo to local state when it changes
+  useEffect(() => {
+    if (zustandDebugInfo) {
+      console.log("Zustand debugInfo detected, syncing to local state");
+      setLocalDebugInfo(zustandDebugInfo);
+      // Also cache it
+      localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(zustandDebugInfo));
+    }
+  }, [zustandDebugInfo]);
+  
   // Load from cache on mount
   useEffect(() => {
     const loadFromCache = (): LlmOutput | null => {
@@ -40,10 +52,29 @@ export default function ResultsPage() {
       return null;
     };
 
+    const loadDebugFromCache = (): GenerationDebugInfo | null => {
+      try {
+        const cached = localStorage.getItem(DEBUG_STORAGE_KEY);
+        if (!cached) return null;
+        const parsed = JSON.parse(cached);
+        console.log("Cache hit: Loaded debug info from localStorage");
+        return parsed as GenerationDebugInfo;
+      } catch (err) {
+        console.warn("Failed to parse cached debug data:", err);
+      }
+      return null;
+    };
+
     const cached = loadFromCache();
+    const cachedDebug = loadDebugFromCache();
+    
     if (cached) {
-      setLlmOutput(cached); // sync to Zustand
+      setLlmOutput(cached);
       setLoading(false);
+    }
+    
+    if (cachedDebug) {
+      setLocalDebugInfo(cachedDebug);
     }
   }, [setLlmOutput]);
 
@@ -62,9 +93,10 @@ export default function ResultsPage() {
     return () => {
       console.log("Leaving /results → clearing cache and LLM output");
       localStorage.removeItem(STORAGE_KEY);
-      // setLlmOutput(null); // clear Zustand store
+      localStorage.removeItem(DEBUG_STORAGE_KEY);
+      // setLlmOutput(null); // clear Zustand store if needed
     };
-  }, [setLlmOutput]);
+  }, []);
 
   // Loading state
   if (loading) {
@@ -112,6 +144,16 @@ export default function ResultsPage() {
       <MarketInsights data={data.marketInsights} />
       <ActionPlan data={data.actionPlan} />
       <NextStepsCTA data={data.nextStepsCTA} />
+      
+      {/* Show debug info if available from either zustand or local state */}
+      {localDebugInfo && (
+        <GenerationSummary
+          metadata={localDebugInfo.qdrantRetrieval}
+          promptLength={localDebugInfo.promptLength}
+          adviceUsed={localDebugInfo.adviceUsed}
+          generationTime={localDebugInfo.generationTime}
+        />
+      )}
     </main>
   );
 }

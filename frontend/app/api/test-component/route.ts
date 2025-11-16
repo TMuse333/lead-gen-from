@@ -1,22 +1,17 @@
 // app/api/test-component/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import {  buildMultiComponentPromptWithMetadata } from "@/lib/openai/prompts";
-import {
-
-  ComponentSchema,
-} from "@/types";
-
-
-
+import { buildMultiComponentPromptWithMetadata } from "@/lib/openai/prompts";
+import { ComponentSchema } from "@/types";
 import { LlmOutput } from "@/types/componentSchema";
 import { ACTION_PLAN_SCHEMA } from "@/components/ux/resultsComponents/actionPlan/schema";
-import { HERO_BANNER_SCHEMA, PROFILE_SUMMARY_SCHEMA,
+import {
+  HERO_BANNER_SCHEMA,
+  PROFILE_SUMMARY_SCHEMA,
   PERSONAL_MESSAGE_SCHEMA,
   MARKET_INSIGHTS_SCHEMA,
   NEXT_STEPS_CTA_SCHEMA,
 } from "@/components/ux/resultsComponents";
-
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -31,16 +26,9 @@ const DEFAULT_SCHEMAS: ComponentSchema[] = [
   NEXT_STEPS_CTA_SCHEMA,
 ];
 
-console.log('all schemas',DEFAULT_SCHEMAS)
-
-/* --------------------------------------------------------------
-   Type guard: Validate LlmOutput shape
-   -------------------------------------------------------------- */
 function isValidLlmOutput(obj: unknown): obj is LlmOutput {
   if (!obj || typeof obj !== "object") return false;
-
   const o = obj as Record<string, unknown>;
-
   return (
     typeof o.hero === "object" &&
     o.hero !== null &&
@@ -57,10 +45,8 @@ function isValidLlmOutput(obj: unknown): obj is LlmOutput {
   );
 }
 
-/* --------------------------------------------------------------
-   POST handler – fully logged, typed, and validated
-   -------------------------------------------------------------- */
 export async function POST(req: NextRequest) {
+  const startTime = Date.now(); // Track start time
   console.log("POST /api/test-component – Request received");
 
   try {
@@ -111,7 +97,7 @@ export async function POST(req: NextRequest) {
     console.log(`Valid input → flow: "${flow}"`);
     console.log(`userInput keys: [${Object.keys(typedUserInput).join(", ")}]`);
 
-    // 3. Build prompt
+    // 3. Build prompt with metadata
     console.log("Building multi-component prompt...");
     const { prompt, metadata } = await buildMultiComponentPromptWithMetadata(
       DEFAULT_SCHEMAS,
@@ -120,23 +106,19 @@ export async function POST(req: NextRequest) {
       process.env.AGENT_ID!
     );
 
-
-
     console.log(`\n📊 Qdrant Retrieval Summary:`);
-    metadata.forEach(meta => {
+    metadata.forEach((meta) => {
       console.log(`   📦 ${meta.collection} (${meta.type}): ${meta.count} items`);
       meta.items.forEach((item, i) => {
-        if (meta.type === 'rule') {
+        if (meta.type === "rule") {
           console.log(`      ${i + 1}. ${item.title} (score: ${item.score?.toFixed(2)})`);
         } else {
           console.log(`      ${i + 1}. ${item.title}`);
         }
       });
-    }); 
-
+    });
 
     console.log(`Prompt built. Length: ${prompt.length} characters`);
-    console.log("Prompt preview:", prompt.slice(0, 500) + "...");
 
     // 4. Call OpenAI
     console.log("Calling OpenAI (gpt-4o-mini)...");
@@ -149,7 +131,6 @@ export async function POST(req: NextRequest) {
 
     const raw = completion.choices[0].message.content?.trim() ?? "";
     console.log(`Raw LLM response received. Length: ${raw.length}`);
-    console.log("Raw response preview:", raw.slice(0, 500));
 
     if (!raw) {
       console.error("LLM returned empty response");
@@ -166,7 +147,6 @@ export async function POST(req: NextRequest) {
       console.log("JSON parsed successfully");
     } catch (parseErr) {
       console.error("Failed to parse LLM JSON:", parseErr);
-      console.error("Raw LLM output:", raw);
       return NextResponse.json(
         {
           error: "LLM did not return valid JSON",
@@ -179,7 +159,6 @@ export async function POST(req: NextRequest) {
     // 6. Validate output shape
     if (!isValidLlmOutput(parsed)) {
       console.error("LLM output does not match LlmOutput schema");
-      console.error("Received structure:", Object.keys(parsed as object));
       return NextResponse.json(
         {
           error: "LLM output does not match expected schema",
@@ -189,10 +168,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("LLM output validated. Returning result.");
-    console.log("Final output keys:", Object.keys(parsed));
+    // 7. Calculate generation time
+    const generationTime = (Date.now() - startTime) / 1000;
 
-    return NextResponse.json(parsed);
+    console.log("LLM output validated. Returning result with debug info.");
+    console.log(`Total generation time: ${generationTime.toFixed(2)}s`);
+
+    // 8. Return with debug info
+    return NextResponse.json({
+      ...parsed,
+      _debug: {
+        qdrantRetrieval: metadata,
+        promptLength: prompt.length,
+        adviceUsed: metadata.reduce((sum, m) => sum + m.count, 0),
+        generationTime,
+      },
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown server error";
     console.error("Unexpected error in /api/test-component:", err);

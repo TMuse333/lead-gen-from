@@ -1,18 +1,16 @@
-import { SchemaField } from '../../../../types/schemas'; // adjust import path as needed
+import { availableCollections, ComponentSchema, SchemaField } from '../../../../types/schemas'; // adjust import path as needed
 
 // ------------------------------------------
 // Personal Message Schema
 // ------------------------------------------
 
-export const PERSONAL_MESSAGE_SCHEMA: {
-  componentName: string;
-  description: string;
-  fields: Record<string, SchemaField>;
-} = {
+export const PERSONAL_MESSAGE_SCHEMA:ComponentSchema = {
   componentName: 'personalMessage',
   description:
     "A personal message from Chris that builds trust and human connection. This component uses Qdrant advice to match Chris's voice, tone, and expertise. It should feel like a real note from the agent, not generic marketing copy.",
-
+    personalization:{
+      retrieveFrom: [availableCollections.find(c => c.name === 'advice')!] ,// rule-based,
+    },
   fields: {
     agentName: {
       type: 'string',

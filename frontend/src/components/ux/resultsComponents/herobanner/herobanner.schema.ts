@@ -5,7 +5,7 @@ export const HERO_BANNER_SCHEMA: ComponentSchema = {
     componentName: 'hero',
     description: 'The hero banner is the first impression - it should immediately capture attention, feel personalized, and communicate urgency based on the user\'s timeline.',
     personalization:{
-      retrieveFrom: [availableCollections.find(c => c.name === 'actionSteps')!] ,// rule-based,
+      retrieveFrom: [availableCollections.find(c => c.name === 'advice')!] ,// rule-based,
     },
     fields: {
       headline: {

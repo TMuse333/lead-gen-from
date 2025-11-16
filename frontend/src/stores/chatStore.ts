@@ -4,7 +4,8 @@ import { devtools } from 'zustand/middleware';
 import confetti from 'canvas-confetti';
 import { ChatButton, LlmInput } from '@/types/chat.types';
 import { INITIAL_MESSAGE_NODE } from '@/data/conversationFlows/conversationFlows';
-import { LlmOutput } from '@/types';
+import { LlmOutput } from '@/types/componentSchema';
+import { QdrantRetrievalMetadata } from '@/types/qdrant.types';
 
 // ChatMessage is ONLY for UI display
 interface ChatMessage {
@@ -15,11 +16,23 @@ interface ChatMessage {
 }
 
 /* --------------------------------------------------------------
+   DEBUG/METADATA INTERFACES
+   -------------------------------------------------------------- */
+export interface GenerationDebugInfo {
+  qdrantRetrieval: QdrantRetrievalMetadata[];
+  promptLength: number;
+  adviceUsed: number;
+  generationTime?: number;
+}
+
+/* --------------------------------------------------------------
    STATE INTERFACES
    -------------------------------------------------------------- */
 export interface LlmResultState {
   llmOutput: LlmOutput | null;
+  debugInfo: GenerationDebugInfo | null;
   setLlmOutput: (data: LlmOutput | Partial<LlmOutput>) => void;
+  setDebugInfo: (info: GenerationDebugInfo) => void;
   clearLlmOutput: () => void;
 }
 
@@ -60,7 +73,7 @@ const INITIAL_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
-const initialState: ChatStateData & Pick<LlmResultState, 'llmOutput'> = {
+const initialState: ChatStateData & Pick<LlmResultState, 'llmOutput' | 'debugInfo'> = {
   messages: [INITIAL_MESSAGE],
   userInput: {},
   loading: false,
@@ -70,6 +83,7 @@ const initialState: ChatStateData & Pick<LlmResultState, 'llmOutput'> = {
   shouldCelebrate: false,
   isComplete: false,
   llmOutput: null,
+  debugInfo: null,
 };
 
 /* --------------------------------------------------------------
@@ -90,7 +104,12 @@ export const useChatStore = create<ChatState>()(
         });
       },
 
-      clearLlmOutput: () => set({ llmOutput: null }),
+      setDebugInfo: (info: GenerationDebugInfo) => {
+        console.log("[ChatStore] Debug info updated:", info);
+        set({ debugInfo: info });
+      },
+
+      clearLlmOutput: () => set({ llmOutput: null, debugInfo: null }),
 
       // Existing actions...
       addMessage: (message: ChatMessage) =>
@@ -181,7 +200,7 @@ export const useChatStore = create<ChatState>()(
           if (data.progress !== undefined) set({ progress: data.progress });
           if (data.isComplete) set({ isComplete: true });
 
-          // Optional: Store partial LLM output
+          // Store partial LLM output
           if (data.llmPartial) {
             get().setLlmOutput(data.llmPartial);
           }
@@ -213,7 +232,10 @@ export const selectProgress = (state: ChatState) => state.progress;
 export const selectCurrentFlow = (state: ChatState) => state.currentFlow;
 export const selectIsComplete = (state: ChatState) => state.isComplete;
 
-// New selectors
+// LLM output selectors
 export const selectLlmOutput = (state: ChatState) => state.llmOutput;
 export const selectLlmOutputPartial = (state: ChatState): Partial<LlmOutput> | null =>
   state.llmOutput ? (state.llmOutput as Partial<LlmOutput>) : null;
+
+// Debug info selector
+export const selectDebugInfo = (state: ChatState) => state.debugInfo;

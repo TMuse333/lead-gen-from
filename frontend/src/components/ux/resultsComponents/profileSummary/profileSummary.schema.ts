@@ -1,6 +1,6 @@
 // lib/llmSchemas.ts
 
-import { ComponentSchema } from "../../../../types/schemas";
+import { availableCollections, ComponentSchema } from "../../../../types/schemas";
 
 // Add to your existing schemas file
 
@@ -12,6 +12,9 @@ export const PROFILE_SUMMARY_SCHEMA: ComponentSchema = {
   componentName: 'profileSummary',
   description:
     'Visual summary of the user’s situation as scannable cards. Validates personalization and shows deep understanding.',
+    personalization:{
+      retrieveFrom: [availableCollections.find(c => c.name === 'advice')!] ,// rule-based,
+    },
   fields: {
     overview: {
       type: 'string',

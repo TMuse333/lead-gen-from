@@ -53,12 +53,14 @@ const PRESETS = {
 
 export function FastTrackButton() {
   const router = useRouter();
-  const { setCurrentFlow, addAnswer, setComplete, setLlmOutput, reset } = useChatStore();
+  const { setCurrentFlow, addAnswer, setComplete, setLlmOutput, reset,
+  setDebugInfo } = useChatStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [flow, setFlow] = useState<Flow>("buy");
   const [answers, setAnswers] = useState<Answers>({});
+  
 
   const loadPreset = () => {
     setAnswers(PRESETS[flow].answers);
@@ -80,8 +82,17 @@ export function FastTrackButton() {
         userInput: answers,
       });
 
-      setLlmOutput(data);
-      localStorage.setItem("llmResultsCache", JSON.stringify(data));
+      const {_debug, llmOutput} = data
+
+      setLlmOutput(llmOutput);
+      localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
+
+      if (_debug) {
+        setDebugInfo(_debug);
+        localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
+        console.log('Debug info stored:', _debug);
+      }
+
       router.push("/results");
       setIsOpen(false);
     } catch (err) {

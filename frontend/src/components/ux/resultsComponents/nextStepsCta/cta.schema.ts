@@ -1,4 +1,4 @@
-import { ComponentSchema, SchemaField } from '../../../../types/schemas';
+import { availableCollections, ComponentSchema, SchemaField } from '../../../../types/schemas';
 
 // ------------------------------------------
 // Next Steps CTA Schema
@@ -10,6 +10,9 @@ import { ComponentSchema, SchemaField } from '../../../../types/schemas';
 export const NEXT_STEPS_CTA_SCHEMA: ComponentSchema = {
   componentName: 'nextStepsCTA',
   description: 'Final CTA section with momentum, recap, and personal touch from Chris',
+  personalization:{
+    retrieveFrom: [availableCollections.find(c => c.name === 'advice')!] ,// rule-based,
+  },
   fields: {
     hook: {
       type: 'string',

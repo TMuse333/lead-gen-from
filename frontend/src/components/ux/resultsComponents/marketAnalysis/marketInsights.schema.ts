@@ -1,18 +1,17 @@
-import { SchemaField } from '@/types';
+import { availableCollections, ComponentSchema, SchemaField } from '@/types';
 
 // ------------------------------------------
 // Market Insights Schema
 // ------------------------------------------
 
-export const MARKET_INSIGHTS_SCHEMA: {
-  componentName: string;
-  description: string;
-  fields: Record<string, SchemaField>;
-} = {
+export const MARKET_INSIGHTS_SCHEMA:ComponentSchema
+   = {
   componentName: 'marketInsights',
   description:
     'The market insights component provides contextual market data tailored to the user\'s flow (sell/buy/browse). It shows 3-4 key metrics with flow-specific interpretations and actionable context. This helps users understand current market conditions and how they impact their specific situation.',
-
+    personalization:{
+      retrieveFrom: [availableCollections.find(c => c.name === 'advice')!] ,// rule-based,
+    },
   fields: {
     sectionTitle: {
       type: 'string',
