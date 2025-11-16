@@ -23,6 +23,8 @@ export interface GenerationDebugInfo {
   promptLength: number;
   adviceUsed: number;
   generationTime?: number;
+  userInput: Record<string, string>;  // ADD THIS
+  flow: string;
 }
 
 /* --------------------------------------------------------------

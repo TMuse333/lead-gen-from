@@ -8,8 +8,9 @@ import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
 import { useChatStore, selectLlmOutput, selectIsComplete } from "@/stores/chatStore";
 import { LlmOutput } from "@/types/componentSchema";
 import { ActionPlan, LlmProfileSummary, MarketInsights, NextStepsCTA, PersonalMessage } from "@/components/ux/resultsComponents";
-import { GenerationSummary } from "@/components/ux/resultsComponents/generationSummary/generationSummary";
+
 import { GenerationDebugInfo } from "@/stores/chatStore";
+import { GenerationSummary } from "@/components/ux/resultsComponents/generationSummary";
 
 const STORAGE_KEY = "llmResultsCache";
 const DEBUG_STORAGE_KEY = "llmDebugCache";
@@ -152,6 +153,8 @@ export default function ResultsPage() {
           promptLength={localDebugInfo.promptLength}
           adviceUsed={localDebugInfo.adviceUsed}
           generationTime={localDebugInfo.generationTime}
+          userInput={localDebugInfo.userInput}  // ADD THIS
+          flow={localDebugInfo.flow}  
         />
       )}
     </main>

@@ -182,6 +182,8 @@ export async function POST(req: NextRequest) {
         promptLength: prompt.length,
         adviceUsed: metadata.reduce((sum, m) => sum + m.count, 0),
         generationTime,
+        userInput: typedUserInput,  // ADD THIS
+        flow: flow,     
       },
     });
   } catch (err: unknown) {

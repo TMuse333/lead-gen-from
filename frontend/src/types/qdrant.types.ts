@@ -9,6 +9,7 @@ export interface QdrantRetrievalItem {
   score?: number;
   tags?: string[];
   matchedRules?: ApplicableWhen;
+  reasoning?: string;
 }
 
 export interface QdrantRetrievalMetadata {

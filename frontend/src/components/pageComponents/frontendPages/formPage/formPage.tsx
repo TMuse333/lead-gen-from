@@ -15,6 +15,7 @@ import PropertyList from '@/components/ux/propertyList/propertyList';
 import ViewAgentAdvice from '@/components/client/adviceDashboard/viewAgentAdvice';
 import AgentAdviceUploader from '@/components/client/adviceDashboard/agentAdviceUploader';
 import { useChatStore } from '@/stores/chatStore';
+import { GameChat } from '@/components/ux/chatWithTracker/components/gameChat';
 
 
 export default function FormPage() {
@@ -59,6 +60,7 @@ export default function FormPage() {
 
         {/* Chat Component */}
         <ChatWithTracker  />
+        
        
       </div>
     </main>
