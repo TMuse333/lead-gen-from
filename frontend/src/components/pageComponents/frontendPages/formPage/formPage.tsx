@@ -15,7 +15,7 @@ import PropertyList from '@/components/ux/propertyList/propertyList';
 import ViewAgentAdvice from '@/components/client/adviceDashboard/viewAgentAdvice';
 import AgentAdviceUploader from '@/components/client/adviceDashboard/agentAdviceUploader';
 import { useChatStore } from '@/stores/chatStore';
-import { GameChat } from '@/components/ux/chatWithTracker/components/gameChat';
+import { GameChat } from '@/components/ux/chatWithTracker/chat/gameChat';
 
 
 export default function FormPage() {

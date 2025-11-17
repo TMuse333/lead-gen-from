@@ -1,201 +1,152 @@
-// app/api/chat-smart/route.ts
+// app/api/chat-smart/route.ts (FIXED - reads config from request)
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { CONVERSATION_FLOWS } from '@/data/conversationFlows/conversationFlows';
+import { buildChatPrompt } from '@/lib/chat/chatPromptBuilder';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-type FlowType = 'sell' | 'buy' | 'browse';
-
-const FLOW_CONFIG = {
-  sell: {
-    name: 'Selling',
-    totalQuestions: 6,
-    questionOrder: ['propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason', 'email'],
-    completionMessage: "Perfect! I have everything I need."
-  },
-  buy: {
-    name: 'Buying',
-    totalQuestions: 6,
-    questionOrder: ['propertyType', 'budget', 'bedrooms', 'timeline', 'buyingReason', 'email'],
-    completionMessage: "Excellent! I have all the information."
-  },
-  browse: {
-    name: 'Browsing',
-    totalQuestions: 6,
-    questionOrder: ['interest', 'location', 'priceRange', 'timeline', 'goal', 'email'],
-    completionMessage: "Great! I have what I need to help you."
-  }
-};
+interface ChatRequest {
+  buttonId?: string;
+  buttonValue?: string;
+  buttonLabel?: string;
+  freeText?: string;
+  currentFlow: string;
+  currentNodeId: string;
+  userInput: Record<string, string>;
+  messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  
+  // ADD: Send flow config from client
+  flowConfig?: any;
+  questionConfig?: any;
+}
 
 export async function POST(req: NextRequest) {
+  console.log('🚀 Route called');
+  
   try {
-    const body = await req.json();
-    const { messages, currentAnswers = {}, currentFlow = null } = body;
+    const body: ChatRequest = await req.json();
+    const {
+      buttonId,
+      buttonValue,
+      freeText,
+      currentFlow,
+      currentNodeId,
+      userInput,
+      messages = [],
+      flowConfig,
+      questionConfig,
+    } = body;
 
-    const activeFlow: FlowType = currentFlow || 'sell';
-    const flowConfig = FLOW_CONFIG[activeFlow];
-    const flow = CONVERSATION_FLOWS[activeFlow];
-    
-    const isFirstMessage = Object.keys(currentAnswers).length === 0 && !currentFlow;
-    const answeredKeys = Object.keys(currentAnswers);
+    console.log('📨 Request:', { buttonId, freeText, currentFlow, currentNodeId });
 
-    const systemPrompt = `You are Chris's AI assistant helping with ${flowConfig.name.toLowerCase()} in Halifax.
+    // Use config sent from client (since store is client-only)
+    const flow = flowConfig;
+    const currentQuestion = questionConfig;
 
-Current answers collected: ${answeredKeys.length}/${flowConfig.totalQuestions}
+    if (!flow || !currentQuestion) {
+      return NextResponse.json(
+        { error: 'Flow/question config required in request' },
+        { status: 400 }
+      );
+    }
 
-VALID QUESTIONS FOR THIS FLOW (${activeFlow.toUpperCase()}):
-${flowConfig.questionOrder.map((q, i) => `${i + 1}. ${q} (mappingKey: "${q}")`).join('\n')}
+    // Determine if this is a button click or free text
+    const isButtonClick = !!buttonId && !!buttonValue;
+    const isFreeTextQuestion = !!freeText && !isButtonClick;
 
-YOU MUST ONLY USE THESE mappingKeys IN nextQuestion!
+    // Find button if button click
+    let selectedButton;
+    if (isButtonClick) {
+      selectedButton = currentQuestion.buttons?.find((b: any) => b.id === buttonId);
+    }
 
-${isFirstMessage ? `
-FIRST MESSAGE: The user just selected "${activeFlow}". You MUST:
-1. Set flowType: "${activeFlow}"
-2. Ask the FIRST question: "${flowConfig.questionOrder[0]}"
-3. Return nextQuestion: "${flowConfig.questionOrder[0]}"
-` : `
-NEXT STEPS:
-- Extract the answer if user provided one (use the mappingKey from current question)
-- Ask the NEXT unanswered question from the list above
-- NEVER use questions from other flows
-`}
+    // Get next question for smooth transitions
+    const currentIndex = flow.questions.findIndex((q: any) => q.id === currentNodeId);
+    const nextQuestion = flow.questions[currentIndex + 1];
 
-CRITICAL: Provide a SHORT conversational response (1-2 sentences).
-Then call determine_next_step with the correct nextQuestion mappingKey from the list above.`;
+    // Build appropriate prompt based on input type
+    let systemPrompt: string;
 
+    if (isFreeTextQuestion) {
+      // User asked a question instead of clicking - answer it and guide back
+      systemPrompt = `You are Chris's AI assistant for ${flow.name}.
+
+CURRENT QUESTION THEY SHOULD ANSWER: "${currentQuestion.question}"
+
+USER ASKED: "${freeText}"
+
+YOUR TASK:
+1. Answer their question helpfully and concisely (2-3 sentences)
+2. Relate your answer to the current question context if possible
+3. Gently guide them back to answering: "${currentQuestion.question}"
+
+EXAMPLE RESPONSES:
+User asks: "How does age affect my home value?"
+You say: "Great question! Home age significantly impacts value - newer homes typically command 10-15% premiums, while older homes may need pricing adjustments for deferred maintenance. Now, ${currentQuestion.question.toLowerCase()}"
+
+User asks: "What's the market like?"
+You say: "Halifax's market is strong with steady demand! Knowing your timeline helps me tailor advice to current conditions. So, ${currentQuestion.question.toLowerCase()}"
+
+Keep it warm, helpful, and naturally guide them back to the current question.`;
+    } else {
+      // Normal button click - acknowledge and transition
+      systemPrompt = `You are Chris's AI assistant for ${flow.name}.
+
+Current question: ${currentQuestion.question}
+User selection: ${buttonValue || freeText}
+${nextQuestion ? `\nNext question: "${nextQuestion.question}"\n⚠️ End your response by naturally leading into this next question.` : '\nThis is the final question - wrap up warmly.'}
+
+Provide a warm, personalized 2-3 sentence response that:
+1. Acknowledges their choice
+2. Adds helpful context
+${nextQuestion ? `3. Smoothly transitions to: "${nextQuestion.question}"` : '3. Wraps up the conversation'}
+
+Keep it concise and conversational.`;
+    }
+
+    // Call OpenAI
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...messages.map((m: any) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        { role: 'user', content: isFreeTextQuestion ? freeText! : (buttonValue || freeText || '') },
       ],
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'determine_next_step',
-          description: 'Extract answer and determine next question',
-          parameters: {
-            type: 'object',
-            properties: {
-              extractedAnswer: {
-                type: 'object',
-                properties: {
-                  mappingKey: { type: 'string' },
-                  value: { type: 'string' },
-                }
-              },
-              nextQuestion: { 
-                type: 'string',
-                enum: [
-                  'propertyType', 'propertyAge', 'renovations', 'timeline', 'sellingReason',
-                  'budget', 'bedrooms', 'buyingReason',
-                  'interest', 'location', 'priceRange', 'goal',
-                  'email', 'none'
-                ]
-              },
-              flowType: {
-                type: 'string',
-                enum: ['sell', 'buy', 'browse']
-              }
-            },
-            required: ['nextQuestion']
-          }
-        }
-      }],
-      tool_choice: {
-        type: 'function',
-        function: { name: 'determine_next_step' }
-      },
+      temperature: 0.7,
+      max_tokens: 200,
     });
 
-    let reply = completion.choices[0].message.content || '';
-    let buttons: any[] = [];
-    let extracted = null;
-    let flowType = null;
+    const reply = completion.choices[0].message.content || 'Great choice!';
 
-    const toolCalls = completion.choices[0].message.tool_calls;
-    if (toolCalls && toolCalls.length > 0) {
-      const toolCall = toolCalls[0];
-      
-      if (toolCall.type === 'function') {
-        const func = toolCall.function;
-        const args = JSON.parse(func.arguments);
+    // For free-text questions, don't advance - stay on same question
+    // For button clicks, advance to next question
+    const responseNextQuestion = isFreeTextQuestion ? currentQuestion : nextQuestion;
+    const responseProgress = isFreeTextQuestion 
+      ? Math.round((currentIndex / flow.questions.length) * 100)
+      : Math.round(((currentIndex + 1) / flow.questions.length) * 100);
 
-        if (args.flowType) {
-          flowType = args.flowType;
-        }
-
-        if (args.extractedAnswer) {
-          extracted = {
-            mappingKey: args.extractedAnswer.mappingKey,
-            value: args.extractedAnswer.value,
-          };
-        }
-
-        if (args.nextQuestion && args.nextQuestion !== 'none') {
-          const currentFlow: FlowType = flowType || activeFlow;
-          const flowData = CONVERSATION_FLOWS[currentFlow];
-          const questionData = flowData[args.nextQuestion as keyof typeof flowData];
-          
-          if (questionData) {
-            buttons = questionData.buttons || [];
-          }
-        }
-      }
-    }
-
-    // Construct reply if empty
-    if (!reply || reply.trim() === '') {
-      const totalAnswersAfter = answeredKeys.length + (extracted ? 1 : 0);
-      const isComplete = totalAnswersAfter >= flowConfig.totalQuestions;
-      
-      if (isComplete) {
-        reply = flowConfig.completionMessage + "\n\nI'm now generating your personalized report. This will just take a moment...";
-      } else if (toolCalls && toolCalls.length > 0) {
-        const toolCall = toolCalls[0];
-        if (toolCall.type === 'function') {
-          const args = JSON.parse(toolCall.function.arguments);
-          if (args.nextQuestion && args.nextQuestion !== 'none') {
-            const currentFlow: FlowType = activeFlow;
-            const flowData = CONVERSATION_FLOWS[currentFlow];
-            const questionData = flowData[args.nextQuestion as keyof typeof flowData];
-            
-            if (questionData) {
-              if (args.flowType && !currentFlow) {
-                reply = `Great! I'd love to help you with ${FLOW_CONFIG[args.flowType as FlowType].name.toLowerCase()}. ${questionData.question}`;
-              } else if (extracted) {
-                reply = "Perfect! " + questionData.question;
-              } else {
-                reply = questionData.question;
-              }
-            }
-          }
-        }
-      }
-      
-      if (!reply || reply.trim() === '') {
-        reply = "Let me help you with that!";
-      }
-    }
-
-    const newAnswerCount = answeredKeys.length + (extracted ? 1 : 0);
-    const response = {
+    return NextResponse.json({
       reply,
-      buttons,
-      extracted,
-      flowType: flowType || activeFlow,
-      progress: Math.round((newAnswerCount / flowConfig.totalQuestions) * 100),
-      isComplete: newAnswerCount >= flowConfig.totalQuestions
-    };
-
-    return NextResponse.json(response);
+      nextQuestion: responseNextQuestion ? {
+        id: responseNextQuestion.id,
+        question: responseNextQuestion.question,
+        buttons: responseNextQuestion.buttons || [],
+        allowFreeText: responseNextQuestion.allowFreeText,
+        mappingKey: responseNextQuestion.mappingKey,
+      } : null,
+      extracted: isButtonClick ? {
+        mappingKey: currentQuestion.mappingKey,
+        value: buttonValue || '',
+      } : null, // Don't extract answer for free-text questions
+      progress: responseProgress,
+      isComplete: !nextQuestion && isButtonClick, // Only complete on button clicks
+      isFreeTextResponse: isFreeTextQuestion, // Flag to indicate this was a question
+    });
 
   } catch (error) {
-    console.error('❌ ERROR:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    console.error('❌ Error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown' },
+      { status: 500 }
+    );
   }
 }

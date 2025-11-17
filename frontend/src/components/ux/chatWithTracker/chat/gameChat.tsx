@@ -7,6 +7,8 @@ import { useState, useRef, useEffect } from 'react';
 import { RewardSystem } from './rewardSystem';
 import { MessageBubble } from './messageBubble';
 import { IntegratedTracker } from './integratedTracker';
+import AnalysisTracker from '../tracker';
+import { AnalysisTrackerBar } from '../tracker/trackerbar';
 
 interface ChatButton {
   id: string;
@@ -51,9 +53,9 @@ export function GameChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevCompletedRef = useRef(0);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // useEffect(() => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
   useEffect(() => {
     if (completedSteps > prevCompletedRef.current) {
@@ -134,7 +136,7 @@ export function GameChat({
 
         {/* Input */}
         <div className="p-4 bg-white border-t-2 border-purple-100">
-          <div className="flex gap-2">
+          <div className="flex gap-2 text-black">
             <input
               type="text"
               value={input}
@@ -158,15 +160,19 @@ export function GameChat({
       </motion.div>
 
       {/* Integrated Tracker - RIGHT Side (Reversed) */}
-      <div className="w-80 flex-shrink-0">
-        <IntegratedTracker
+      <div className="w-80 hidden md:block flex-shrink-0">
+        {/* <IntegratedTracker
           totalSteps={totalSteps}
           currentStep={currentStep}
           completedSteps={completedSteps}
           userInput={userInput}
           currentFlow={currentFlow}
           progress={progress}
-        />
+        /> */}
+        <AnalysisTracker/>
+      </div>
+      <div className='md:hidden'>
+        <AnalysisTrackerBar/>
       </div>
     </div>
   );
