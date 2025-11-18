@@ -2,10 +2,11 @@
 import confetti from 'canvas-confetti';
 import { ChatMessage, ChatStateActions, ChatState } from './types';
 import { ChatButton } from '@/types/chat.types';
-import { useConversationConfigStore } from '../conversationConfigStore';
+
 import { LlmOutput } from '@/types/componentSchema';
 import { GenerationDebugInfo } from './types';
 import { getNextQuestion, getTotalQuestions } from './flowHelpers';
+import { useConversationStore } from '../conversationConfig/conversation.store';
 
 export function createActions(
   set: (partial: Partial<ChatState> | ((state: ChatState) => Partial<ChatState>)) => void,
@@ -16,6 +17,10 @@ export function createActions(
     // === MESSAGE ACTIONS ===
     addMessage: (message: ChatMessage) =>
       set((state) => ({ messages: [...state.messages, message] })),
+
+      // === TRACKER TRACKING ===
+      setCurrentInsight: (text: string) => set({ currentInsight: text }),
+setDbActivity: (text: string) => set({ dbActivity: text }),
 
     // === ANSWER TRACKING ===
     addAnswer: (key: string, value: string) => {
@@ -54,23 +59,21 @@ export function createActions(
     // === BUTTON CLICK HANDLER (WITH API CALL) ===
     handleButtonClick: async (button: ChatButton) => {
       const state = get();
-
-      // Handle flow selection (no API call needed for initial selection)
+    
+      // Handle flow selection (sell/buy/browse)
       if (['sell', 'buy', 'browse'].includes(button.value)) {
-        set({ 
+        set({
           currentFlow: button.value as 'sell' | 'buy' | 'browse',
           currentNodeId: '',
         });
-
-        // Add user message
+    
         const userMsg: ChatMessage = {
           role: 'user',
           content: button.label,
           timestamp: new Date(),
         };
         set((s) => ({ messages: [...s.messages, userMsg] }));
-
-        // Get first question from config
+    
         const firstQuestion = getNextQuestion(button.value);
         if (firstQuestion) {
           const aiMsg: ChatMessage = {
@@ -79,44 +82,56 @@ export function createActions(
             buttons: firstQuestion.buttons,
             visual: firstQuestion.visual ? {
               type: firstQuestion.visual.type,
-              value: typeof firstQuestion.visual.value === 'function' 
+              value: typeof firstQuestion.visual.value === 'function'
                 ? firstQuestion.visual.value.name
                 : firstQuestion.visual.value
             } : undefined,
             timestamp: new Date(),
           };
-          set((s) => ({ 
+          set((s) => ({
             messages: [...s.messages, aiMsg],
             currentNodeId: firstQuestion.id,
           }));
         }
         return;
       }
-
-      // Handle regular answer button - WITH API CALL FOR ENHANCEMENT
+    
+      // Regular answer button click
       if (!state.currentFlow || !state.currentNodeId) return;
-
-      const currentQuestion = useConversationConfigStore
+    
+      const currentQuestion = useConversationStore
         .getState()
         .getQuestion(state.currentFlow, state.currentNodeId);
-
+    
       if (!currentQuestion?.mappingKey) return;
-
-      // Add user message immediately
+    
       const userMsg: ChatMessage = {
+        
         role: 'user',
         content: button.label,
         timestamp: new Date(),
       };
       set((s) => ({ messages: [...s.messages, userMsg], loading: true }));
-
+    
+      // Helper to apply tracker messages (used in both success & fallback)
+      const applyButtonTracker = (answerValue: string) => {
+        const flow = useConversationStore.getState().getFlow(state.currentFlow!);
+        const question = flow?.questions.find(q => q.mappingKey === currentQuestion.mappingKey);
+        const clickedButton = question?.buttons?.find(b => b.value === answerValue);
+    
+        if (clickedButton?.tracker?.insight) {
+          set({ currentInsight: clickedButton!.tracker.insight! });
+        }
+        if (clickedButton?.tracker?.dbMessage) {
+          set({ dbActivity: clickedButton.tracker!.dbMessage! });
+        }
+      };
+    
       try {
         console.log('📞 Calling /api/chat-smart for button click...');
-
-        // Get flow and question config to send to API
-        const flow = useConversationConfigStore.getState().getFlow(state.currentFlow);
-        
-        // Call API route for LLM + Qdrant enhancement
+    
+        const flow = useConversationStore.getState().getFlow(state.currentFlow);
+    
         const response = await fetch('/api/chat-smart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -128,28 +143,29 @@ export function createActions(
             currentNodeId: state.currentNodeId,
             userInput: state.userInput,
             messages: state.messages.slice(-5),
-            flowConfig: flow, // Send config from client
-            questionConfig: currentQuestion, // Send question config
+            flowConfig: flow,
+            questionConfig: currentQuestion,
           }),
         });
-
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}`);
-        }
-
+    
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+    
         const data = await response.json();
-
         console.log('✅ API response received:', data);
-
-        // Store the answer
+    
+        let answerValue: string;
+    
         if (data.extracted) {
           get().addAnswer(data.extracted.mappingKey, data.extracted.value);
+          answerValue = data.extracted.value;
         } else {
-          // Fallback
           get().addAnswer(currentQuestion.mappingKey, button.value);
+          answerValue = button.value;
         }
-
-        // Add AI response with LLM-enhanced reply
+    
+        // APPLY TRACKER MESSAGES AFTER ANSWER IS SAVED
+        applyButtonTracker(answerValue);
+    
         const aiMsg: ChatMessage = {
           role: 'assistant',
           content: data.reply,
@@ -158,34 +174,27 @@ export function createActions(
           timestamp: new Date(),
         };
         set((s) => ({ messages: [...s.messages, aiMsg] }));
-
-        // Update current node
+    
         if (data.nextQuestion) {
           set({ currentNodeId: data.nextQuestion.id });
         } else {
-          // Flow complete
           confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
           set({ isComplete: true, shouldCelebrate: true });
-        }
-
-        // Update progress
+        };
+    
         if (data.progress !== undefined) {
           set({ progress: data.progress });
         }
-
-        // Store debug info
-        if (data._debug) {
-          console.log('📊 Debug info:', data._debug);
-        }
-
+    
       } catch (error) {
         console.error('❌ API call failed, falling back to local flow:', error);
-        
-        // Fallback to local config-based flow (no LLM enhancement)
+    
+        // Fallback: still add answer and tracker
         get().addAnswer(currentQuestion.mappingKey, button.value);
-
+        applyButtonTracker(button.value);
+    
         const nextQuestion = getNextQuestion(state.currentFlow, state.currentNodeId);
-
+    
         if (nextQuestion) {
           const aiMsg: ChatMessage = {
             role: 'assistant',
@@ -193,13 +202,13 @@ export function createActions(
             buttons: nextQuestion.buttons,
             visual: nextQuestion.visual ? {
               type: nextQuestion.visual.type,
-              value: typeof nextQuestion.visual.value === 'function' 
+              value: typeof nextQuestion.visual.value === 'function'
                 ? nextQuestion.visual.value.name
                 : nextQuestion.visual.value
             } : undefined,
             timestamp: new Date(),
           };
-          set((s) => ({ 
+          set((s) => ({
             messages: [...s.messages, aiMsg],
             currentNodeId: nextQuestion.id,
           }));
@@ -230,7 +239,7 @@ export function createActions(
         console.log('📞 Calling /api/chat-smart for free text...');
 
         // Get flow and question config to send to API
-        const flow = useConversationConfigStore.getState().getFlow(state.currentFlow!);
+        const flow = useConversationStore.getState().getFlow(state.currentFlow!);
         const currentQuestion = flow?.questions.find(q => q.id === state.currentNodeId);
 
         const payload = {

@@ -1,6 +1,8 @@
 // stores/chatStore/flowHelpers.ts
-import { useConversationConfigStore } from '../conversationConfigStore';
-import { QuestionNode } from '@/types/conversationConfig.types';
+import { QuestionNode } from '@/types/conversation.types';
+import { useConversationStore } from '../conversationConfig/conversation.store';
+
+
 
 /**
  * Get the next question in a flow
@@ -12,7 +14,7 @@ export function getNextQuestion(
   flowId: string,
   currentQuestionId?: string
 ): QuestionNode | null {
-  const flow = useConversationConfigStore.getState().getFlow(flowId);
+  const flow = useConversationStore.getState().getFlow(flowId);
   
   if (!flow) {
     console.warn(`[flowHelpers] Flow not found: ${flowId}`);
@@ -45,7 +47,7 @@ export function getNextQuestion(
  * @returns Total question count
  */
 export function getTotalQuestions(flowId: string): number {
-  const flow = useConversationConfigStore.getState().getFlow(flowId);
+  const flow = useConversationStore.getState().getFlow(flowId);
   return flow?.questions.length || 0;
 }
 
@@ -59,7 +61,7 @@ export function isFlowComplete(
   flowId: string,
   userAnswers: Record<string, string>
 ): boolean {
-  const flow = useConversationConfigStore.getState().getFlow(flowId);
+  const flow = useConversationStore.getState().getFlow(flowId);
   
   if (!flow) return false;
 
@@ -98,7 +100,7 @@ export function getFlowProgress(
  * @returns The first question or null
  */
 export function getFirstQuestion(flowId: string): QuestionNode | null {
-  const flow = useConversationConfigStore.getState().getFlow(flowId);
+  const flow = useConversationStore.getState().getFlow(flowId);
   
   if (!flow || flow.questions.length === 0) return null;
 
@@ -116,7 +118,7 @@ export function getPreviousQuestion(
   flowId: string,
   currentQuestionId: string
 ): QuestionNode | null {
-  const flow = useConversationConfigStore.getState().getFlow(flowId);
+  const flow = useConversationStore.getState().getFlow(flowId);
   
   if (!flow) return null;
 

@@ -14,11 +14,12 @@ import {
   selectCurrentFlow,
   selectProgress
 } from '@/stores/chatStore';
-import { useConversationConfigStore } from '@/stores/conversationConfigStore';
-import { migrateExistingFlows } from '@/lib/convert/migrateConversationFlows';
+
+
 
 import { GameChat } from './chat/gameChat';
 import { Loader2 } from 'lucide-react';
+import { useConversationStore } from '@/stores/conversationConfig/conversation.store';
 
 export default function ChatWithTracker() {
   const router = useRouter();
@@ -38,8 +39,8 @@ export default function ChatWithTracker() {
   const setDebugInfo = useChatStore((s) => s.setDebugInfo);
 
   // Config store
-  const configHydrated = useConversationConfigStore((s) => s.hydrated);
-  const getFlow = useConversationConfigStore((s) => s.getFlow);
+  const configHydrated = useConversationStore((s) => s.hydrated);
+  const getFlow = useConversationStore((s) => s.getFlow);
 
   // Local state
   const [isInitialized, setIsInitialized] = useState(false);
@@ -55,7 +56,7 @@ export default function ChatWithTracker() {
     if (!migrated) {
       console.log('🔄 Running conversation flows migration...');
       try {
-        migrateExistingFlows();
+   
         localStorage.setItem('flows-migrated', 'true');
         console.log('✅ Migration complete!');
       } catch (error) {

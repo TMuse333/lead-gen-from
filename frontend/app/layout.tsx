@@ -1,7 +1,6 @@
 "use client"
 
-import { migrateExistingFlows } from "@/lib/convert/migrateConversationFlows";
-import { useConversationConfigStore } from "@/stores/conversationConfigStore";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { useEffect } from "react";
@@ -25,13 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
 
-  useEffect(() => {
-    const flows = useConversationConfigStore.getState().flows;
-    if (flows.sell.questions.length === 0) {
-      console.log('🔄 Running migration...');
-      migrateExistingFlows();
-    }
-  }, []);
+
 
   return (
     <html lang="en">

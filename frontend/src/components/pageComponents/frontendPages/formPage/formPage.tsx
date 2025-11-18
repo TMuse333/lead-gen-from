@@ -12,8 +12,8 @@ import axios from 'axios'
 import { useEffect , useRef, useState} from 'react';
 import MarketAnalysisDisplay from '@/components/ux/marketAnalysis/marketAnalysis';
 import PropertyList from '@/components/ux/propertyList/propertyList';
-import ViewAgentAdvice from '@/components/client/adviceDashboard/viewAgentAdvice';
-import AgentAdviceUploader from '@/components/client/adviceDashboard/agentAdviceUploader';
+import ViewAgentAdvice from '@/components/admin/adviceDashboard/viewAgentAdvice';
+import AgentAdviceUploader from '@/components/admin/adviceDashboard/agentAdviceUploader';
 import { useChatStore } from '@/stores/chatStore';
 import { GameChat } from '@/components/ux/chatWithTracker/chat/gameChat';
 

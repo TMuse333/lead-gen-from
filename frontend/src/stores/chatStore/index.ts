@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { ChatState } from './types';
 import { initialState } from './initialState';
-import { createActions } from './actions';
+import { createActions } from './chat.actions';
 
 export const useChatStore = create<ChatState>()(
   devtools(

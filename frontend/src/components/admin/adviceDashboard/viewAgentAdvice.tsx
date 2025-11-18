@@ -57,6 +57,7 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
       });
 
       if (res.data.success) {
+        // Assuming the API returns advice under res.data.advice based on original file's error handling.
         setAdviceList(res.data.advice);
       } else {
         setError('Failed to load advice');
@@ -69,6 +70,10 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
     }
   };
 
+  useEffect(() => {
+    fetchAdvice();
+  }, []);
+  
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this advice?')) {
       return;
@@ -93,11 +98,17 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
     }
   };
 
-  // Helper to render rule groups recursively
+  // Helper to render rule groups recursively (Restored and refactored)
   const renderRuleGroup = (group: RuleGroup, depth = 0): JSX.Element => {
     return (
-      <div className={`${depth > 0 ? 'ml-4 pl-4 border-l-2 border-black' : ''} space-y-2`}>
-        <div className="text-xs font-semibold text-black">
+      <div 
+        // Dark theme: Indent and change border color
+        className={`${depth > 0 ? 'ml-4 pl-4 border-l-2 border-slate-700' : ''} space-y-2`}
+      >
+        <div 
+          // Dark theme: Change text color
+          className="text-xs font-semibold text-indigo-400"
+        >
           {group.logic} Group:
         </div>
         {group.rules.map((rule, idx) => {
@@ -112,14 +123,19 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
             // ConditionRule
             const condRule = rule as ConditionRule;
             return (
-              <div key={idx} className="text-xs bg-gray-50 p-2 rounded">
-                <span className="font-medium">{condRule.field}</span>{' '}
-                <span className="text-black">{condRule.operator}</span>{' '}
-                <span className="text-blue-600">
-                  {Array.isArray(condRule.value) ? condRule.value.join(', ') : condRule.value}
+              <div 
+                key={idx} 
+                // Dark theme: Card background and border for individual rule
+                className="text-xs bg-slate-900 p-2 rounded border border-slate-700"
+              >
+                <span className="font-medium text-slate-300">{condRule.field}</span>{' '}
+                <span className="text-slate-400">{condRule.operator}</span>{' '}
+                <span className="text-indigo-400 font-semibold">
+                  {/* Join with 'or' for readability of 'includes' or 'between' values */}
+                  {Array.isArray(condRule.value) ? condRule.value.join(' or ') : condRule.value}
                 </span>
-                {condRule.weight && (
-                  <span className="ml-2 text-black">(weight: {condRule.weight})</span>
+                {condRule.weight && condRule.weight > 1 && (
+                  <span className="ml-2 text-slate-400">(weight: {condRule.weight})</span>
                 )}
               </div>
             );
@@ -129,16 +145,15 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
     );
   };
 
-  useEffect(() => {
-    fetchAdvice();
-  }, []);
 
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto p-6">
         <div className="text-center py-12">
-          <RefreshCw className="animate-spin mx-auto mb-4 text-blue-600" size={40} />
-          <p className="text-gray-600">Loading your advice...</p>
+          {/* Dark theme: Icon color */}
+          <RefreshCw className="animate-spin mx-auto mb-4 text-indigo-400" size={40} />
+          {/* Dark theme: Text color */}
+          <p className="text-slate-400">Loading your advice...</p>
         </div>
       </div>
     );
@@ -147,10 +162,12 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
   if (error) {
     return (
       <div className="max-w-5xl mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-800 mb-4">❌ {error}</p>
+        {/* Dark theme: Error card background/border/text */}
+        <div className="bg-red-900/30 border border-red-700 rounded-lg p-6 text-center">
+          <p className="text-red-400 mb-4">❌ {error}</p>
           <button
             onClick={fetchAdvice}
+            // Dark theme: Button colors
             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
           >
             Try Again
@@ -161,18 +178,22 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    // Note: Max-width and padding were applied in Dashboard for the content container
+    <div className="relative">
+      
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Your Advice Knowledge Base</h1>
-          <p className="text-black mt-1">
+          {/* Dark theme: Text color */}
+          <h1 className="text-3xl font-bold text-white">Your Advice Knowledge Base</h1>
+          <p className="text-slate-300 mt-1">
             {adviceList.length} advice {adviceList.length === 1 ? 'piece' : 'pieces'} stored
           </p>
         </div>
         <button
           onClick={fetchAdvice}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          // Dark theme: Button colors
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
         >
           <RefreshCw size={18} />
           Refresh
@@ -181,11 +202,13 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
 
       {/* Empty State */}
       {adviceList.length === 0 && (
-        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-          <p className="text-black mb-4">No advice added yet.</p>
+        // Dark theme: Empty state background/border/text
+        <div className="bg-slate-900/50 border-2 border-dashed border-slate-700 rounded-lg p-12 text-center">
+          <p className="text-slate-400 mb-4">No advice added yet.</p>
           <button
             onClick={() => onSwitchToAdd?.()}
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            // Dark theme: Button colors
+            className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
           >
             Add Your First Advice
           </button>
@@ -203,13 +226,15 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
               key={item.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition overflow-hidden"
+              // Dark theme: Card background/border/shadow
+              className={`bg-slate-800 border border-slate-700 rounded-lg shadow-xl hover:shadow-2xl transition overflow-hidden`}
             >
               {/* Header */}
               <div className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                    {/* Dark theme: Title color */}
+                    <h3 className="font-semibold text-lg text-white mb-2">
                       {item.title}
                     </h3>
 
@@ -219,7 +244,8 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
                         {item.applicableWhen.flow.map((flowType) => (
                           <span
                             key={flowType}
-                            className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium"
+                            // Dark theme: Pill colors
+                            className="bg-indigo-900/50 text-indigo-400 px-2 py-1 rounded text-xs font-medium border border-indigo-700"
                           >
                             📊 {flowType}
                           </span>
@@ -233,7 +259,8 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
                         {item.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs"
+                            // Dark theme: Pill colors
+                            className="bg-blue-900/50 text-blue-400 px-2 py-1 rounded text-xs border border-blue-700"
                           >
                             {tag}
                           </span>
@@ -243,23 +270,23 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
 
                     {/* Rule Groups Summary */}
                     {hasRuleGroups ? (
-                      <div className="text-xs text-black">
+                      <div className="text-xs text-slate-300">
                         🎯 Has {item.applicableWhen!.ruleGroups!.length} rule group{item.applicableWhen!.ruleGroups!.length > 1 ? 's' : ''}
                         {item.applicableWhen?.minMatchScore && (
-                          <span className="ml-2">
+                          <span className="ml-2 text-indigo-400 font-medium">
                             (min score: {(item.applicableWhen.minMatchScore * 100).toFixed(0)}%)
                           </span>
                         )}
                       </div>
                     ) : (
-                      <div className="text-xs text-black italic">
+                      <div className="text-xs text-slate-400 italic">
                         ✨ Universal advice (no conditions)
                       </div>
                     )}
-
+                    
                     {/* Usage Stats */}
                     {item.usageCount !== undefined && item.usageCount > 0 && (
-                      <div className="mt-2 text-xs text-black">
+                      <div className="mt-2 text-xs text-slate-400">
                         📊 Used {item.usageCount} time{item.usageCount !== 1 ? 's' : ''}
                       </div>
                     )}
@@ -267,21 +294,28 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
 
                   {/* Actions */}
                   <div className="flex gap-2">
+                    {/* Expand/Collapse Button */}
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                      className="p-2 text-gray-900 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                      // Dark theme: Toggle button styles
+                      className={`p-2 rounded-full hover:bg-slate-700/50 transition ${
+                        isExpanded ? 'text-indigo-400' : 'text-slate-400'
+                      }`}
                       title={isExpanded ? 'Hide advice' : 'Show advice'}
                     >
                       {isExpanded ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
+                    
+                    {/* Delete Button */}
                     <button
                       onClick={() => handleDelete(item.id)}
                       disabled={deletingId === item.id}
-                      className="p-2 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50"
+                      // Dark theme: Delete button styles
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-900/30 rounded-full transition disabled:opacity-50"
                       title="Delete advice"
                     >
                       {deletingId === item.id ? (
-                        <RefreshCw size={20} className="animate-spin" />
+                        <RefreshCw size={20} className="animate-spin text-red-500" />
                       ) : (
                         <Trash2 size={20} />
                       )}
@@ -297,18 +331,23 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="mt-4 pt-4 border-t border-gray-200"
+                      // Dark theme: Separator
+                      className="mt-4 pt-4 border-t border-slate-700"
                     >
-                      <p className="text-sm font-semibold text-gray-900 mb-2">Your Advice:</p>
-                      <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                        <p className="text-gray-800 whitespace-pre-wrap">{item.advice}</p>
+                      {/* Dark theme: Subheading color */}
+                      <p className="text-sm font-semibold text-slate-200 mb-2">Your Advice:</p>
+                      {/* Dark theme: Advice content container */}
+                      <div className="bg-slate-900 p-4 rounded-lg mb-4 border border-slate-700">
+                        <p className="text-slate-300 whitespace-pre-wrap">{item.advice}</p>
                       </div>
 
                       {/* Rule Groups Display */}
                       {hasRuleGroups && (
                         <div className="mb-4">
-                          <p className="text-sm font-semibold text-gray-900 mb-2">Applicable When:</p>
-                          <div className="bg-purple-50 p-4 rounded-lg space-y-3 text-black">
+                          {/* Dark theme: Subheading color */}
+                          <p className="text-sm font-semibold text-slate-200 mb-2">Applicable When:</p>
+                          {/* Dark theme: Rule container background and border */}
+                          <div className="bg-purple-900/30 p-4 rounded-lg space-y-3 text-slate-300 border border-purple-700">
                             {item.applicableWhen!.ruleGroups!.map((group, idx) => (
                               <div key={idx}>
                                 {renderRuleGroup(group)}
@@ -319,7 +358,8 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
                       )}
 
                       {/* Metadata */}
-                      <div className="mt-3 text-xs text-gray-900 space-y-1">
+                      {/* Dark theme: Metadata text color */}
+                      <div className="mt-3 text-xs text-slate-400 space-y-1">
                         <p>Added: {new Date(item.createdAt).toLocaleString()}</p>
                         {item.updatedAt && item.updatedAt !== item.createdAt && (
                           <p>Updated: {new Date(item.updatedAt).toLocaleString()}</p>
@@ -339,7 +379,8 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         <div className="mt-8 text-center">
           <button
             onClick={() => onSwitchToAdd?.()}
-            className="inline-block bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-md"
+            // Dark theme: CTA button gradient
+            className="inline-block bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-indigo-700 hover:to-blue-700 transition shadow-md font-semibold"
           >
             ➕ Add More Advice
           </button>

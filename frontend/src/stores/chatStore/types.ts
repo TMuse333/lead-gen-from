@@ -38,6 +38,10 @@ export interface ChatStateData {
   progress: number;
   shouldCelebrate: boolean;
   isComplete: boolean;
+
+  currentInsight: string;
+  dbActivity: string;
+
 }
 
 export interface ChatStateActions {
@@ -53,6 +57,9 @@ export interface ChatStateActions {
   setComplete: (complete: boolean) => void;
   sendMessage: (message: string, displayText?: string) => Promise<void>;
   handleButtonClick: (button: ChatButton) => Promise<void>;
+
+  setCurrentInsight: (text: string) => void;
+  setDbActivity: (text: string) => void;
 }
 
 export type ChatState = ChatStateData & ChatStateActions & LlmResultState;
