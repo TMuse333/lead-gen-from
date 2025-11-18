@@ -3,8 +3,9 @@
 // Handles adding agent advice from frontend uploader (NEW FORMAT)
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
-import { storeAgentAdvice } from '@/lib/qdrant/client';
+
 import { getEmbedding } from '@/lib/openai/embedding';
+import { storeAgentAdvice } from '@/lib/qdrant';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,17 +48,17 @@ export async function POST(request: NextRequest) {
 
     // Store in Qdrant
     console.log('⏳ Storing in Qdrant...');
-    const adviceId = await storeAgentAdvice(
-      process.env.AGENT_ID!,
+    const adviceId = await storeAgentAdvice({
+      agentId: process.env.AGENT_ID!,
       title,
       advice,
       embedding,
-      {
+      metadata: {
         tags,
         flow,
         conditions,
-      }
-    );
+      },
+    });
 
     console.log('✅ Stored in Qdrant with ID:', adviceId);
 

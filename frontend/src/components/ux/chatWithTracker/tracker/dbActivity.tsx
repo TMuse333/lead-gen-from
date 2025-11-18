@@ -28,7 +28,7 @@ export function DbActivity({ dbActivity, matchScore, itemsFound, progress }: DbA
       <div className="space-y-2 text-sm">
         <p className="text-gray-700">{displayText}</p>
         
-        <div className="flex justify-between">
+        {/* <div className="flex justify-between">
           <span className="text-gray-600">Match Score:</span>
           <span className="font-bold text-purple-600">{matchScore.toFixed(1)}%</span>
         </div>
@@ -36,7 +36,7 @@ export function DbActivity({ dbActivity, matchScore, itemsFound, progress }: DbA
         <div className="flex justify-between">
           <span className="text-gray-600">Items Found:</span>
           <span className="font-bold text-purple-600">{itemsFound}</span>
-        </div>
+        </div> */}
       </div>
     </motion.div>
   );

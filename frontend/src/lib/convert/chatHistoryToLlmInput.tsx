@@ -1,4 +1,5 @@
-import { ChatNode, ChatNodeId, LlmInput } from "@/types/chat.types";
+import {  ChatNodeId, LlmInput } from "@/types/chat.types";
+import { ChatNode } from "@/types/conversation.types";
 
 export interface ChatAnswer {
     id: ChatNodeId;

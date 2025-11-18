@@ -173,7 +173,7 @@ export function CompletionModal({ showModal, calculationStep, answersArray }: Co
 
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-gray-600 font-medium">
-                Processing step {calculationStep + 1} of 7
+                Processing step {calculationStep + 1} of {steps.length}
               </p>
               <motion.p 
                 className="text-xs font-bold text-indigo-600"

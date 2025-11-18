@@ -10,7 +10,7 @@ export function getInitialMessage(): ChatMessage {
   // This is the very first message before any flow is selected
   return {
     role: 'assistant',
-    content: "Hi! I'm Chris's AI assistant. How can I help you today?",
+    content: "Hi! I'm the ai assistant. How can I help you today?",
     buttons: [
       { 
         id: 'sell', 

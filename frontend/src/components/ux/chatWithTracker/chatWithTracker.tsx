@@ -164,13 +164,13 @@ export default function ChatWithTracker() {
     ">
       <div className="flex gap-6 max-w-7xl mx-auto">
         {/* DEBUG INFO */}
-        <div className="fixed top-4 z-[500] right-4 bg-white p-4 rounded-lg shadow-lg text-xs font-mono z-50">
+        {/* <div className="fixed top-4 z-[500] right-4 bg-white p-4 rounded-lg shadow-lg text-xs font-mono z-50">
           <div className="font-bold mb-2">Debug Info:</div>
           <div>isComplete: {String(isComplete)}</div>
           <div>progress: {progress}%</div>
           <div>answers: {Object.keys(userInput).length}/{totalSteps}</div>
           <div>submitted: {String(submissionCalledRef.current)}</div>
-        </div>
+        </div> */}
 
         {/* Game Chat */}
         <div className="flex-1">

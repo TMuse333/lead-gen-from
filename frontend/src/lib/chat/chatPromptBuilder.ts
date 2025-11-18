@@ -1,5 +1,8 @@
 // lib/chatPromptBuilder.ts
-import { QuestionNode, ButtonOption, ConversationFlow } from '@/types/conversationConfig.types';
+
+import { ConversationFlow } from "@/stores/conversationConfig/conversation.store";
+import { ButtonOption, QuestionNode } from "@/types/conversation.types";
+
 
 /**
  * Builds the system prompt for chat-smart route

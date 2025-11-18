@@ -1,6 +1,6 @@
 // components/ux/resultsComponents/profileSummary.tsx
 
-import { LlmProfileSummaryProps } from './profileSummary';
+
 import {
   Home,
   Calendar,
@@ -13,6 +13,7 @@ import {
   Sparkles,
   LucideIcon,
 } from 'lucide-react';
+import { LlmProfileSummaryProps } from './profileSummary.schema';
 
 // THIS IS YOUR ICON MAP — based on LABEL (not icon name)
 const labelToIcon: Record<string, LucideIcon> = {

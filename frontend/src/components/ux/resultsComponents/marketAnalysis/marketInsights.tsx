@@ -1,7 +1,8 @@
 // components/landing/MarketInsights.tsx
 
-import { LlmMarketInsightsProps, MarketInsight } from "./marketInsights";
+
 import { TrendingUp, Info, AlertCircle, CheckCircle2, BarChart3 } from 'lucide-react';
+import { LlmMarketInsightsProps, MarketInsight } from './marketInsights.schema';
 
 interface MarketInsightsData {
   data: LlmMarketInsightsProps;
