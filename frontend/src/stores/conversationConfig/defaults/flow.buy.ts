@@ -27,6 +27,14 @@ export const buyFlow: ConversationFlow = {
       ],
       validation: { required: true },
     },
+        {
+      id: 'mustHaves',
+      question: "What's your #1 must-have?",
+      order: 5,
+      mappingKey: 'mustHaves',
+      allowFreeText: true,
+      validation: { required: true },
+    },
     {
       id: 'budget',
       question: "What's your budget range?",
@@ -64,14 +72,7 @@ export const buyFlow: ConversationFlow = {
         { id: 't4', label: 'Just looking', value: '12+' },
       ],
     },
-    // {
-    //   id: 'mustHaves',
-    //   question: "What's your #1 must-have?",
-    //   order: 5,
-    //   mappingKey: 'mustHaves',
-    //   allowFreeText: true,
-    // //   validation: { required: true },
-    // },
+
     {
       id: 'email',
       question: "What's your email so I can send your personalized home matches?",

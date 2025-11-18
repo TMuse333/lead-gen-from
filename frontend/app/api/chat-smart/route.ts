@@ -1,7 +1,6 @@
-// app/api/chat-smart/route.ts (FIXED - reads config from request)
+// app/api/chat-smart/route.ts - SIMPLIFIED (Free text = answers only)
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { buildChatPrompt } from '@/lib/chat/chatPromptBuilder';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -14,14 +13,12 @@ interface ChatRequest {
   currentNodeId: string;
   userInput: Record<string, string>;
   messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
-  
-  // ADD: Send flow config from client
   flowConfig?: any;
   questionConfig?: any;
 }
 
 export async function POST(req: NextRequest) {
-  console.log('🚀 Route called');
+  console.log('🚀 API Route called');
   
   try {
     const body: ChatRequest = await req.json();
@@ -32,120 +29,118 @@ export async function POST(req: NextRequest) {
       currentFlow,
       currentNodeId,
       userInput,
-      messages = [],
       flowConfig,
       questionConfig,
     } = body;
 
-    console.log('📨 Request:', { buttonId, freeText, currentFlow, currentNodeId });
+    console.log('📦 Request:', { 
+      buttonId, 
+      buttonValue, 
+      freeText, 
+      currentFlow, 
+      currentNodeId 
+    });
 
-    // Use config sent from client (since store is client-only)
     const flow = flowConfig;
     const currentQuestion = questionConfig;
 
     if (!flow || !currentQuestion) {
       return NextResponse.json(
-        { error: 'Flow/question config required in request' },
+        { error: 'Flow/question config required' },
         { status: 400 }
       );
     }
 
-    // Determine if this is a button click or free text
+    // Determine input type
     const isButtonClick = !!buttonId && !!buttonValue;
-    const isFreeTextQuestion = !!freeText && !isButtonClick;
+    const isFreeText = !!freeText && !isButtonClick;
 
-    // Find button if button click
-    let selectedButton;
+    // Extract the answer value
+    let answerValue: string;
     if (isButtonClick) {
-      selectedButton = currentQuestion.buttons?.find((b: any) => b.id === buttonId);
+      answerValue = buttonValue!;
+    } else if (isFreeText) {
+      answerValue = freeText!;
+    } else {
+      return NextResponse.json({ error: 'No input provided' }, { status: 400 });
     }
 
-    // Get next question for smooth transitions
+    console.log('✅ Answer extracted:', answerValue);
+
+    // Get next question
     const currentIndex = flow.questions.findIndex((q: any) => q.id === currentNodeId);
     const nextQuestion = flow.questions[currentIndex + 1];
+    const isLastQuestion = !nextQuestion;
 
-    // Build appropriate prompt based on input type
-    let systemPrompt: string;
+    console.log('📊 Progress:', {
+      currentIndex,
+      totalQuestions: flow.questions.length,
+      hasNext: !!nextQuestion,
+      isLast: isLastQuestion
+    });
 
-    if (isFreeTextQuestion) {
-      // User asked a question instead of clicking - answer it and guide back
-      systemPrompt = `You are Chris's AI assistant for ${flow.name}.
-
-CURRENT QUESTION THEY SHOULD ANSWER: "${currentQuestion.question}"
-
-USER ASKED: "${freeText}"
-
-YOUR TASK:
-1. Answer their question helpfully and concisely (2-3 sentences)
-2. Relate your answer to the current question context if possible
-3. Gently guide them back to answering: "${currentQuestion.question}"
-
-EXAMPLE RESPONSES:
-User asks: "How does age affect my home value?"
-You say: "Great question! Home age significantly impacts value - newer homes typically command 10-15% premiums, while older homes may need pricing adjustments for deferred maintenance. Now, ${currentQuestion.question.toLowerCase()}"
-
-User asks: "What's the market like?"
-You say: "Halifax's market is strong with steady demand! Knowing your timeline helps me tailor advice to current conditions. So, ${currentQuestion.question.toLowerCase()}"
-
-Keep it warm, helpful, and naturally guide them back to the current question.`;
-    } else {
-      // Normal button click - acknowledge and transition
-      systemPrompt = `You are Chris's AI assistant for ${flow.name}.
+    // Build prompt for AI response
+    const systemPrompt = `You are Chris's AI assistant for ${flow.name}.
 
 Current question: ${currentQuestion.question}
-User selection: ${buttonValue || freeText}
-${nextQuestion ? `\nNext question: "${nextQuestion.question}"\n⚠️ End your response by naturally leading into this next question.` : '\nThis is the final question - wrap up warmly.'}
+User's answer: ${answerValue}
+${nextQuestion ? `Next question: "${nextQuestion.question}"` : 'This is the final question.'}
 
-Provide a warm, personalized 2-3 sentence response that:
-1. Acknowledges their choice
-2. Adds helpful context
-${nextQuestion ? `3. Smoothly transitions to: "${nextQuestion.question}"` : '3. Wraps up the conversation'}
+Provide a warm 2-3 sentence response that:
+1. Acknowledges their answer positively
+2. Adds brief helpful context
+${nextQuestion ? `3. Naturally transitions to: "${nextQuestion.question}"` : '3. Thanks them for completing the questions'}
 
 Keep it concise and conversational.`;
-    }
 
     // Call OpenAI
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: isFreeTextQuestion ? freeText! : (buttonValue || freeText || '') },
+        { role: 'user', content: answerValue },
       ],
       temperature: 0.7,
-      max_tokens: 200,
+      max_tokens: 150,
     });
 
-    const reply = completion.choices[0].message.content || 'Great choice!';
+    const reply = completion.choices[0].message.content || 'Great, thanks!';
 
-    // For free-text questions, don't advance - stay on same question
-    // For button clicks, advance to next question
-    const responseNextQuestion = isFreeTextQuestion ? currentQuestion : nextQuestion;
-    const responseProgress = isFreeTextQuestion 
-      ? Math.round((currentIndex / flow.questions.length) * 100)
-      : Math.round(((currentIndex + 1) / flow.questions.length) * 100);
+    // Calculate progress
+    const progress = Math.round(((currentIndex + 1) / flow.questions.length) * 100);
 
-    return NextResponse.json({
+    // Build response
+    const response = {
       reply,
-      nextQuestion: responseNextQuestion ? {
-        id: responseNextQuestion.id,
-        question: responseNextQuestion.question,
-        buttons: responseNextQuestion.buttons || [],
-        allowFreeText: responseNextQuestion.allowFreeText,
-        mappingKey: responseNextQuestion.mappingKey,
-      } : null,
-      extracted: isButtonClick ? {
+      extracted: {
         mappingKey: currentQuestion.mappingKey,
-        value: buttonValue || '',
-      } : null, // Don't extract answer for free-text questions
-      progress: responseProgress,
-      isComplete: !nextQuestion && isButtonClick, // Only complete on button clicks
-      isFreeTextResponse: isFreeTextQuestion, // Flag to indicate this was a question
+        value: answerValue,
+      },
+      nextQuestion: nextQuestion ? {
+        id: nextQuestion.id,
+        question: nextQuestion.question,
+        buttons: nextQuestion.buttons || [],
+        allowFreeText: nextQuestion.allowFreeText,
+        mappingKey: nextQuestion.mappingKey,
+      } : null,
+      progress,
+      isComplete: isLastQuestion,
+      isFreeTextResponse: false, // Never treat as question anymore
+    };
+
+    console.log('✅ Sending response:', {
+      extracted: response.extracted,
+      progress: response.progress,
+      isComplete: response.isComplete,
+      hasNextQuestion: !!response.nextQuestion
     });
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('❌ Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
