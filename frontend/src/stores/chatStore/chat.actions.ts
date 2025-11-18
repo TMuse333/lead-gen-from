@@ -57,272 +57,341 @@ setDbActivity: (text: string) => set({ dbActivity: text }),
     },
 
     // === BUTTON CLICK HANDLER (WITH API CALL) ===
-    handleButtonClick: async (button: ChatButton) => {
-      const state = get();
-    
-      // Handle flow selection (sell/buy/browse)
-      if (['sell', 'buy', 'browse'].includes(button.value)) {
-        set({
-          currentFlow: button.value as 'sell' | 'buy' | 'browse',
-          currentNodeId: '',
-        });
-    
-        const userMsg: ChatMessage = {
-          role: 'user',
-          content: button.label,
-          timestamp: new Date(),
-        };
-        set((s) => ({ messages: [...s.messages, userMsg] }));
-    
-        const firstQuestion = getNextQuestion(button.value);
-        if (firstQuestion) {
-          const aiMsg: ChatMessage = {
-            role: 'assistant',
-            content: firstQuestion.question,
-            buttons: firstQuestion.buttons,
-            visual: firstQuestion.visual ? {
-              type: firstQuestion.visual.type,
-              value: typeof firstQuestion.visual.value === 'function'
-                ? firstQuestion.visual.value.name
-                : firstQuestion.visual.value
-            } : undefined,
-            timestamp: new Date(),
-          };
-          set((s) => ({
-            messages: [...s.messages, aiMsg],
-            currentNodeId: firstQuestion.id,
-          }));
-        }
-        return;
-      }
-    
-      // Regular answer button click
-      if (!state.currentFlow || !state.currentNodeId) return;
-    
-      const currentQuestion = useConversationStore
-        .getState()
-        .getQuestion(state.currentFlow, state.currentNodeId);
-    
-      if (!currentQuestion?.mappingKey) return;
-    
-      const userMsg: ChatMessage = {
-        
-        role: 'user',
-        content: button.label,
+  // Replace your handleButtonClick method with this fixed version:
+
+handleButtonClick: async (button: ChatButton) => {
+  const state = get();
+
+  // Handle flow selection (sell/buy/browse)
+  if (['sell', 'buy', 'browse'].includes(button.value)) {
+    set({
+      currentFlow: button.value as 'sell' | 'buy' | 'browse',
+      currentNodeId: '',
+    });
+
+    const userMsg: ChatMessage = {
+      role: 'user',
+      content: button.label,
+      timestamp: new Date(),
+    };
+    set((s) => ({ messages: [...s.messages, userMsg] }));
+
+    const firstQuestion = getNextQuestion(button.value);
+    if (firstQuestion) {
+      const aiMsg: ChatMessage = {
+        role: 'assistant',
+        content: firstQuestion.question,
+        buttons: firstQuestion.buttons,
+        visual: firstQuestion.visual ? {
+          type: firstQuestion.visual.type,
+          value: typeof firstQuestion.visual.value === 'function'
+            ? firstQuestion.visual.value.name
+            : firstQuestion.visual.value
+        } : undefined,
         timestamp: new Date(),
       };
-      set((s) => ({ messages: [...s.messages, userMsg], loading: true }));
+      set((s) => ({
+        messages: [...s.messages, aiMsg],
+        currentNodeId: firstQuestion.id,
+      }));
+    }
+    return;
+  }
+
+  // Regular answer button click
+  if (!state.currentFlow || !state.currentNodeId) return;
+
+  const currentQuestion = useConversationStore
+    .getState()
+    .getQuestion(state.currentFlow, state.currentNodeId);
+
+  if (!currentQuestion?.mappingKey) return;
+
+  const userMsg: ChatMessage = {
+    role: 'user',
+    content: button.label,
+    timestamp: new Date(),
+  };
+  set((s) => ({ messages: [...s.messages, userMsg], loading: true }));
+
+  // Helper to apply tracker messages
+  const applyButtonTracker = (answerValue: string) => {
+    console.log('🔍 applyButtonTracker called with:', answerValue);
     
-      // Helper to apply tracker messages (used in both success & fallback)
-      const applyButtonTracker = (answerValue: string) => {
-        const flow = useConversationStore.getState().getFlow(state.currentFlow!);
-        const question = flow?.questions.find(q => q.mappingKey === currentQuestion.mappingKey);
-        const clickedButton = question?.buttons?.find(b => b.value === answerValue);
+    const flow = useConversationStore.getState().getFlow(state.currentFlow!);
+    const question = flow?.questions.find(q => q.mappingKey === currentQuestion.mappingKey);
+    const clickedButton = question?.buttons?.find(b => b.value === answerValue);
+
+    if (clickedButton?.tracker?.insight) {
+      console.log('✅ Setting currentInsight:', clickedButton.tracker.insight);
+      set({ currentInsight: clickedButton.tracker.insight });
+    }
     
-        if (clickedButton?.tracker?.insight) {
-          set({ currentInsight: clickedButton!.tracker.insight! });
-        }
-        if (clickedButton?.tracker?.dbMessage) {
-          set({ dbActivity: clickedButton.tracker!.dbMessage! });
-        }
+    if (clickedButton?.tracker?.dbMessage) {
+      console.log('✅ Setting dbActivity:', clickedButton.tracker.dbMessage);
+      set({ dbActivity: clickedButton.tracker.dbMessage });
+    }
+  };
+
+  // NEW: Helper to check if we're done
+  const checkCompletion = (updatedUserInput: Record<string, string>) => {
+    const flow = useConversationStore.getState().getFlow(state.currentFlow!);
+    const totalQuestions = flow?.questions.length || 0;
+    const answeredCount = Object.keys(updatedUserInput).length;
+    
+    console.log(`📊 Completion check: ${answeredCount}/${totalQuestions} questions answered`);
+    
+    return answeredCount >= totalQuestions;
+  };
+
+  try {
+    console.log('📞 Calling /api/chat-smart for button click...');
+
+    const flow = useConversationStore.getState().getFlow(state.currentFlow);
+
+    const response = await fetch('/api/chat-smart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        buttonId: button.id,
+        buttonValue: button.value,
+        buttonLabel: button.label,
+        currentFlow: state.currentFlow,
+        currentNodeId: state.currentNodeId,
+        userInput: state.userInput,
+        messages: state.messages.slice(-5),
+        flowConfig: flow,
+        questionConfig: currentQuestion,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+    const data = await response.json();
+    console.log('✅ API response received:', data);
+
+    let answerValue: string;
+    let updatedUserInput: Record<string, string>;
+
+    if (data.extracted) {
+      get().addAnswer(data.extracted.mappingKey, data.extracted.value);
+      answerValue = data.extracted.value;
+      updatedUserInput = { ...state.userInput, [data.extracted.mappingKey]: data.extracted.value };
+    } else {
+      get().addAnswer(currentQuestion.mappingKey, button.value);
+      answerValue = button.value;
+      updatedUserInput = { ...state.userInput, [currentQuestion.mappingKey]: button.value };
+    }
+
+    // APPLY TRACKER MESSAGES AFTER ANSWER IS SAVED
+    applyButtonTracker(answerValue);
+
+    // CHECK IF COMPLETE (using actual flow length)
+    const isNowComplete = checkCompletion(updatedUserInput);
+
+    if (isNowComplete) {
+      console.log('🎉 Flow complete! Triggering completion...');
+      confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+      set({ 
+        isComplete: true, 
+        shouldCelebrate: true,
+        progress: 100 
+      });
+    } else {
+      // Add next question
+      const aiMsg: ChatMessage = {
+        role: 'assistant',
+        content: data.reply,
+        buttons: data.nextQuestion?.buttons || [],
+        visual: data.nextQuestion?.visual,
+        timestamp: new Date(),
       };
-    
-      try {
-        console.log('📞 Calling /api/chat-smart for button click...');
-    
-        const flow = useConversationStore.getState().getFlow(state.currentFlow);
-    
-        const response = await fetch('/api/chat-smart', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            buttonId: button.id,
-            buttonValue: button.value,
-            buttonLabel: button.label,
-            currentFlow: state.currentFlow,
-            currentNodeId: state.currentNodeId,
-            userInput: state.userInput,
-            messages: state.messages.slice(-5),
-            flowConfig: flow,
-            questionConfig: currentQuestion,
-          }),
-        });
-    
-        if (!response.ok) throw new Error(`API returned ${response.status}`);
-    
-        const data = await response.json();
-        console.log('✅ API response received:', data);
-    
-        let answerValue: string;
-    
-        if (data.extracted) {
-          get().addAnswer(data.extracted.mappingKey, data.extracted.value);
-          answerValue = data.extracted.value;
-        } else {
-          get().addAnswer(currentQuestion.mappingKey, button.value);
-          answerValue = button.value;
-        }
-    
-        // APPLY TRACKER MESSAGES AFTER ANSWER IS SAVED
-        applyButtonTracker(answerValue);
-    
+      set((s) => ({ messages: [...s.messages, aiMsg] }));
+
+      if (data.nextQuestion) {
+        set({ currentNodeId: data.nextQuestion.id });
+      }
+
+      if (data.progress !== undefined) {
+        set({ progress: data.progress });
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ API call failed, falling back to local flow:', error);
+
+    // Fallback: still add answer and tracker
+    get().addAnswer(currentQuestion.mappingKey, button.value);
+    const updatedUserInput = { ...state.userInput, [currentQuestion.mappingKey]: button.value };
+    applyButtonTracker(button.value);
+
+    // CHECK COMPLETION in fallback too
+    const isNowComplete = checkCompletion(updatedUserInput);
+
+    if (isNowComplete) {
+      console.log('🎉 Flow complete (fallback)! Triggering completion...');
+      confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+      set({ 
+        isComplete: true, 
+        shouldCelebrate: true,
+        progress: 100 
+      });
+    } else {
+      const nextQuestion = getNextQuestion(state.currentFlow, state.currentNodeId);
+
+      if (nextQuestion) {
         const aiMsg: ChatMessage = {
           role: 'assistant',
-          content: data.reply,
-          buttons: data.nextQuestion?.buttons || [],
-          visual: data.nextQuestion?.visual,
+          content: nextQuestion.question,
+          buttons: nextQuestion.buttons,
+          visual: nextQuestion.visual ? {
+            type: nextQuestion.visual.type,
+            value: typeof nextQuestion.visual.value === 'function'
+              ? nextQuestion.visual.value.name
+              : nextQuestion.visual.value
+          } : undefined,
           timestamp: new Date(),
         };
-        set((s) => ({ messages: [...s.messages, aiMsg] }));
-    
-        if (data.nextQuestion) {
-          set({ currentNodeId: data.nextQuestion.id });
-        } else {
-          confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-          set({ isComplete: true, shouldCelebrate: true });
-        };
-    
-        if (data.progress !== undefined) {
-          set({ progress: data.progress });
-        }
-    
-      } catch (error) {
-        console.error('❌ API call failed, falling back to local flow:', error);
-    
-        // Fallback: still add answer and tracker
-        get().addAnswer(currentQuestion.mappingKey, button.value);
-        applyButtonTracker(button.value);
-    
-        const nextQuestion = getNextQuestion(state.currentFlow, state.currentNodeId);
-    
-        if (nextQuestion) {
-          const aiMsg: ChatMessage = {
-            role: 'assistant',
-            content: nextQuestion.question,
-            buttons: nextQuestion.buttons,
-            visual: nextQuestion.visual ? {
-              type: nextQuestion.visual.type,
-              value: typeof nextQuestion.visual.value === 'function'
-                ? nextQuestion.visual.value.name
-                : nextQuestion.visual.value
-            } : undefined,
-            timestamp: new Date(),
-          };
-          set((s) => ({
-            messages: [...s.messages, aiMsg],
-            currentNodeId: nextQuestion.id,
-          }));
-        } else {
-          confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-          set({ isComplete: true, shouldCelebrate: true });
-        }
-      } finally {
-        set({ loading: false });
+        set((s) => ({
+          messages: [...s.messages, aiMsg],
+          currentNodeId: nextQuestion.id,
+        }));
+      } else {
+        // No next question means complete
+        confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+        set({ isComplete: true, shouldCelebrate: true, progress: 100 });
       }
-    },
+    }
+  } finally {
+    set({ loading: false });
+  }
+},
 
     // === FREE TEXT MESSAGE (ALSO CALLS API) ===
-    sendMessage: async (message: string, displayText?: string) => {
-      const state = get();
-      if (!message.trim()) return;
-      
-      set({ loading: true });
+  // === FREE TEXT MESSAGE (ALSO CALLS API) ===
+sendMessage: async (message: string, displayText?: string) => {
+  const state = get();
+  if (!message.trim()) return;
+  
+  set({ loading: true });
 
-      const userMsg: ChatMessage = {
-        role: 'user',
-        content: displayText || message,
+  const userMsg: ChatMessage = {
+    role: 'user',
+    content: displayText || message,
+    timestamp: new Date(),
+  };
+  set((s) => ({ messages: [...s.messages, userMsg] }));
+
+  // NEW: Helper to check completion (same as handleButtonClick)
+  const checkCompletion = (updatedUserInput: Record<string, string>) => {
+    const flow = useConversationStore.getState().getFlow(state.currentFlow!);
+    const totalQuestions = flow?.questions.length || 0;
+    const answeredCount = Object.keys(updatedUserInput).length;
+    
+    console.log(`📊 Completion check (sendMessage): ${answeredCount}/${totalQuestions} questions answered`);
+    
+    return answeredCount >= totalQuestions;
+  };
+
+  try {
+    console.log('📞 Calling /api/chat-smart for free text...');
+
+    // Get flow and question config to send to API
+    const flow = useConversationStore.getState().getFlow(state.currentFlow!);
+    const currentQuestion = flow?.questions.find(q => q.id === state.currentNodeId);
+
+    const payload = {
+      freeText: message,
+      currentFlow: state.currentFlow,
+      currentNodeId: state.currentNodeId,
+      userInput: state.userInput,
+      messages: state.messages.slice(-5),
+      flowConfig: flow,
+      questionConfig: currentQuestion,
+    };
+
+    const response = await fetch('/api/chat-smart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) throw new Error('Failed to send message');
+    
+    const data = await response.json();
+
+    console.log('✅ Free text response:', data);
+
+    // If this was a question (not an answer), don't extract or advance
+    if (data.isFreeTextResponse) {
+      const aiMsg: ChatMessage = {
+        role: 'assistant',
+        content: data.reply || 'Let me help you with that.',
+        buttons: data.nextQuestion?.buttons || [],
+        visual: data.nextQuestion?.visual,
         timestamp: new Date(),
       };
-      set((s) => ({ messages: [...s.messages, userMsg] }));
+      set((s) => ({ messages: [...s.messages, aiMsg] }));
+      return;
+    }
 
-      try {
-        console.log('📞 Calling /api/chat-smart for free text...');
+    // Normal answer - extract and advance
+    let updatedUserInput = state.userInput;
+    if (data.extracted) {
+      get().addAnswer(data.extracted.mappingKey, data.extracted.value);
+      updatedUserInput = { ...state.userInput, [data.extracted.mappingKey]: data.extracted.value };
+    }
 
-        // Get flow and question config to send to API
-        const flow = useConversationStore.getState().getFlow(state.currentFlow!);
-        const currentQuestion = flow?.questions.find(q => q.id === state.currentNodeId);
+    // Update flow if changed
+    if (data.flowType) {
+      set({ currentFlow: data.flowType });
+    }
 
-        const payload = {
-          freeText: message,
-          currentFlow: state.currentFlow,
-          currentNodeId: state.currentNodeId,
-          userInput: state.userInput,
-          messages: state.messages.slice(-5),
-          flowConfig: flow, // Send config from client
-          questionConfig: currentQuestion, // Send question config
-        };
+    // NEW: Check if complete using actual question count
+    const isNowComplete = checkCompletion(updatedUserInput);
 
-        const response = await fetch('/api/chat-smart', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+    if (isNowComplete) {
+      console.log('🎉 Flow complete via free text! Triggering completion...');
+      confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+      set({ 
+        isComplete: true,
+        shouldCelebrate: true,
+        progress: 100 
+      });
+    } else {
+      // Add AI response
+      const aiMsg: ChatMessage = {
+        role: 'assistant',
+        content: data.reply || 'Let me help you with that.',
+        buttons: data.nextQuestion?.buttons || [],
+        visual: data.nextQuestion?.visual,
+        timestamp: new Date(),
+      };
+      set((s) => ({ messages: [...s.messages, aiMsg] }));
 
-        if (!response.ok) throw new Error('Failed to send message');
-        
-        const data = await response.json();
-
-        console.log('✅ Free text response:', data);
-
-        // If this was a question (not an answer), don't extract or advance
-        if (data.isFreeTextResponse) {
-          // User asked a question - just show response with same buttons
-          const aiMsg: ChatMessage = {
-            role: 'assistant',
-            content: data.reply || 'Let me help you with that.',
-            buttons: data.nextQuestion?.buttons || [],
-            visual: data.nextQuestion?.visual,
-            timestamp: new Date(),
-          };
-          set((s) => ({ messages: [...s.messages, aiMsg] }));
-          // Don't advance flow - stay on same question
-          return;
-        }
-
-        // Normal answer - extract and advance
-        if (data.extracted) {
-          get().addAnswer(data.extracted.mappingKey, data.extracted.value);
-        }
-
-        // Update flow if changed
-        if (data.flowType) {
-          set({ currentFlow: data.flowType });
-        }
-
-        // Add AI response
-        const aiMsg: ChatMessage = {
-          role: 'assistant',
-          content: data.reply || 'Let me help you with that.',
-          buttons: data.nextQuestion?.buttons || [],
-          visual: data.nextQuestion?.visual,
-          timestamp: new Date(),
-        };
-        set((s) => ({ messages: [...s.messages, aiMsg] }));
-
-        // Update progress and completion
-        if (data.progress !== undefined) set({ progress: data.progress });
-        if (data.isComplete) {
-          confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-          set({ isComplete: true });
-        }
-
-        // Update current node
-        if (data.nextQuestion) {
-          set({ currentNodeId: data.nextQuestion.id });
-        }
-
-      } catch (error) {
-        console.error('Error sending message:', error);
-        const errorMsg: ChatMessage = {
-          role: 'assistant',
-          content: "I'm sorry, I encountered an error. Please try again.",
-          timestamp: new Date(),
-        };
-        set((s) => ({ messages: [...s.messages, errorMsg] }));
-      } finally {
-        set({ loading: false });
+      // Update progress
+      if (data.progress !== undefined) {
+        set({ progress: data.progress });
       }
-    },
+
+      // Update current node
+      if (data.nextQuestion) {
+        set({ currentNodeId: data.nextQuestion.id });
+      }
+    }
+
+  } catch (error) {
+    console.error('Error sending message:', error);
+    const errorMsg: ChatMessage = {
+      role: 'assistant',
+      content: "I'm sorry, I encountered an error. Please try again.",
+      timestamp: new Date(),
+    };
+    set((s) => ({ messages: [...s.messages, errorMsg] }));
+  } finally {
+    set({ loading: false });
+  }
+},
 
     // === SIMPLE SETTERS ===
     setLoading: (loading: boolean) => set({ loading }),

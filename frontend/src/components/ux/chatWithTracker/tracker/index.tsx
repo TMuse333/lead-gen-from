@@ -1,6 +1,6 @@
 'use client';
 
-import { useChatStore, selectUserInput, selectProgress, selectCurrentFlow } from '@/stores/chatStore';
+import { useChatStore, selectUserInput, selectProgress, selectCurrentFlow, ChatState } from '@/stores/chatStore';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { AnimatedParticles } from './animatedParticles';
@@ -12,93 +12,47 @@ import { CurrentInsight } from './currentInsight';
 import { DbActivity } from './dbActivity';
 import { CompletionModal } from './completionModal';
 
-const TOTAL_QUESTIONS = 6;
-
-// Simulated insights that appear based on user answers
-const DYNAMIC_INSIGHTS = {
-  sell: [
-    "🏠 Analyzing your property type...",
-    "📊 Searching 1,247 comparable sales...",
-    "💡 Found 3 expert tips for your timeline",
-    "🎯 Matching with similar seller journeys...",
-    "✨ Personalizing your action plan..."
-  ],
-  buy: [
-    "🔍 Analyzing your budget range...",
-    "🏘️ Searching 892 active listings...",
-    "💰 Found 4 financing strategies for you",
-    "🎯 Matching with successful buyers...",
-    "✨ Crafting your home search plan..."
-  ],
-  browse: [
-    "📈 Analyzing market trends...",
-    "🌍 Exploring neighborhood data...",
-    "📊 Found 5 investment opportunities",
-    "🎯 Understanding your interests...",
-    "✨ Curating personalized insights..."
-  ]
-};
-
-// Random "database" activity messages
-const DB_MESSAGES = [
-  "Querying vector database...",
-  "Matching semantic patterns...",
-  "Retrieving expert advice...",
-  "Analyzing rule conditions...",
-  "Computing relevance scores...",
-  "Filtering 2,847 documents...",
-  "Running similarity search...",
-  "Aggregating insights..."
-];
+// NEW: Selectors for the dynamic tracker values
+const selectCurrentInsight = (state: ChatState) => state.currentInsight || '';
+const selectDbActivity = (state: ChatState) => state.dbActivity || '';
 
 export default function AnalysisTracker() {
   const userInput = useChatStore(selectUserInput);
   const progress = useChatStore(selectProgress);
   const currentFlow = useChatStore(selectCurrentFlow);
+  
+  // These now come straight from the button tracker!
+
+
   const [showModal, setShowModal] = useState(false);
   const [calculationStep, setCalculationStep] = useState(0);
-  const [currentInsight, setCurrentInsight] = useState('');
-  const [dbActivity, setDbActivity] = useState('');
   const [matchScore, setMatchScore] = useState(0);
   const [itemsFound, setItemsFound] = useState(0);
 
   const answersArray = Object.entries(userInput);
-  const isComplete = answersArray.length >= TOTAL_QUESTIONS;
+  const isComplete = progress >= 100; // Now based on real progress from store
 
   // Glow intensity based on progress
   const glowIntensity = Math.min(progress / 100, 1);
-
-  // Show insights as user progresses
+  const currentInsightFromStore = useChatStore(selectCurrentInsight);
+  const dbActivityFromStore = useChatStore(selectDbActivity);
+  
+  const [currentInsight, setCurrentInsight] = useState("Gathering your information...");
+  const [dbActivity, setDbActivity] = useState("Processing your answers...");
+  // Simulate ongoing DB activity when in progress
   useEffect(() => {
-    if (answersArray.length > 0 && currentFlow) {
-      const insights = DYNAMIC_INSIGHTS[currentFlow as keyof typeof DYNAMIC_INSIGHTS] || [];
-      const insightIndex = Math.min(answersArray.length - 1, insights.length - 1);
-      
-      setTimeout(() => {
-        setCurrentInsight(insights[insightIndex]);
-      }, 300);
+    if (currentInsightFromStore) {
+      setCurrentInsight(currentInsightFromStore);
     }
-  }, [answersArray.length, currentFlow]);
+  }, [currentInsightFromStore]);
 
-  // Simulate database activity
   useEffect(() => {
-    if (progress > 0 && progress < 100) {
-      const interval = setInterval(() => {
-        const randomMsg = DB_MESSAGES[Math.floor(Math.random() * DB_MESSAGES.length)];
-        setDbActivity(randomMsg);
-        
-        // Simulate increasing match score
-        setMatchScore(prev => Math.min(prev + Math.random() * 5, 95));
-        
-        // Simulate finding items
-        setItemsFound(prev => prev + Math.floor(Math.random() * 3));
-      }, 2000);
-
-      return () => clearInterval(interval);
+    if (dbActivityFromStore) {
+      setDbActivity(dbActivityFromStore);
     }
-  }, [progress]);
+  }, [dbActivityFromStore]);
 
-  // Show modal when complete
+  // Show completion modal
   useEffect(() => {
     if (isComplete) {
       setShowModal(true);
@@ -107,9 +61,7 @@ export default function AnalysisTracker() {
       const interval = setInterval(() => {
         step++;
         setCalculationStep(step);
-        if (step >= 7) {
-          clearInterval(interval);
-        }
+        if (step >= 7) clearInterval(interval);
       }, 600);
 
       return () => clearInterval(interval);
@@ -125,10 +77,15 @@ export default function AnalysisTracker() {
 
   const formatValue = (value: string): string => {
     if (value.includes('-') && !value.includes('@')) {
-      return value.replace('-', ' - ');
+      return value.replace(/-/g, ' - ').replace(' - plus', '+');
     }
     return value.charAt(0).toUpperCase() + value.slice(1);
   };
+
+  useEffect(() => {
+    console.log('🔍 currentInsight from store:', currentInsightFromStore);
+    console.log('🔍 dbActivity from store:', dbActivityFromStore);
+  }, [currentInsightFromStore, dbActivityFromStore]);
 
   return (
     <>
@@ -137,7 +94,7 @@ export default function AnalysisTracker() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 relative overflow-hidden"
         style={{
-          boxShadow: `0 0 ${20 + glowIntensity * 30}px rgba(59, 130, 246, ${0.1 + glowIntensity * 0.3})`
+          boxShadow: `0 0 ${20 + glowIntensity * 40}px rgba(99, 102, 241, ${0.15 + glowIntensity * 0.35})`
         }}
       >
         <AnimatedParticles progress={progress} />
@@ -148,13 +105,19 @@ export default function AnalysisTracker() {
 
         <ProgressBar progress={progress} />
 
-        <AnsweredQuestions userInput={userInput} formatKey={formatKey} formatValue={formatValue} />
+        <AnsweredQuestions 
+          userInput={userInput} 
+          formatKey={formatKey} 
+          formatValue={formatValue} 
+        />
 
-        <CurrentInsight currentInsight={currentInsight} />
+        {/* Now uses real dynamic insight from button */}
+        <CurrentInsight currentInsight={currentInsight } />
 
+        {/* Real DB activity from button, with fallback simulation */}
         <DbActivity 
-          dbActivity={dbActivity}
-          matchScore={matchScore}
+          dbActivity={dbActivity }
+          matchScore={Math.round(matchScore)}
           itemsFound={itemsFound}
           progress={progress}
         />

@@ -11,6 +11,9 @@ interface DbActivityProps {
 export function DbActivity({ dbActivity, matchScore, itemsFound, progress }: DbActivityProps) {
   if (progress <= 0 || progress >= 100) return null;
 
+  // Show fallback instead of empty
+  const displayText = dbActivity || "Processing your answers...";
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -23,7 +26,7 @@ export function DbActivity({ dbActivity, matchScore, itemsFound, progress }: DbA
       </div>
       
       <div className="space-y-2 text-sm">
-        <p className="text-gray-700">{dbActivity}</p>
+        <p className="text-gray-700">{displayText}</p>
         
         <div className="flex justify-between">
           <span className="text-gray-600">Match Score:</span>

@@ -6,7 +6,8 @@ interface CurrentInsightProps {
 }
 
 export function CurrentInsight({ currentInsight }: CurrentInsightProps) {
-  if (!currentInsight) return null;
+  // Show fallback instead of hiding
+  const displayText = currentInsight || "Gathering your information...";
 
   return (
     <motion.div
@@ -16,7 +17,7 @@ export function CurrentInsight({ currentInsight }: CurrentInsightProps) {
     >
       <p className="text-sm text-gray-800 font-medium flex items-center gap-2">
         <Zap className="h-4 w-4 text-indigo-600" />
-        {currentInsight}
+        {displayText}
       </p>
     </motion.div>
   );

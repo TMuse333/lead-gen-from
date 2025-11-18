@@ -1,4 +1,4 @@
-// components/chatWithTracker.tsx
+// components/chatWithTracker.tsx - DEBUGGED VERSION
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -14,8 +14,6 @@ import {
   selectCurrentFlow,
   selectProgress
 } from '@/stores/chatStore';
-
-
 
 import { GameChat } from './chat/gameChat';
 import { Loader2 } from 'lucide-react';
@@ -46,6 +44,11 @@ export default function ChatWithTracker() {
   const [isInitialized, setIsInitialized] = useState(false);
   const submissionCalledRef = useRef(false);
 
+  // DEBUG: Log every time isComplete changes
+  useEffect(() => {
+    console.log('🔄 isComplete changed to:', isComplete);
+  }, [isComplete]);
+
   // Initialize: Wait for hydration + run migration once
   useEffect(() => {
     if (!configHydrated) return;
@@ -56,7 +59,6 @@ export default function ChatWithTracker() {
     if (!migrated) {
       console.log('🔄 Running conversation flows migration...');
       try {
-   
         localStorage.setItem('flows-migrated', 'true');
         console.log('✅ Migration complete!');
       } catch (error) {
@@ -75,15 +77,36 @@ export default function ChatWithTracker() {
 
   // Submit to API when chat is complete
   useEffect(() => {
-    if (!isComplete) return;
-    if (submissionCalledRef.current) return;
-    if (!currentFlow || !userInput || Object.keys(userInput).length === 0) return;
+    console.log('🔍 Submission useEffect triggered:');
+    console.log('   - isComplete:', isComplete);
+    console.log('   - currentFlow:', currentFlow);
+    console.log('   - userInput length:', Object.keys(userInput).length);
+    console.log('   - submissionCalled:', submissionCalledRef.current);
+    
+    if (!isComplete) {
+      console.log('❌ Not complete yet - skipping');
+      return;
+    }
+    
+    if (submissionCalledRef.current) {
+      console.log('❌ Already submitted - skipping');
+      return;
+    }
+    
+    if (!currentFlow || !userInput || Object.keys(userInput).length === 0) {
+      console.log('❌ Missing flow or userInput - skipping');
+      return;
+    }
 
+    console.log('✅ ALL CHECKS PASSED - Calling API now!');
     submissionCalledRef.current = true;
 
     const submitFastResults = async () => {
       try {
-        console.log('🚀 Fast-tracking results via /api/test-component...', { currentFlow, userInput });
+        console.log('🚀 Fast-tracking results via /api/test-component...', { 
+          currentFlow, 
+          userInput 
+        });
         
         const { data } = await axios.post("/api/test-component", {
           flow: currentFlow,
@@ -136,8 +159,19 @@ export default function ChatWithTracker() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-8 px-4
+    text-black
+    ">
       <div className="flex gap-6 max-w-7xl mx-auto">
+        {/* DEBUG INFO */}
+        <div className="fixed top-4 z-[500] right-4 bg-white p-4 rounded-lg shadow-lg text-xs font-mono z-50">
+          <div className="font-bold mb-2">Debug Info:</div>
+          <div>isComplete: {String(isComplete)}</div>
+          <div>progress: {progress}%</div>
+          <div>answers: {Object.keys(userInput).length}/{totalSteps}</div>
+          <div>submitted: {String(submissionCalledRef.current)}</div>
+        </div>
+
         {/* Game Chat */}
         <div className="flex-1">
           <GameChat
