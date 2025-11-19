@@ -16,6 +16,9 @@ import ViewAgentAdvice from '@/components/admin/adviceDashboard/viewAgentAdvice'
 import AgentAdviceUploader from '@/components/admin/adviceDashboard/agentAdviceUploader';
 import { useChatStore } from '@/stores/chatStore';
 import { GameChat } from '@/components/ux/chatWithTracker/chat/gameChat';
+import AuroraHero from '@/components/landingPage/auroraHero';
+import WhyDifferentSection from '@/components/landingPage/whyDifferent';
+import TechSpecs from '@/components/landingPage/techSpecs';
 
 
 export default function FormPage() {
@@ -46,9 +49,14 @@ export default function FormPage() {
   
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12">
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <AuroraHero/>
+      <WhyDifferentSection/>
+      <TechSpecs/>
+
       <div className="container mx-auto px-4">
         {/* Header */}
+        
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Get Your Free Home Valuation

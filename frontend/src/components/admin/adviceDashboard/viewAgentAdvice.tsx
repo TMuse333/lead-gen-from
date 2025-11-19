@@ -308,7 +308,7 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
                     
                     {/* Delete Button */}
                     <button
-                      onClick={() => handleDelete(item.id)}
+                      // onClick={() => handleDelete(item.id)}
                       disabled={deletingId === item.id}
                       // Dark theme: Delete button styles
                       className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-900/30 rounded-full transition disabled:opacity-50"
