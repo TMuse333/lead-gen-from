@@ -1,16 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, MessageSquare, Settings, LayoutGrid, ArrowLeft } from 'lucide-react';
+import { BookOpen, MessageSquare, Settings, LayoutGrid, ArrowLeft, Home,
+Mic } from 'lucide-react';
 import ConversationEditor from '../conversationEditor/conversationEditor';
 import AgentAdviceDashboard from '../adviceDashboard/agentAdviceDashboard';
 import logo from '../../../../public/logo.png'
 import Image from 'next/image';
 import Link from 'next/link';
+import Navbar from '@/components/landingPage/navbar';
+import WelcomeOverview from '../overview/overview';
+import AgentAdviceSpeechUploader from '../agentSpeechUploader/agentSpeechUploader';
 
 
 // Define admin sections for easy scaling
 const ADMIN_SECTIONS = [
+    {
+        id:'Overview',
+        label:'Overview',
+        icon:Home,
+        component:WelcomeOverview,
+        description:'Overview of the dashboard'
+    },
   {
     id: 'conversations',
     label: 'Conversation Flows',
@@ -25,6 +36,14 @@ const ADMIN_SECTIONS = [
     component: AgentAdviceDashboard,
     description: 'Manage personalized advice content'
   },
+  {
+    id:'Speech upload',
+    label:'Speech uploader',
+    icon:Mic,
+    component:AgentAdviceSpeechUploader,
+    description:'Upload your knowledge via script'
+  }
+ 
   // Easy to add more sections later:
   // {
   //   id: 'analytics',
@@ -43,6 +62,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-900">
+        <Navbar/>
       {/* Top Navigation Bar */}
       <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4">

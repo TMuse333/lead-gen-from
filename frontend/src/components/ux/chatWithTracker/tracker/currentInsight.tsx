@@ -13,10 +13,10 @@ export function CurrentInsight({ currentInsight }: CurrentInsightProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-indigo-500 shadow-sm"
+      className="mb-4 p-3 bg-slate-700 rounded-lg border-l-4 border-[#00bfff] shadow-sm"
     >
-      <p className="text-sm text-gray-800 font-medium flex items-center gap-2">
-        <Zap className="h-4 w-4 text-indigo-600" />
+      <p className="text-sm text-white font-medium flex items-center gap-2">
+        <Zap className="h-4 w-4 text-[#00bfff]" />
         {displayText}
       </p>
     </motion.div>

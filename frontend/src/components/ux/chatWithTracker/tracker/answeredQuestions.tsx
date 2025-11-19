@@ -11,7 +11,7 @@ interface AnsweredQuestionsProps {
     const answersArray = Object.entries(userInput);
   
     return (
-      <div className="space-y-2 mb-6">
+      <div className="space-y-2 mb-6 text-white">
         {answersArray.map(([key, value]) => (
           <motion.div
             key={key}

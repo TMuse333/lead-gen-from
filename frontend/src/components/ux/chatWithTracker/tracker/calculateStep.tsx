@@ -29,13 +29,13 @@ export function CalculationStep({ item, calculationStep }: CalculationStepProps)
       }`}
     >
       <div className={`flex-shrink-0 mt-0.5 ${
-        calculationStep >= item.step ? item.color : 'text-gray-400'
+        calculationStep >= item.step ? item.color : 'text-white'
       }`}>
         {item.icon}
       </div>
       <div className="flex-1">
         <div className={`text-sm font-semibold ${
-          calculationStep >= item.step ? 'text-gray-900' : 'text-gray-500'
+          calculationStep >= item.step ? 'text-white' : 'text-white'
         }`}>
           {item.text}
         </div>

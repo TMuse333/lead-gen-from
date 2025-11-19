@@ -22,7 +22,7 @@ export function Header({ progress, isComplete }: HeaderProps) {
             <Sparkles className="text-blue-400 opacity-50" size={20} />
           </motion.div>
         </div>
-        <h3 className="font-semibold text-gray-900">AI Analysis</h3>
+        <h3 className="font-semibold text-white">AI Analysis</h3>
       </div>
 
       {/* Growing reward icon */}

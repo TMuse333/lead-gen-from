@@ -1,3 +1,4 @@
+// components/tracker/index.tsx – Fully Neural Cyan Themed
 'use client';
 
 import { useChatStore, selectUserInput, selectProgress, selectCurrentFlow, ChatState } from '@/stores/chatStore';
@@ -12,7 +13,6 @@ import { CurrentInsight } from './currentInsight';
 import { DbActivity } from './dbActivity';
 import { CompletionModal } from './completionModal';
 
-// NEW: Selectors for the dynamic tracker values
 const selectCurrentInsight = (state: ChatState) => state.currentInsight || '';
 const selectDbActivity = (state: ChatState) => state.dbActivity || '';
 
@@ -20,60 +20,44 @@ export default function AnalysisTracker() {
   const userInput = useChatStore(selectUserInput);
   const progress = useChatStore(selectProgress);
   const currentFlow = useChatStore(selectCurrentFlow);
-  
-  // These now come straight from the button tracker!
-
+  const currentInsightFromStore = useChatStore(selectCurrentInsight);
+  const dbActivityFromStore = useChatStore(selectDbActivity);
 
   const [showModal, setShowModal] = useState(false);
   const [calculationStep, setCalculationStep] = useState(0);
-  const [matchScore, setMatchScore] = useState(0);
-  const [itemsFound, setItemsFound] = useState(0);
-
-  const answersArray = Object.entries(userInput);
-  const isComplete = progress >= 100; // Now based on real progress from store
-
-  // Glow intensity based on progress
-  const glowIntensity = Math.min(progress / 100, 1);
-  const currentInsightFromStore = useChatStore(selectCurrentInsight);
-  const dbActivityFromStore = useChatStore(selectDbActivity);
-  
   const [currentInsight, setCurrentInsight] = useState("Gathering your information...");
   const [dbActivity, setDbActivity] = useState("Processing your answers...");
-  // Simulate ongoing DB activity when in progress
+
+  const answersArray = Object.entries(userInput);
+  const isComplete = progress >= 100;
+
+  // Glow intensity based on progress (0 → 1)
+  const glowIntensity = Math.min(progress / 100, 1);
+
   useEffect(() => {
-    if (currentInsightFromStore) {
-      setCurrentInsight(currentInsightFromStore);
-    }
+    if (currentInsightFromStore) setCurrentInsight(currentInsightFromStore);
   }, [currentInsightFromStore]);
 
   useEffect(() => {
-    if (dbActivityFromStore) {
-      setDbActivity(dbActivityFromStore);
-    }
+    if (dbActivityFromStore) setDbActivity(dbActivityFromStore);
   }, [dbActivityFromStore]);
 
-  // Show completion modal
+  // Completion modal
   useEffect(() => {
-    if (isComplete) {
+    if (isComplete && !showModal) {
       setShowModal(true);
-      
       let step = 0;
       const interval = setInterval(() => {
         step++;
         setCalculationStep(step);
         if (step >= 7) clearInterval(interval);
       }, 600);
-
       return () => clearInterval(interval);
     }
-  }, [isComplete]);
+  }, [isComplete, showModal]);
 
-  const formatKey = (key: string): string => {
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .trim();
-  };
+  const formatKey = (key: string): string =>
+    key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
 
   const formatValue = (value: string): string => {
     if (value.includes('-') && !value.includes('@')) {
@@ -82,27 +66,35 @@ export default function AnalysisTracker() {
     return value.charAt(0).toUpperCase() + value.slice(1);
   };
 
-  useEffect(() => {
-    console.log('🔍 currentInsight from store:', currentInsightFromStore);
-    console.log('🔍 dbActivity from store:', dbActivityFromStore);
-  }, [currentInsightFromStore, dbActivityFromStore]);
-
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 relative overflow-hidden"
+        transition={{ duration: 0.7 }}
+        className="relative rounded-3xl p-7 overflow-hidden backdrop-blur-xl border"
         style={{
-          boxShadow: `0 0 ${20 + glowIntensity * 40}px rgba(99, 102, 241, ${0.15 + glowIntensity * 0.35})`
+          background: 'rgba(15, 23, 42, 0.75)', // slate-900/75
+          borderColor: 'rgba(34, 211, 238, 0.3)', // cyan-400/30
+          boxShadow: `
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            0 0 ${30 + glowIntensity * 60}px rgba(6, 182, 212, ${0.15 + glowIntensity * 0.4}),
+            inset 0 1px 0 rgba(34, 211, 238, 0.1)
+          `,
         }}
       >
+        {/* Subtle inner glow ring */}
+        <div 
+          className="absolute inset-0 rounded-3xl pointer-events-none opacity-40"
+          style={{
+            background: `radial-gradient(circle at 50% 0%, rgba(34, 211, 238, ${glowIntensity * 0.3}) 0%, transparent 70%)`,
+          }}
+        />
+
         <AnimatedParticles progress={progress} />
 
         <Header progress={progress} isComplete={isComplete} />
-
         <FlowBadge currentFlow={currentFlow!} />
-
         <ProgressBar progress={progress} />
 
         <AnsweredQuestions 
@@ -111,14 +103,11 @@ export default function AnalysisTracker() {
           formatValue={formatValue} 
         />
 
-        {/* Now uses real dynamic insight from button */}
-        <CurrentInsight currentInsight={currentInsight } />
-
-        {/* Real DB activity from button, with fallback simulation */}
+        <CurrentInsight currentInsight={currentInsight} />
         <DbActivity 
-          dbActivity={dbActivity }
-          matchScore={Math.round(matchScore)}
-          itemsFound={itemsFound}
+          dbActivity={dbActivity}
+          matchScore={Math.round(progress)}
+          itemsFound={answersArray.length}
           progress={progress}
         />
       </motion.div>

@@ -8,7 +8,7 @@ export function AnimatedParticles({ progress }: AnimatedParticlesProps) {
   if (progress <= 30) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none text-white">
       {[...Array(Math.floor(progress / 15))].map((_, i) => (
         <motion.div
           key={i}

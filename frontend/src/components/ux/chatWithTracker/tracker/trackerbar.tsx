@@ -64,7 +64,7 @@ export function AnalysisTrackerBar() {
       animate={{ y: 0 }}
       className="fixed bottom-0 left-0 right-0 z-40"
     >
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-4 shadow-2xl">
+      <div className="from-cyan-400 via-blue-500 to-cyan-600 p-4 shadow-2xl">
         <div className="flex items-center justify-between text-white">
           {/* Left: Flow + Progress + Dynamic Message */}
           <div className="flex flex-col">

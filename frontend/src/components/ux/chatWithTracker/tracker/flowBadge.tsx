@@ -7,7 +7,7 @@ interface FlowBadgeProps {
   
     return (
       <div className="mb-4">
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium from-cyan-400 to-blue-600 text-white">
           {currentFlow.charAt(0).toUpperCase() + currentFlow.slice(1)} Journey
         </span>
       </div>

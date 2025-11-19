@@ -23,8 +23,8 @@ export function ProgressBar({ progress }: ProgressBarProps) {
         </motion.div>
       </div>
       <div className="flex justify-between mt-2 text-xs font-medium">
-        <span className="text-gray-600">Progress</span>
-        <span className="text-indigo-600">{Math.round(progress)}%</span>
+        <span className="text-white">Progress</span>
+        <span className="text-[#00bfff]">{Math.round(progress)}%</span>
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import { GameChat } from '@/components/ux/chatWithTracker/chat/gameChat';
 import AuroraHero from '@/components/landingPage/auroraHero';
 import WhyDifferentSection from '@/components/landingPage/whyDifferent';
 import TechSpecs from '@/components/landingPage/techSpecs';
+import Navbar from '@/components/landingPage/navbar';
 
 
 export default function FormPage() {
@@ -49,7 +50,8 @@ export default function FormPage() {
   
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <main className="min-h-screen bg-[#0a1525]">
+      <Navbar/>
       <AuroraHero/>
       <WhyDifferentSection/>
       <TechSpecs/>

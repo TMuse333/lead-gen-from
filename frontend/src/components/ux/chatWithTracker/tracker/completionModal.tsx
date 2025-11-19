@@ -1,7 +1,8 @@
+// components/completionModal.tsx
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Sparkles, Check, Database, Search, Radar, BarChart3, Brain, TrendingUp } from 'lucide-react';
-import { CalculationStep } from './calculateStep';
-
+import { Trophy, Database, Search, Radar, BarChart3, Brain, TrendingUp, Sparkles, Check } from 'lucide-react';
+import Image from 'next/image';
+import logo from '../../../../../public/logo.png'; // ← Your exact path
 
 interface CompletionModalProps {
   showModal: boolean;
@@ -11,178 +12,157 @@ interface CompletionModalProps {
 
 export function CompletionModal({ showModal, calculationStep, answersArray }: CompletionModalProps) {
   const steps = [
-    { 
-      icon: <Database size={18} />, 
-      text: "Connecting to Qdrant vector database", 
-      subtext: "2,847 documents indexed",
-      step: 0,
-      color: "text-blue-600"
-    },
-    { 
-      icon: <Search size={18} />, 
-      text: "Running semantic similarity search", 
-      subtext: `Found ${Math.floor(Math.random() * 8) + 12} relevant insights`,
-      step: 1,
-      color: "text-purple-600"
-    },
-    { 
-      icon: <Radar size={18} />, 
-      text: "Evaluating rule-based conditions", 
-      subtext: `${Math.floor(Math.random() * 4) + 3} rules matched`,
-      step: 2,
-      color: "text-indigo-600"
-    },
-    { 
-      icon: <BarChart3 size={18} />, 
-      text: "Analyzing your unique profile", 
-      subtext: `${answersArray.length} data points processed`,
-      step: 3,
-      color: "text-pink-600"
-    },
-    { 
-      icon: <Brain size={18} />, 
-      text: "AI crafting personalized content", 
-      subtext: "GPT-4o-mini generating...",
-      step: 4,
-      color: "text-orange-600"
-    },
-    { 
-      icon: <TrendingUp size={18} />, 
-      text: "Optimizing action plan priority", 
-      subtext: `${Math.floor(Math.random() * 3) + 4} steps prioritized`,
-      step: 5,
-      color: "text-green-600"
-    },
-    { 
-      icon: <Sparkles size={18} />, 
-      text: "Finalizing your experience", 
-      subtext: "Assembling components...",
-      step: 6,
-      color: "text-yellow-600"
-    },
+    { icon: <Database size={18} />, text: "Connecting to neural knowledge base", subtext: "12,483 vectors loaded" },
+    { icon: <Search size={18} />, text: "Running semantic similarity search", subtext: "Found 18 highly relevant insights" },
+    { icon: <Radar size={18} />, text: "Evaluating user profile rules", subtext: "7 conditions matched" },
+    { icon: <BarChart3 size={18} />, text: "Building personalized profile", subtext: `${answersArray.length} data points analyzed` },
+    { icon: <Brain size={18} />, text: "Neural engine generating content", subtext: "GPT-4o + RAG in progress..." },
+    { icon: <TrendingUp size={18} />, text: "Prioritizing action steps", subtext: "6 high-impact items selected" },
+    { icon: <Sparkles size={18} />, text: "Finalizing your experience", subtext: "Polishing output..." },
   ];
+
+  const finalStep = steps.length; // 7 steps → finalStep = 7
+  const progress = calculationStep >= finalStep ? 100 : (calculationStep / finalStep) * 100;
 
   return (
     <AnimatePresence>
       {showModal && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm"
-          onClick={() => {}}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl"
         >
           <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full m-4 relative overflow-hidden"
+            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="relative w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl"
+            style={{
+              background: 'rgba(15, 23, 42, 0.85)',
+              border: '1px solid rgba(34, 211, 238, 0.4)',
+              boxShadow: '0 0 80px rgba(6, 182, 212, 0.4)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Background glow */}
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 pointer-events-none"
-              animate={{
-                opacity: [0.8, 1, 0.8],
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-            />
+            {/* Animated background glow */}
+            <div className="absolute inset-0 opacity-50">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-600/10 to-transparent" />
+              <motion.div
+                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 4, repeat: Infinity }}
+                className="absolute inset-0 bg-gradient-to-t from-cyan-400/30 to-transparent"
+              />
+            </div>
 
-            {/* Confetti particles */}
-            {calculationStep >= 7 && (
-              <>
-                {[...Array(12)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute w-2 h-2 rounded-full"
-                    style={{
-                      backgroundColor: `hsl(${Math.random() * 360}, 80%, 70%)`,
-                      left: `${Math.random() * 100}%`,
-                      top: '100%',
-                    }}
-                    animate={{
-                      y: [-400 - Math.random() * 200, 0],
-                      x: [0, Math.sin(i) * 50],
-                      opacity: [1, 0],
-                      rotate: Math.random() * 360,
-                    }}
-                    transition={{
-                      duration: 2 + Math.random() * 2,
-                      repeat: Infinity,
-                      delay: Math.random() * 2,
-                    }}
-                  />
-                ))}
-              </>
-            )}
+            {/* Logo Header */}
+            <div className="relative z-10 flex justify-center pt-6 pb-4">
+              <Image
+                src={logo}
+                alt="Logo"
+                width={140}
+                height={60}
+                className="h-14 w-auto object-contain drop-shadow-2xl"
+              />
+            </div>
 
-            {/* Trophy Animation */}
-            <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="flex justify-center mb-6"
-            >
-              <div className="relative">
-                <Trophy className="text-yellow-500" size={90} />
-                <motion.div
-                  className="absolute inset-0"
-                  animate={{
-                    boxShadow: [
-                      '0 0 30px rgba(234, 179, 8, 0.6)',
-                      '0 0 60px rgba(234, 179, 8, 0.9)',
-                      '0 0 30px rgba(234, 179, 8, 0.6)',
-                    ]
-                  }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-              </div>
-            </motion.div>
+            {/* Trophy + Title */}
+            <div className="relative z-10 text-center px-8 pb-6">
+              <motion.div
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="inline-block"
+              >
+                <Trophy className="mx-auto text-cyan-400" size={80} strokeWidth={2.5} />
+              </motion.div>
 
-            <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
-              🎉 AI Analysis Complete!
-            </h2>
-            
-            <p className="text-gray-700 text-center mb-8 font-medium">
-              Generating your personalized landing page...
-            </p>
+              <h2 className="mt-5 text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                Neural Analysis Complete!
+              </h2>
+              <p className="mt-3 text-cyan-100/80 text-lg">
+                Generating your personalized experience...
+              </p>
+            </div>
 
-            {/* Enhanced calculation steps */}
-            <div className="space-y-3 mb-6">
+            {/* Steps List */}
+            <div className="relative z-10 px-8 space-y-3">
               {steps.map((item, i) => (
-                <CalculationStep key={i} item={item} calculationStep={calculationStep} />
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: calculationStep > i ? 1 : 0.5, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center gap-4 py-2"
+                >
+                  <div className={`p-2 rounded-lg ${calculationStep > i ? 'bg-cyan-500/20' : 'bg-slate-700/50'}`}>
+                    <div className={calculationStep > i ? 'text-cyan-400' : 'text-cyan-600/50'}>
+                      {item.icon}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-medium ${calculationStep > i ? 'text-cyan-50' : 'text-cyan-300/60'}`}>
+                      {item.text}
+                    </p>
+                    <p className="text-xs text-cyan-300/70">{item.subtext}</p>
+                  </div>
+                  {calculationStep > i && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                      <Check size={20} className="text-cyan-400" />
+                    </motion.div>
+                  )}
+                </motion.div>
               ))}
             </div>
 
-            {/* Enhanced loading bar */}
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-              <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 relative"
-                initial={{ width: 0 }}
-                animate={{ width: `${(calculationStep / 7) * 100}%` }}
-                transition={{ duration: 0.4 }}
-              >
-                {/* Shimmer */}
+            {/* Loading Bar + Status */}
+            <div className="relative z-10 px-8 mt-6 mb-8">
+              <div className="h-3 bg-slate-800/80 rounded-full overflow-hidden border border-cyan-800/50">
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-50"
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
-              </motion.div>
+                  className="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-cyan-400 relative"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    animate={{ x: ["-200%", "200%"] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                  />
+                </motion.div>
+              </div>
+
+              <div className="flex justify-between mt-3 text-sm">
+                <span className="text-cyan-300/80">
+                  {calculationStep >= finalStep ? "Finalizing output..." : `Step ${calculationStep + 1} of ${finalStep}`}
+                </span>
+                <motion.span
+                  className="font-bold text-cyan-400"
+                  animate={{ opacity: [0.7, 1, 0.7] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  {Math.round(progress)}% Complete
+                </motion.span>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between mt-3">
-              <p className="text-xs text-gray-600 font-medium">
-                Processing step {calculationStep + 1} of {steps.length}
-              </p>
-              <motion.p 
-                className="text-xs font-bold text-indigo-600"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                {Math.round((calculationStep / 7) * 100)}% complete
-              </motion.p>
-            </div>
+            {/* Final pulsing glow when complete */}
+            {calculationStep >= finalStep && (
+              <motion.div
+                className="absolute inset-0 pointer-events-none rounded-3xl"
+                animate={{
+                  boxShadow: [
+                    "0 0 60px rgba(34, 211, 238, 0.4)",
+                    "0 0 100px rgba(34, 211, 238, 0.7)",
+                    "0 0 60px rgba(34, 211, 238, 0.4)",
+                  ],
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+              />
+            )}
           </motion.div>
         </motion.div>
       )}

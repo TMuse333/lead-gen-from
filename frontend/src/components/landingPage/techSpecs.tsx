@@ -1,23 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Sparkles, Zap, Layout, Settings, Gift, Target, Brain } from "lucide-react";
 import {
   useMotionTemplate,
   useMotionValue,
   motion,
   animate,
+  useInView,
 } from "framer-motion";
 import Image from "next/image";
+import { scrollToId } from "@/lib/scrollTo";
 
-// New icy-cyan palette (matches the brain exactly)
-const COLORS_ACCENT = ["#00eeff", "#00c3ff", "#0099ff", "#0077ee", "#0055cc"];
+const COLORS_ACCENT = ["#00eeff", "#00c8ff", "#00a0ff", "#0088ee", "#0066cc"];
 
 interface TechSpecsProps {
   imageSrc?: string;
 }
 
 const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
+
   const color = useMotionValue(COLORS_ACCENT[0]);
 
   useEffect(() => {
@@ -30,9 +34,9 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
   }, []);
 
   const backgroundImage = useMotionTemplate`
-    radial-gradient(125% 125% at 50% 0%, #0a1525 40%, ${color})
+    radial-gradient(125% 125% at 50% 0%, #0a1525 40%, ${color}20)
   `;
-  const borderGlow = useMotionTemplate`1px solid ${color}`;
+  const borderGlow = useMotionTemplate`1px solid ${color}80`;
 
   const specs = [
     {
@@ -75,10 +79,12 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
 
   return (
     <motion.section
-      style={{ backgroundImage }}
+    id='specs'
+      ref={sectionRef}
       className="relative overflow-hidden bg-[#0a1525] px-4 py-24 text-white"
+      style={{ backgroundImage }}
     >
-      {/* Subtle animated blobs — now cyan/teal with a whisper of violet */}
+      {/* Animated background blobs */}
       <div className="absolute inset-0 z-0 opacity-25">
         <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-screen filter blur-3xl animate-blob" />
         <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-600 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-2000" />
@@ -90,8 +96,8 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
         <div className="text-center mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7 }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 backdrop-blur-sm rounded-full mb-4 border border-cyan-400/40"
           >
             <Zap className="h-4 w-4 text-cyan-300" />
@@ -101,10 +107,9 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
           </motion.div>
 
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.9, delay: 0.1 }}
             className="text-4xl md:text-5xl font-bold mb-4"
           >
             Not Your Average{" "}
@@ -115,12 +120,11 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.2 }}
             className="text-xl text-cyan-100/80 max-w-3xl mx-auto"
           >
-            Built with cutting-edge neural AI and engineered for maximum engagement and conversion
+          Powered by cutting-edge Next.js, a personalized neural memory, and refined design, this AI delivers an experience far beyond the typical chatbot.
           </motion.p>
         </div>
 
@@ -128,13 +132,18 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
         {imageSrc && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 1, delay: 0.3 }}
             className="mb-16"
           >
             <div className="relative rounded-2xl overflow-hidden border-2 border-cyan-500/40 shadow-2xl shadow-cyan-500/20">
-              <Image src={imageSrc} alt="Platform showcase" width={1200} height={600} className="w-full h-auto" />
+              <Image
+                src={imageSrc}
+                alt="Platform showcase"
+                width={1200}
+                height={600}
+                className="w-full h-auto"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a1525]/70 to-transparent" />
             </div>
           </motion.div>
@@ -147,16 +156,17 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
             return (
               <motion.div
                 key={spec.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 + i * 0.1 }}
+                initial={{ opacity: 0, y: 40 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.1 + i * 0.1, duration: 0.7 }}
                 className="relative bg-slate-900/50 backdrop-blur-sm rounded-2xl p-6 border border-cyan-900/60 
                   transition-all duration-300 
                   hover:border-cyan-400/80 hover:bg-slate-900/80 hover:shadow-xl hover:shadow-cyan-500/20
                   group"
               >
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${spec.gradient} mb-4 shadow-lg shadow-cyan-500/30 group-hover:scale-110 transition-transform duration-300`}>
+                <div
+                  className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${spec.gradient} mb-4 shadow-lg shadow-cyan-500/30 group-hover:scale-110 transition-transform duration-300`}
+                >
                   <Icon className="h-6 w-6 text-white" />
                 </div>
 
@@ -176,22 +186,22 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
 
         {/* CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.7 }}
-          className="text-center mt-16"
+          initial={{ opacity: 0, y: 40 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.8, duration: 0.9 }}
+          className="text-center mt-20"
         >
-          <p className="text-cyan-100 mb-6 text-lg">
+          <p className="text-cyan-100 mb-8 text-lg">
             Ready to experience neural intelligence?
           </p>
           <motion.button
+          onClick={()=> scrollToId('chatbot')}
             style={{ border: borderGlow }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full text-white font-semibold shadow-xl shadow-cyan-500/40 transition-all hover:shadow-2xl hover:shadow-cyan-400/50"
+            className="inline-flex items-center gap-3 px-10 py-5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70 transition-all"
           >
-            <Sparkles className="h-5 w-5" />
+            <Sparkles className="h-6 w-6" />
             Explore the Future
           </motion.button>
         </motion.div>
