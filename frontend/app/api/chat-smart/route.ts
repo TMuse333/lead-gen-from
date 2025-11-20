@@ -1,6 +1,8 @@
-// app/api/chat-smart/route.ts - SIMPLIFIED (Free text = answers only)
+// app/api/chat-smart/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { classifyUserIntent,  } from '@/lib/openai/prompts/classifyIntent';
+import { IntentAnalysis } from '@/types';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -18,8 +20,8 @@ interface ChatRequest {
 }
 
 export async function POST(req: NextRequest) {
-  console.log('🚀 API Route called');
-  
+  console.log('API Route called');
+
   try {
     const body: ChatRequest = await req.json();
     const {
@@ -33,53 +35,92 @@ export async function POST(req: NextRequest) {
       questionConfig,
     } = body;
 
-    console.log('📦 Request:', { 
-      buttonId, 
-      buttonValue, 
-      freeText, 
-      currentFlow, 
-      currentNodeId 
-    });
-
     const flow = flowConfig;
     const currentQuestion = questionConfig;
 
     if (!flow || !currentQuestion) {
-      return NextResponse.json(
-        { error: 'Flow/question config required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Flow/question config required' }, { status: 400 });
     }
 
-    // Determine input type
+    const currentIndex = flow.questions.findIndex((q: any) => q.id === currentNodeId);
+    const nextQuestion = flow.questions[currentIndex + 1];
+    const isLastQuestion = !nextQuestion;
+    const progress = Math.round(((currentIndex + 1) / flow.questions.length) * 100);
+
     const isButtonClick = !!buttonId && !!buttonValue;
     const isFreeText = !!freeText && !isButtonClick;
 
-    // Extract the answer value
-    let answerValue: string;
+    let answerValue: string | null = null;
+    let intent: IntentAnalysis | null = null;
+
+    // ————————————————————————
+    // 1. BUTTON CLICK → Always treat as answer
+    // ————————————————————————
     if (isButtonClick) {
       answerValue = buttonValue!;
-    } else if (isFreeText) {
-      answerValue = freeText!;
+    }
+
+    // ————————————————————————
+    // 2. FREE TEXT → Classify intent first
+    // ————————————————————————
+    else if (isFreeText) {
+      intent = await classifyUserIntent(
+        userMessage: freeText!,
+        currentQuestion: currentQuestion.question,
+        flowName: flow.name,
+        previousContext: body.messages?.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n'),
+      );
+
+      if (intent.primary === 'direct_answer') {
+        answerValue = intent.partialAnswer || freeText!;
+      } else {
+        // ——— NOT an answer → respond helpfully + re-ask ———
+        const helpPrompt = `You are Chris's warm, expert AI assistant.
+
+Current question: "${currentQuestion.question}"
+User said: "${freeText}"
+Intent: ${intent.primary}${intent.clarification ? ` (${intent.clarification})` : ''}${intent.objection ? ` (${intent.objection})` : ''}
+
+Respond in 2–3 short, natural sentences:
+• Acknowledge their concern or question
+• Briefly help or reassure
+• Clearly re-ask: "${currentQuestion.question}"
+
+Tone: ${intent.suggestedTone || 'empathetic'}
+
+Be concise and kind. Never scold.`;
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [{ role: 'system', content: helpPrompt }],
+          temperature: 0.8,
+          max_tokens: 180,
+        });
+
+        const reply = completion.choices[0].message.content?.trim() || `Got it! Just to confirm: ${currentQuestion.question}`;
+
+        return NextResponse.json({
+          reply,
+          nextQuestion: {
+            id: currentQuestion.id,
+            question: currentQuestion.question,
+            buttons: currentQuestion.buttons || [],
+            allowFreeText: currentQuestion.allowFreeText,
+            mappingKey: currentQuestion.mappingKey,
+          },
+          progress,
+          isComplete: false,
+          intent: intent.primary,
+          subIntent: intent.clarification || intent.objection,
+        });
+      }
     } else {
       return NextResponse.json({ error: 'No input provided' }, { status: 400 });
     }
 
-    console.log('✅ Answer extracted:', answerValue);
-
-    // Get next question
-    const currentIndex = flow.questions.findIndex((q: any) => q.id === currentNodeId);
-    const nextQuestion = flow.questions[currentIndex + 1];
-    const isLastQuestion = !nextQuestion;
-
-    console.log('📊 Progress:', {
-      currentIndex,
-      totalQuestions: flow.questions.length,
-      hasNext: !!nextQuestion,
-      isLast: isLastQuestion
-    });
-
-    // Build prompt for AI response
+    // ————————————————————————
+    // 3. PROCEED WITH ANSWER (button or confirmed free text)
+    // ————————————————————————
     const systemPrompt = `You are Chris's AI assistant for ${flow.name}.
 
 Current question: ${currentQuestion.question}
@@ -93,12 +134,11 @@ ${nextQuestion ? `3. Naturally transitions to: "${nextQuestion.question}"` : '3.
 
 Keep it concise and conversational.`;
 
-    // Call OpenAI
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: answerValue },
+        { role: 'user', content: answerValue! },
       ],
       temperature: 0.7,
       max_tokens: 150,
@@ -106,15 +146,11 @@ Keep it concise and conversational.`;
 
     const reply = completion.choices[0].message.content || 'Great, thanks!';
 
-    // Calculate progress
-    const progress = Math.round(((currentIndex + 1) / flow.questions.length) * 100);
-
-    // Build response
-    const response = {
+    return NextResponse.json({
       reply,
       extracted: {
         mappingKey: currentQuestion.mappingKey,
-        value: answerValue,
+        value: answerValue!,
       },
       nextQuestion: nextQuestion ? {
         id: nextQuestion.id,
@@ -125,20 +161,10 @@ Keep it concise and conversational.`;
       } : null,
       progress,
       isComplete: isLastQuestion,
-      isFreeTextResponse: false, // Never treat as question anymore
-    };
-
-    console.log('✅ Sending response:', {
-      extracted: response.extracted,
-      progress: response.progress,
-      isComplete: response.isComplete,
-      hasNextQuestion: !!response.nextQuestion
     });
 
-    return NextResponse.json(response);
-
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

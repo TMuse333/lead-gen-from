@@ -25,5 +25,7 @@ export * from './rules.types'
 
 export * from './qdrant.types'
 
+export * from './intent.types'
+
 
 
