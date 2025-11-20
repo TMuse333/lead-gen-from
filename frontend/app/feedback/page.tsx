@@ -3,24 +3,25 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Sparkles, Target, MessageSquare, Phone } from 'lucide-react';
+import { Brain, Sparkles, Target, MessageSquare, Phone, User } from 'lucide-react';
 import logo from '../../public/logo.png'
 import Navbar from '@/components/landingPage/navbar';
+import Image from 'next/image';
 
 
 export default function FeedbackPage() {
-  const [formData, setFormData] = useState({
-    services: [] as string[],
-    otherServices: '',
-    resultsPage: [] as string[],
-    otherResults: '',
-    leadData: [] as string[],
-    otherLeadData: '',
-    contentAssets: [] as string[],
-    otherAssets: '',
-    priority: '',
-  });
-
+    const [formData, setFormData] = useState({
+        name: '',
+        services: [] as string[],
+        otherServices: '',
+        resultsPage: [] as string[],
+        otherResults: '',
+        leadData: [] as string[],
+        otherLeadData: '',
+        contentAssets: [] as string[],
+        otherAssets: '',
+        comments: '',
+      });
   const [submitted, setSubmitted] = useState(false);
 
   const toggleOption = (category: keyof typeof formData, value: string) => {
@@ -45,7 +46,13 @@ export default function FeedbackPage() {
 
   if (submitted) {
     return (
+        <>
+
+<Navbar/>
+
+
       <div className="min-h-screen bg-[#0a1525] flex items-center justify-center px-6">
+    
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -55,7 +62,13 @@ export default function FeedbackPage() {
             animate={{ rotate: [0, 12, -8, 0] }}
             transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 4 }}
           >
-            <Brain size={130} className="mx-auto text-cyan-400 mb-8" />
+            <Image
+            src={logo}
+            className=' object-contain mb-8 mx-auto'
+            width={130}
+            height={130}
+            alt='brain'
+            />
           </motion.div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent mb-6">
             Thank You
@@ -65,13 +78,15 @@ export default function FeedbackPage() {
             a chatbot that thinks, speaks, and converts like you do.
           </p>
           <p className="text-cyan-200 mt-8 text-lg">
-            I’ll review this and send you a customized plan within 24 hours.
+          I&apos;ll look into the feedback make adjustments and follow up with you.
+          We should be able to get your own version up and running soon.
           </p>
           <p className="text-cyan-300/70 mt-6 flex items-center justify-center gap-2">
             <Phone size={18} /> Prefer to talk it through? Just call me anytime.
           </p>
         </motion.div>
       </div>
+      </>
     );
   }
 
@@ -109,6 +124,16 @@ export default function FeedbackPage() {
           onSubmit={handleSubmit}
           className="bg-slate-900/70 backdrop-blur-xl rounded-3xl border border-cyan-500/30 shadow-2xl p-8 md:p-12 space-y-12"
         >
+            <Section title="Your Name" icon={<User className="h-6 w-6" />}>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="John Doe"
+                className="w-full px-5 py-4 bg-slate-800/80 border border-cyan-600/50 rounded-xl text-white placeholder-cyan-300/50 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all"
+              />
+            </Section>
           {/* Services */}
           <Section title="What outcomes do you deliver to clients?" icon={<Target className="h-6 w-6" />}>\n            <CheckboxGroup
               options={[
@@ -215,7 +240,9 @@ export default function FeedbackPage() {
           </motion.button>
 
           <p className="text-center text-cyan-300/60 text-sm">
-            Takes ~2 minutes • I’ll follow up with a custom plan • Or just call me if you want to talk it through
+           Let&apos;s get you some leads and enhance your business!
+           Thank you so much for your cooperation in this new
+           product! It will be something great.
           </p>
         </motion.form>
       </div>
