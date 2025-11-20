@@ -1,17 +1,18 @@
 // stores/chatStore/buttonClickHandler.ts
 import confetti from 'canvas-confetti';
-import { ChatButton } from '@/types/chat.types';
+
 import { ChatMessage, ChatState } from '../types';
 import { getNextQuestion } from '../flowHelpers';
 import { useConversationStore } from '@/stores/conversationConfig/conversation.store'
 import { checkFlowCompletion } from './completionChecker';
 import { applyButtonTracker } from './trackerUtils';
+import { ButtonOption } from '@/types/conversation.types';
 
 export function createButtonClickHandler(
   set: (partial: Partial<ChatState> | ((state: ChatState) => Partial<ChatState>)) => void,
   get: () => ChatState
 ) {
-  return async (button: ChatButton) => {
+  return async (button: ButtonOption) => {
     const state = get();
 
     // Handle flow selection (sell/buy/browse)

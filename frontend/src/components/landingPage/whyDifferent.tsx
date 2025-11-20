@@ -124,9 +124,9 @@ export default function WhyDifferentSection() {
         {/* Floating highlight cards */}
         <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {[
-            { icon: Brain, title: "Neural Memory", desc: "Never forgets a user detail — ever" },
-            { icon: Target, title: "Hyper-Conversion", desc: "Designed from day one to sell & qualify" },
-            { icon: Shield, title: "Future-Proof", desc: "Evolves with your knowledge automatically" },
+            { icon: Brain, title: "Neural Memory", desc: "Upload all your business knowledge into the neural engine so your chatbot delivers accurate information" },
+            { icon: Target, title: "Guided conversations", desc: "Visuals to guide user to conversion and motivate them to continue using the form" },
+            { icon: Shield, title: "Instant personalized offer", desc: "The chatbot automatically generates a personalized analysis of the users situation" },
           ].map((item, i) => (
             <motion.div
               key={item.title}

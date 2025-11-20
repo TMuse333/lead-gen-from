@@ -1,12 +1,13 @@
 // stores/chatStore/types.ts
-import { ChatButton } from '@/types/chat.types';
+
 import { LlmOutput } from '@/types/componentSchema';
+import { ButtonOption } from '@/types/conversation.types';
 import { QdrantRetrievalMetadata } from '@/types/qdrant.types';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  buttons?: ChatButton[];
+  buttons?: ButtonOption[];
   timestamp: Date;
   visual?: { type: string; value: string };
 }
@@ -56,7 +57,7 @@ export interface ChatStateActions {
   reset: () => void;
   setComplete: (complete: boolean) => void;
   sendMessage: (message: string, displayText?: string) => Promise<void>;
-  handleButtonClick: (button: ChatButton) => Promise<void>;
+  handleButtonClick: (button: ButtonOption) => Promise<void>;
 
   setCurrentInsight: (text: string) => void;
   setDbActivity: (text: string) => void;

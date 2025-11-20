@@ -4,11 +4,7 @@ export type ChatNodeId = string;
 // Keys that correspond to LLM input properties
 export type LlmMappingKey = string;
 
-export interface ChatButton {
-    id: string;        // unique button identifier
-    label: string;     // what is displayed to the user
-    value: string;     // the value that gets stored/submitted
-  }
+
 
 // A single chat node
 // export interface ChatNode {
