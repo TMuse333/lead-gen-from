@@ -44,11 +44,11 @@ const AuroraHero = () => {
       className="relative grid min-h-screen place-content-center overflow-hidden bg-[#0a1525] px-6 py-24 text-white"
     >
       {/* Animated background blobs */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
+      {/* <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-400 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob" />
         <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
         <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-cyan-300 rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-4000" />
-      </div>
+      </div> */}
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-6xl mx-auto">
         {/* Logo */}

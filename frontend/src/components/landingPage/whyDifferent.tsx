@@ -11,14 +11,14 @@ export default function WhyDifferentSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative py-32 overflow-hidden bg-[#0a1525]"
+      className="relative py-32 overflow-hidden bg-[#0a1525] transition-all"
     >
       {/* Animated background glows */}
-      <div className="absolute inset-0 z-0">
+      {/* <div className="absolute inset-0 z-0">
         <div className="absolute top-10 left-1/4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob" />
         <div className="absolute bottom-20 right-1/3 w-80 h-80 bg-blue-600 rounded-full mix-blend-screen filter blur-3xl opacity-25 animate-blob animation-delay-2000" />
         <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-400 rounded-full mix-blend-screen filter blur-3xl opacity-15 animate-blob animation-delay-4000" />
-      </div>
+      </div> */}
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
         {/* Badge */}
@@ -26,7 +26,9 @@ export default function WhyDifferentSection() {
           initial={{ y: -30, opacity: 0 }}
           animate={isInView ? { y: 0, opacity: 1 } : {}}
           transition={{ duration: 0.7 }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-cyan-500/20 border border-cyan-400/50 backdrop-blur-md mb-8"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-cyan-500/20 border border-cyan-400/50 backdrop-blur-md mb-8
+          
+          "
         >
           <Brain className="h-5 w-5 text-cyan-300" />
           <span className="text-cyan-200 font-medium">Beyond Traditional Chatbots</span>
