@@ -74,7 +74,7 @@ const AuroraHero = () => {
           className="mt-8 mb-4 inline-flex items-center gap-2 rounded-full bg-cyan-500/20 backdrop-blur-md px-5 py-2.5 text-sm font-semibold border border-cyan-400/40"
         >
           <Brain className="h-4 w-4 text-cyan-300" />
-          <span className="text-cyan-200">Next-Gen Neural AI Platform</span>
+          <span className="text-cyan-200">Next-Gen Neural AI Platform by FocusFlow Software</span>
         </motion.div>
 
         {/* Main Headline */}
@@ -154,14 +154,14 @@ const AuroraHero = () => {
         </motion.div>
 
         {/* Trust line */}
-        <motion.p
+        {/* <motion.p
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ delay: 0.9, duration: 0.8 }}
           className="mt-10 text-sm text-cyan-300/60"
         >
           Trusted by innovative teams • No credit card required • Instant setup
-        </motion.p>
+        </motion.p> */}
       </div>
     </motion.section>
   );

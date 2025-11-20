@@ -4,16 +4,16 @@ import FormPage from "@/components/pageComponents/frontendPages/formPage/formPag
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AI Real Estate Chatbot Builder | FocusFlow Neural Engine",
+  title: "Try the First Real Estate Neural Engine Chatbot | FocusFlow",
   description:
-    "Launch your own hyper-personalized AI real estate chatbot in minutes. Converts visitors 24/7, remembers every lead, qualifies instantly — trained on your expertise. No code needed.",
+    "Experience the next evolution of real estate AI. Get a sample of the first Neural Engine–powered chatbot that learns your style, speaks like you, and engages leads instantly.",
   keywords:
-    "AI real estate chatbot, realtor AI agent, real estate lead generation bot, personalized real estate AI, neural engine chatbot, real estate AI 2026, FocusFlow Neural Engine",
-  
+    "real estate AI sample, AI chatbot demo, realtor chatbot preview, neural engine real estate, FocusFlow chatbot sample, real estate AI 2026",
+
   openGraph: {
-    title: "FocusFlow Neural Engine – Your AI Real Estate Agent That Never Sleeps",
+    title: "Get a Sample of the First Neural Engine Chatbot for Realtors",
     description:
-      "The first real estate chatbot that thinks, speaks, and converts like YOU. Built with next-gen neural memory, gamified flows, and instant personalization.",
+      "Preview a new era of real estate automation. Test-drive the AI chatbot that adapts to your voice, qualifies leads automatically, and builds real relationships with prospects.",
     url: "https://chatbot.focusflowsoftware.com",
     siteName: "FocusFlow Neural Engine",
     images: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
         url: "https://www.focusflowsoftware.com/media/focusFlow-logo.png",
         width: 1200,
         height: 630,
-        alt: "FocusFlow Neural Engine – AI Real Estate Chatbot That Converts Like You",
+        alt: "FocusFlow Neural Engine – Real Estate AI Chatbot Sample",
       },
     ],
     locale: "en_US",
@@ -30,8 +30,9 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Your Personal AI Real Estate Agent Is Here",
-    description: "Never miss a lead again. Your AI clone works 24/7, remembers everything, and closes deals while you sleep.",
+    title: "Try the First Neural Engine Real Estate Chatbot",
+    description:
+      "Get a hands-on sample of the first AI chatbot built to think and respond like YOU. Experience personalized real estate automation today.",
     images: ["https://www.focusflowsoftware.com/media/focusFlow-logo.png"],
   },
 
@@ -46,6 +47,7 @@ export const metadata: Metadata = {
     apple: ["/favicon.ico?v=4"],
   },
 };
+
 
 export default function Home() {
   return <FormPage />;
