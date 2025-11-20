@@ -62,7 +62,7 @@ export function AnalysisTrackerBar() {
     <motion.div
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-40"
+      className="md:hidden z-40"
     >
       <div className="from-cyan-400 via-blue-500 to-cyan-600 p-4 shadow-2xl">
         <div className="flex items-center justify-between text-white">

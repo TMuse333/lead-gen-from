@@ -161,10 +161,10 @@ export default function ChatWithTracker() {
   return (
     <div 
     id='chatbot'
-    className="min-h-screen  py-8 px-4
+    className="min-h-screen  py-8 md:px-4
     text-black
     ">
-      <div className="flex gap-6 max-w-7xl mx-auto">
+      <div className="flex gap-6 w-screen items-center justify-center md:max-w-7xl mx-auto">
         {/* DEBUG INFO */}
         {/* <div className="fixed top-4 z-[500] right-4 bg-white p-4 rounded-lg shadow-lg text-xs font-mono z-50">
           <div className="font-bold mb-2">Debug Info:</div>
@@ -175,7 +175,7 @@ export default function ChatWithTracker() {
         </div> */}
 
         {/* Game Chat */}
-        <div className="flex-1">
+        <div className="flex-1 justify-center items-center">
           <GameChat
             messages={messages}
             loading={loading}

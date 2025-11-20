@@ -72,12 +72,12 @@ export function GameChat({
   };
 
   return (
-    <div className="flex gap-6 w-full max-w-7xl mx-auto">
+    <div className="flex  gap-6 w-full  md:max-w-7xl mx-auto h-screen">
       <RewardSystem trigger={rewardTrigger} />
 
       {/* Chat Container – LEFT */}
       <motion.div
-        className="flex-1 bg-slate-900/70 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-cyan-500/30 h-[700px] flex flex-col ring-1 ring-cyan-400/20"
+        className="flex-1 md:max-w-xl h-screen bg-slate-900/70 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-cyan-500/30 md:h-[700px] flex flex-col ring-1 ring-cyan-400/20"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
@@ -134,7 +134,8 @@ export function GameChat({
         </div>
 
         {/* Input Area */}
-        <div className="p-5 bg-gradient-to-t from-slate-900/90 to-slate-800/70 border-t border-cyan-700/40 backdrop-blur-md">
+        <div className="p-5 bg-gradient-to-t from-slate-900/90 to-slate-800/70 border-t border-cyan-700/40 backdrop-blur-md
+        flex flex-col">
           <div className="flex gap-3">
             <input
               type="text"
@@ -154,7 +155,12 @@ export function GameChat({
             >
               <Send size={22} className="text-white" />
             </motion.button>
+         
+          
+        
+
           </div>
+          <AnalysisTrackerBar />
         </div>
       </motion.div>
 
@@ -164,9 +170,7 @@ export function GameChat({
       </div>
 
       {/* Mobile Tracker Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-        <AnalysisTrackerBar />
-      </div>
+   
     </div>
   );
 }

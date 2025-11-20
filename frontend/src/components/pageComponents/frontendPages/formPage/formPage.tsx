@@ -59,14 +59,14 @@ export default function FormPage() {
       <div className="container mx-auto px-4">
         {/* Header */}
         
-        <div className="text-center mb-8">
+        {/* <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Get Your Free Home Valuation
           </h1>
           <p className="text-lg text-gray-600">
             Chat with Chris's AI assistant to get a personalized analysis
           </p>
-        </div>
+        </div> */}
 
         {/* Chat Component */}
         <ChatWithTracker  />
