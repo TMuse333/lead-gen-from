@@ -27,7 +27,7 @@ export default function Navbar({ links }: NavbarProps) {
   const allLinks = links || defaultLinks;
 
   return (
-    <nav className="bg-[#0a1525] w-screen fixed z-[1000]  top-0 left-0 text-white px-4 py-2 flex items-center justify-between">
+    <nav className="bg-[#0a1525] w-screen fixed z-[1]  top-0 left-0 text-white px-4 py-2 flex items-center justify-between">
       <div className="flex items-center space-x-4">
       <Image
                       src={logo}

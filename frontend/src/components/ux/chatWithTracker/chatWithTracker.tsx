@@ -1,4 +1,4 @@
-// components/chatWithTracker.tsx - DEBUGGED VERSION
+// components/chatWithTracker.tsx - TOGGLEABLE MOBILE VERSION
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -42,7 +42,12 @@ export default function ChatWithTracker() {
 
   // Local state
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false); // NEW: State for chat open/close
   const submissionCalledRef = useRef(false);
+  
+  // Handlers for chat toggle
+  const toggleChat = () => setIsChatOpen(prev => !prev);
+  const closeChat = () => setIsChatOpen(false);
 
   // DEBUG: Log every time isComplete changes
   useEffect(() => {
@@ -100,6 +105,7 @@ export default function ChatWithTracker() {
 
     console.log('✅ ALL CHECKS PASSED - Calling API now!');
     submissionCalledRef.current = true;
+    closeChat(); // Close chat on successful submission
 
     const submitFastResults = async () => {
       try {
@@ -160,22 +166,16 @@ export default function ChatWithTracker() {
 
   return (
     <div 
-    id='chatbot'
-    className="min-h-screen  py-8 md:px-4
-    text-black
-    ">
-      <div className="flex gap-6 w-screen items-center justify-center md:max-w-7xl mx-auto">
-        {/* DEBUG INFO */}
-        {/* <div className="fixed top-4 z-[500] right-4 bg-white p-4 rounded-lg shadow-lg text-xs font-mono z-50">
-          <div className="font-bold mb-2">Debug Info:</div>
-          <div>isComplete: {String(isComplete)}</div>
-          <div>progress: {progress}%</div>
-          <div>answers: {Object.keys(userInput).length}/{totalSteps}</div>
-          <div>submitted: {String(submissionCalledRef.current)}</div>
-        </div> */}
-
+    id='chatbot-container'
+    // Desktop: standard flow. Mobile: fixed/full-screen when open, or just a button.
+    className={`
+      md:relative md:min-h-screen md:py-8 md:px-4 md:text-black
+      ${isChatOpen ? 'fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-0 text-black' : 'relative'}
+    `}
+    >
+      <div className="flex gap-6 w-full items-center justify-center md:max-w-7xl mx-auto h-full">
         {/* Game Chat */}
-        <div className="flex-1 justify-center items-center">
+        <div className="flex-1 justify-center items-center h-full">
           <GameChat
             messages={messages}
             loading={loading}
@@ -187,6 +187,9 @@ export default function ChatWithTracker() {
             userInput={userInput}
             currentFlow={currentFlow || undefined}
             progress={progress}
+            isChatOpen={isChatOpen} // NEW: Pass state to GameChat
+            toggleChat={toggleChat} // NEW: Pass handler to GameChat
+            closeChat={closeChat} // NEW: Pass handler to GameChat
           />
         </div>
       </div>
