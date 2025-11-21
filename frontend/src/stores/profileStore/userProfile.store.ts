@@ -1,75 +1,50 @@
-// stores/userProfile.store.ts
+// stores/profileStore/userProfile.store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { UserProfile } from '@/types';
 
 interface UserProfileState {
-  // Unique ID per visitor (even without email)
   conversationId: string | null;
-  
-  // Raw answers (question → answer)
   userInput: Record<string, string>;
-  
-  // The golden normalized profile
   userProfile: UserProfile | null;
-  
-  // Metadata
-  lastSeen: Date | null;
   flow: 'buy' | 'sell' | 'browse' | null;
+  lastSeen: Date | null;
 
-  // Actions
   setConversationId: (id: string) => void;
-  updateAnswer: (questionId: string, answer: string) => void;
+  updateAnswer: (key: string, value: string) => void;
   setProfile: (profile: UserProfile) => void;
   setFlow: (flow: 'buy' | 'sell' | 'browse') => void;
-  touch: () => void; // update lastSeen
+  touch: () => void;
   reset: () => void;
 }
 
-export const useUserProfile = create<UserProfileState>()(
+// Create the store
+const useUserProfile = create<UserProfileState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       conversationId: null,
       userInput: {},
       userProfile: null,
-      lastSeen: null,
       flow: null,
+      lastSeen: null,
 
       setConversationId: (id) => set({ conversationId: id }),
-      
-      updateAnswer: (questionId, answer) =>
+      updateAnswer: (key, value) =>
         set((state) => ({
-          userInput: { ...state.userInput, [questionId]: answer },
+          userInput: { ...state.userInput, [key]: value },
           lastSeen: new Date(),
         })),
-
-      setProfile: (profile) =>
-        set({
-          userProfile: profile,
-          lastSeen: new Date(),
-        }),
-
+      setProfile: (profile) => set({ userProfile: profile, lastSeen: new Date() }),
       setFlow: (flow) => set({ flow }),
-
       touch: () => set({ lastSeen: new Date() }),
-
-      reset: () =>
-        set({
-          userInput: {},
-          userProfile: null,
-          lastSeen: null,
-          flow: null,
-        }),
+      reset: () => set({ userInput: {}, userProfile: null, flow: null, lastSeen: null }),
     }),
-    {
-      name: 'real-estate-profile-v2',
-      partialize: (state) => ({
-        conversationId: state.conversationId,
-        userInput: state.userInput,
-        userProfile: state.userProfile,
-        flow: state.flow,
-        lastSeen: state.lastSeen,
-      }),
-    }
+    { name: 'real-estate-profile-v3' }
   )
 );
+
+// Export the hook
+export { useUserProfile };
+
+// Export a direct getState function (THIS IS THE FIX)
+export const getUserProfileState = () => useUserProfile.getState();

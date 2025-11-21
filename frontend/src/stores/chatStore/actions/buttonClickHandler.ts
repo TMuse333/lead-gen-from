@@ -7,6 +7,7 @@ import { useConversationStore } from '@/stores/conversationConfig/conversation.s
 import { checkFlowCompletion } from './completionChecker';
 import { applyButtonTracker } from './trackerUtils';
 import { ButtonOption } from '@/types/conversation.types';
+import { triggerNormalization } from '@/lib/openai/normalizers/triggerNormalization';
 
 export function createButtonClickHandler(
   set: (partial: Partial<ChatState> | ((state: ChatState) => Partial<ChatState>)) => void,
@@ -103,6 +104,7 @@ export function createButtonClickHandler(
         answerValue = button.value;
       }
 
+    //   await triggerNormalization()
       // Apply tracker messages
       applyButtonTracker(
         state.currentFlow,
@@ -151,7 +153,9 @@ export function createButtonClickHandler(
 
       // Fallback: add answer locally
       get().addAnswer(currentQuestion.mappingKey, button.value);
-      
+
+      await triggerNormalization()
+
       applyButtonTracker(
         state.currentFlow,
         state.currentNodeId,

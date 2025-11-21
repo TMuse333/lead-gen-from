@@ -25,7 +25,7 @@ export async function updateAndNormalizeProfile(
   try {
     const normalized = await normalizeToRealEstateSchema(userInput, flow as FlowType);
     const fullProfile: UserProfile = {
-      intent: flow as FlowType,
+      intent: flow as any,
       ...normalized,
     };
 

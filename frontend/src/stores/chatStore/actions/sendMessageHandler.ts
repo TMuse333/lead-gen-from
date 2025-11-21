@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { useConversationStore } from '@/stores/conversationConfig/conversation.store';
 import { ChatMessage, ChatState } from '../types';
 import { checkFlowCompletion } from './completionChecker';
+import { triggerNormalization } from '@/lib/openai/normalizers/triggerNormalization';
 
 // stores/chatStore/sendMessageHandler.ts - FIXED VERSION
 
@@ -56,6 +57,9 @@ export function createSendMessageHandler(
       if (data.extracted) {
         console.log('💾 Saving answer:', data.extracted.mappingKey, '=', data.extracted.value);
         get().addAnswer(data.extracted.mappingKey, data.extracted.value);
+
+        // await triggerNormalization();
+
       } else {
         console.error('❌ API did not extract answer!');
       }

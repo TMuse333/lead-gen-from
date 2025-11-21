@@ -1,43 +1,50 @@
 // lib/openai/normalizers/normalizeToRealEstateSchema.ts
-import { UserProfile } from '@/types';
 import { callJsonLlm } from '../utils';
+import type { UserProfile } from '@/types';
 
 export async function normalizeToRealEstateSchema(
   userAnswers: Record<string, string>,
   flowType: 'buy' | 'sell' | 'browse'
-) {
-  const prompt = `You are an expert real estate AI that converts ANY user answers into a structured buyer/seller profile.
+): Promise<Partial<UserProfile>> {
+  const prompt = `You are an expert real estate AI assistant.
 
+Convert the user's answers into a structured profile.
 Flow: ${flowType}
-User's answers (question → answer):
+
+Answers:
 ${Object.entries(userAnswers)
   .map(([q, a]) => `Q: "${q}"\nA: "${a}"`)
   .join('\n\n')}
 
-Map this to the correct canonical fields. Only include fields you are CONFIDENT about.
-
-Output VALID JSON ONLY:
-
+Return VALID JSON with these fields (only if confident):
 {
-  "intent": "buy" | "sell" | "browse" | "invest" | "relocate",
-  "budget": 750000 | { "min": 600000, "max": 900000 },
-  "timeline": "0-3 months" | "3-6 months" | "6-12 months" | "12+ months" | "asap" | "just looking",
-  "bedrooms": 3,
-  "propertyType": ["house", "condo"],
-  "mustHaves": ["pool", "good schools"],
-  "locations": ["Downtown Toronto", "Miami Beach"],
-  "firstTimeBuyer": true,
-  "preapproved": false,
-  "email": "john@gmail.com"
+  "intent": "buy"|"sell"|"browse"|"invest"|"relocate",
+  "budget": number | { "min": number, "max": number },
+  "timeline": "0-3 months"|"3-6 months"|"6-12 months"|"12+ months"|"asap"|"just looking",
+  "bedrooms": number,
+  "propertyType": string[],
+  "mustHaves": string[],
+  "locations": string[],
+  "firstTimeBuyer": boolean,
+  "preapproved": boolean,
+  "email": string,
+  "name": string
 }
 
-If unknown, omit the field. Never guess.`;
+Omit unknown fields. Never guess.`;
 
   try {
-    const json = await callJsonLlm(prompt);
+    const json = await callJsonLlm(prompt, 'gpt-4o-mini');
+    
+    // Basic validation
+    if (typeof json !== 'object' || json === null) {
+      console.warn('LLM returned invalid JSON, using fallback');
+      return {};
+    }
+
     return json as Partial<UserProfile>;
-  } catch (e) {
-    console.error('Normalization failed');
-    return { intent: flowType };
+  } catch (error) {
+    console.error('Normalization failed:', error);
+    return {}; // Don't break the flow
   }
 }

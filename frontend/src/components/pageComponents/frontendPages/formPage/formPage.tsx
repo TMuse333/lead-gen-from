@@ -20,6 +20,7 @@ import AuroraHero from '@/components/landingPage/auroraHero';
 import WhyDifferentSection from '@/components/landingPage/whyDifferent';
 import TechSpecs from '@/components/landingPage/techSpecs';
 import Navbar from '@/components/landingPage/navbar';
+import { UserProfilePanel } from '@/components/debug/userProfilePanel';
 
 
 export default function FormPage() {
@@ -55,6 +56,7 @@ export default function FormPage() {
       <AuroraHero/>
       <WhyDifferentSection/>
       <TechSpecs/>
+      <UserProfilePanel/>
 
       <div className="container mx-auto px-4">
         {/* Header */}
