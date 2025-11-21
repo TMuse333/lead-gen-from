@@ -1,17 +1,9 @@
 // ============================================
 // EXPORT ALL TYPES
 // ============================================
-
-
-
-
-
 export * from './dataTypes/';
 
-
-
 export * from './advice.types'
-
 
 export * from './analysis'
 
@@ -26,6 +18,8 @@ export * from './rules.types'
 export * from './qdrant.types'
 
 export * from './intent.types'
+
+export * from './realEstateSchema'
 
 
 

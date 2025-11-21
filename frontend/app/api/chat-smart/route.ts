@@ -1,8 +1,8 @@
 // app/api/chat-smart/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { classifyUserIntent,  } from '@/lib/openai/prompts/classifyIntent';
-import { IntentAnalysis } from '@/types';
+import { classifyUserIntent } from '@/lib/openai/classifiers/classifyIntent';
+import type { IntentAnalysis } from '@/lib/openai/classifiers/classifyIntent';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -20,7 +20,7 @@ interface ChatRequest {
 }
 
 export async function POST(req: NextRequest) {
-  console.log('API Route called');
+  console.log('API Route: /api/chat-smart called');
 
   try {
     const body: ChatRequest = await req.json();
@@ -54,41 +54,56 @@ export async function POST(req: NextRequest) {
     let intent: IntentAnalysis | null = null;
 
     // ————————————————————————
-    // 1. BUTTON CLICK → Always treat as answer
+    // 1. BUTTON CLICK → Always advance
     // ————————————————————————
     if (isButtonClick) {
       answerValue = buttonValue!;
+      console.log('User clicked button → treating as answer:', answerValue);
     }
 
     // ————————————————————————
     // 2. FREE TEXT → Classify intent first
     // ————————————————————————
     else if (isFreeText) {
-      intent = await classifyUserIntent(
+      const previousContext = body.messages
+        ?.slice(-3)
+        .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n');
+
+      intent = await classifyUserIntent({
         userMessage: freeText!,
         currentQuestion: currentQuestion.question,
         flowName: flow.name,
-        previousContext: body.messages?.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n'),
-      );
+        previousContext,
+      });
 
+      // THIS IS YOUR DEBUG SUPERPOWER
       if (intent.primary === 'direct_answer') {
+        console.log('LLM CLASSIFIER → DIRECT ANSWER (advancing)');
+        console.log('   Extracted partialAnswer:', intent.partialAnswer || '(none)');
         answerValue = intent.partialAnswer || freeText!;
       } else {
-        // ——— NOT an answer → respond helpfully + re-ask ———
+        console.log(`LLM CLASSIFIER → ${intent.primary.toUpperCase()} (NOT advancing — re-asking)`);
+        if (intent.clarification) console.log('   Sub-intent (clarification):', intent.clarification);
+        if (intent.objection) console.log('   Sub-intent (objection):', intent.objection);
+        if (intent.suggestedTone) console.log('   Suggested tone:', intent.suggestedTone);
+
+        // Generate helpful response + re-ask
         const helpPrompt = `You are Chris's warm, expert AI assistant.
 
 Current question: "${currentQuestion.question}"
 User said: "${freeText}"
-Intent: ${intent.primary}${intent.clarification ? ` (${intent.clarification})` : ''}${intent.objection ? ` (${intent.objection})` : ''}
+Detected intent: ${intent.primary}${
+          intent.clarification ? ` (${intent.clarification})` : ''
+        }${intent.objection ? ` (${intent.objection})` : ''}
 
 Respond in 2–3 short, natural sentences:
-• Acknowledge their concern or question
-• Briefly help or reassure
-• Clearly re-ask: "${currentQuestion.question}"
+• Acknowledge what they said
+• Briefly help, reassure, or clarify
+• Clearly re-ask the original question: "${currentQuestion.question}"
 
 Tone: ${intent.suggestedTone || 'empathetic'}
-
-Be concise and kind. Never scold.`;
+Be concise, kind, and never pushy.`;
 
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o',
@@ -97,7 +112,7 @@ Be concise and kind. Never scold.`;
           max_tokens: 180,
         });
 
-        const reply = completion.choices[0].message.content?.trim() || `Got it! Just to confirm: ${currentQuestion.question}`;
+        const reply = completion.choices[0].message.content?.trim() || `No problem! Just to clarify: ${currentQuestion.question}`;
 
         return NextResponse.json({
           reply,
@@ -121,6 +136,8 @@ Be concise and kind. Never scold.`;
     // ————————————————————————
     // 3. PROCEED WITH ANSWER (button or confirmed free text)
     // ————————————————————————
+    console.log('ADVANCING TO NEXT QUESTION with answer:', answerValue);
+
     const systemPrompt = `You are Chris's AI assistant for ${flow.name}.
 
 Current question: ${currentQuestion.question}
@@ -152,19 +169,20 @@ Keep it concise and conversational.`;
         mappingKey: currentQuestion.mappingKey,
         value: answerValue!,
       },
-      nextQuestion: nextQuestion ? {
-        id: nextQuestion.id,
-        question: nextQuestion.question,
-        buttons: nextQuestion.buttons || [],
-        allowFreeText: nextQuestion.allowFreeText,
-        mappingKey: nextQuestion.mappingKey,
-      } : null,
+      nextQuestion: nextQuestion
+        ? {
+            id: nextQuestion.id,
+            question: nextQuestion.question,
+            buttons: nextQuestion.buttons || [],
+            allowFreeText: nextQuestion.allowFreeText,
+            mappingKey: nextQuestion.mappingKey,
+          }
+        : null,
       progress,
       isComplete: isLastQuestion,
     });
-
   } catch (error) {
-    console.error('Error:', error);
+    console.error('chat-smart API error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

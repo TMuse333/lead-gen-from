@@ -4,7 +4,7 @@ import { LucideIcon } from "lucide-react";
 
 
 
-export type FlowType = 'sell' | 'buy' | 'browse' | string;
+export type FlowType = 'sell' | 'buy' | 'browse' ;
 
 export interface TrackerCommentary {
   onStart?: string;
