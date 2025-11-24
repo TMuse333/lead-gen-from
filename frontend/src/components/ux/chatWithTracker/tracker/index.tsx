@@ -42,16 +42,21 @@ export default function AnalysisTracker() {
     if (dbActivityFromStore) setDbActivity(dbActivityFromStore);
   }, [dbActivityFromStore]);
 
-  // Completion modal
+  // Completion modal - auto-progress through all 7 steps
   useEffect(() => {
     if (isComplete && !showModal) {
       setShowModal(true);
-      let step = 0;
+      // Start at step 1 immediately so the first item lights up right away
+      setCalculationStep(1);
+      let step = 1;
       const interval = setInterval(() => {
         step++;
         setCalculationStep(step);
-        if (step >= 7) clearInterval(interval);
-      }, 600);
+        // Stop after completing all 7 steps (step 7 is the last one)
+        if (step >= 7) {
+          clearInterval(interval);
+        }
+      }, 2000); // 2 seconds per step
       return () => clearInterval(interval);
     }
   }, [isComplete, showModal]);

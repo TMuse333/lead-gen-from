@@ -121,6 +121,18 @@ export default function ChatWithTracker() {
         
         console.log('✅ Results generated!', data);
         
+        // Check if response has an error
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        // Validate that data has required fields
+        if (!data.hero || !data.profileSummary || !data.personalMessage || 
+            !data.marketInsights || !data.actionPlan || !data.nextStepsCTA) {
+          console.error('❌ Invalid response structure:', data);
+          throw new Error('API returned incomplete data. Missing required fields.');
+        }
+        
         // Separate debug info from actual data
         const { _debug, ...llmOutput } = data;
         

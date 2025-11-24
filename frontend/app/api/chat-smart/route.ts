@@ -1,10 +1,13 @@
 // app/api/chat-smart/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { classifyUserIntent } from '@/lib/openai/classifiers/classifyIntent';
-import type { IntentAnalysis } from '@/lib/openai/classifiers/classifyIntent';
+import { normalizeToRealEstateSchemaPrompt } from '@/lib/openai/normalizers/normalizeToRealEstateSchema';
+import { classifyIntentPrompt } from '@/lib/openai/classifiers/classifyIntent';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
 
 interface ChatRequest {
   buttonId?: string;
@@ -19,6 +22,91 @@ interface ChatRequest {
   questionConfig?: any;
 }
 
+// ————————————————————————
+// Shared JSON LLM helper (safe + consistent)
+// ————————————————————————
+async function callJsonLlm<T = any>(prompt: string, model = 'gpt-4o-mini'): Promise<T> {
+  const completion = await openai.chat.completions.create({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0,
+    response_format: { type: 'json_object' },
+    max_tokens: 500,
+  });
+
+  const content = completion.choices[0].message.content?.trim();
+  if (!content) throw new Error('Empty response from LLM');
+
+  try {
+    return JSON.parse(content) as T;
+  } catch (parseError) {
+    console.error('Failed to parse LLM JSON:', content);
+    throw parseError;
+  }
+}
+
+// ————————————————————————
+// Intent classification (replaces old classifyUserIntent)
+// ————————————————————————
+interface IntentAnalysis {
+  primary:
+    | 'direct_answer'
+    | 'clarification_question'
+    | 'objection'
+    | 'chitchat'
+    | 'escalation_request'
+    | 'off_topic'
+    | 'attempted_answer_but_unclear';
+  clarification?:
+    | 'needs_definition'
+    | 'needs_examples'
+    | 'scope_concern'
+    | 'privacy_concern'
+    | 'not_sure_how_to_answer'
+    | 'too_many_options';
+  objection?:
+    | 'privacy_refusal'
+    | 'trust_issue'
+    | 'time_constraint'
+    | 'price_sensitivity'
+    | 'not_ready';
+  confidence?: number;
+  partialAnswer?: string;
+  suggestedTone?: 'empathetic' | 'firm' | 'playful' | 'educational';
+}
+
+async function analyzeUserIntent(params: {
+  userMessage: string;
+  currentQuestion: string;
+  flowName: string;
+  previousContext?: string;
+}): Promise<IntentAnalysis> {
+  const prompt = classifyIntentPrompt({
+    userMessage: params.userMessage,
+    currentQuestion: params.currentQuestion,
+    flowName: params.flowName,
+    previousContext: params.previousContext,
+  });
+
+  try {
+    const result = await callJsonLlm<IntentAnalysis>(prompt);
+    return {
+      primary: result.primary || 'clarification_question',
+      clarification: result.clarification,
+      objection: result.objection,
+      confidence: result.confidence ?? 0.9,
+      partialAnswer: result.partialAnswer,
+      suggestedTone: result.suggestedTone,
+    };
+  } catch (error) {
+    console.error('Intent analysis failed:', error);
+    return { primary: 'clarification_question', confidence: 0.5 };
+  }
+}
+
+// ————————————————————————
+// Main POST handler
+// ————————————————————————
 export async function POST(req: NextRequest) {
   console.log('API Route: /api/chat-smart called');
 
@@ -33,13 +121,14 @@ export async function POST(req: NextRequest) {
       userInput,
       flowConfig,
       questionConfig,
+      messages,
     } = body;
 
     const flow = flowConfig;
     const currentQuestion = questionConfig;
 
-    if (!flow || !currentQuestion) {
-      return NextResponse.json({ error: 'Flow/question config required' }, { status: 400 });
+    if (!flow || !currentQuestion || !currentQuestion.mappingKey) {
+      return NextResponse.json({ error: 'Invalid config' }, { status: 400 });
     }
 
     const currentIndex = flow.questions.findIndex((q: any) => q.id === currentNodeId);
@@ -50,125 +139,116 @@ export async function POST(req: NextRequest) {
     const isButtonClick = !!buttonId && !!buttonValue;
     const isFreeText = !!freeText && !isButtonClick;
 
-    let answerValue: string | null = null;
-    let intent: IntentAnalysis | null = null;
+    let answerValue: string;
 
-    // ————————————————————————
-    // 1. BUTTON CLICK → Always advance
-    // ————————————————————————
+    // ——————————————————
+    // 1. Button Click → Fast path
+    // ——————————————————
     if (isButtonClick) {
       answerValue = buttonValue!;
-      console.log('User clicked button → treating as answer:', answerValue);
+      console.log('Button click → answer:', answerValue);
     }
-
-    // ————————————————————————
-    // 2. FREE TEXT → Classify intent first
-    // ————————————————————————
+    // ——————————————————
+    // 2. Free Text → Classify intent
+    // ——————————————————
     else if (isFreeText) {
-      const previousContext = body.messages
+      const previousContext = messages
         ?.slice(-3)
-        .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n');
 
-      intent = await classifyUserIntent({
+      const intent = await analyzeUserIntent({
         userMessage: freeText!,
         currentQuestion: currentQuestion.question,
         flowName: flow.name,
         previousContext,
       });
 
-      // THIS IS YOUR DEBUG SUPERPOWER
-      if (intent.primary === 'direct_answer') {
-        console.log('LLM CLASSIFIER → DIRECT ANSWER (advancing)');
-        console.log('   Extracted partialAnswer:', intent.partialAnswer || '(none)');
-        answerValue = intent.partialAnswer || freeText!;
-      } else {
-        console.log(`LLM CLASSIFIER → ${intent.primary.toUpperCase()} (NOT advancing — re-asking)`);
-        if (intent.clarification) console.log('   Sub-intent (clarification):', intent.clarification);
-        if (intent.objection) console.log('   Sub-intent (objection):', intent.objection);
-        if (intent.suggestedTone) console.log('   Suggested tone:', intent.suggestedTone);
+      if (intent.primary !== 'direct_answer') {
+        const helpPrompt = `User said: "${freeText}"
+They were asked: "${currentQuestion.question}"
+But they gave a ${intent.primary} response.
 
-        // Generate helpful response + re-ask
-        const helpPrompt = `You are Chris's warm, expert AI assistant.
-
-Current question: "${currentQuestion.question}"
-User said: "${freeText}"
-Detected intent: ${intent.primary}${
-          intent.clarification ? ` (${intent.clarification})` : ''
-        }${intent.objection ? ` (${intent.objection})` : ''}
-
-Respond in 2–3 short, natural sentences:
-• Acknowledge what they said
-• Briefly help, reassure, or clarify
-• Clearly re-ask the original question: "${currentQuestion.question}"
-
+Rephrase the question warmly and clearly.
 Tone: ${intent.suggestedTone || 'empathetic'}
-Be concise, kind, and never pushy.`;
+Keep it short and kind.`;
 
         const completion = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [{ role: 'system', content: helpPrompt }],
           temperature: 0.8,
           max_tokens: 180,
         });
 
-        const reply = completion.choices[0].message.content?.trim() || `No problem! Just to clarify: ${currentQuestion.question}`;
+        const reply = completion.choices[0].message.content?.trim() || `Got it! Just to clarify: ${currentQuestion.question}`;
 
         return NextResponse.json({
           reply,
-          nextQuestion: {
-            id: currentQuestion.id,
-            question: currentQuestion.question,
-            buttons: currentQuestion.buttons || [],
-            allowFreeText: currentQuestion.allowFreeText,
-            mappingKey: currentQuestion.mappingKey,
-          },
+          nextQuestion: { ...currentQuestion },
           progress,
           isComplete: false,
-          intent: intent.primary,
-          subIntent: intent.clarification || intent.objection,
         });
       }
+
+      answerValue = intent.partialAnswer || freeText!;
     } else {
       return NextResponse.json({ error: 'No input provided' }, { status: 400 });
     }
 
-    // ————————————————————————
-    // 3. PROCEED WITH ANSWER (button or confirmed free text)
-    // ————————————————————————
-    console.log('ADVANCING TO NEXT QUESTION with answer:', answerValue);
+    // ——————————————————
+    // 3. Extract & save answer
+    // ——————————————————
+    const extracted = {
+      mappingKey: currentQuestion.mappingKey,
+      value: answerValue,
+    };
 
-    const systemPrompt = `You are Chris's AI assistant for ${flow.name}.
+    // ——————————————————
+    // 4. Background: Normalize full profile
+    // ——————————————————
+    (async () => {
+      try {
+        const prompt = normalizeToRealEstateSchemaPrompt(userInput, currentFlow as any);
+        const normalized = await callJsonLlm(prompt);
 
-Current question: ${currentQuestion.question}
-User's answer: ${answerValue}
-${nextQuestion ? `Next question: "${nextQuestion.question}"` : 'This is the final question.'}
+        console.log('Profile normalized:', normalized);
+        // TODO: Save to DB, Redis, or emit via WebSocket
+      } catch (error) {
+        console.error('Background normalization failed:', error);
+      }
+    })();
 
-Provide a warm 2-3 sentence response that:
-1. Acknowledges their answer positively
-2. Adds brief helpful context
-${nextQuestion ? `3. Naturally transitions to: "${nextQuestion.question}"` : '3. Thanks them for completing the questions'}
+    // ——————————————————
+    // 5. Generate warm reply
+    // ——————————————————
+    const systemPrompt = `You are Chris's friendly AI assistant for ${flow.name}.
 
-Keep it concise and conversational.`;
+User just answered: "${answerValue}"
+They were asked: "${currentQuestion.question}"
+${nextQuestion ? `Next question will be: "${nextQuestion.question}"` : 'This was the final question.'}
+
+Reply in 2–3 warm, natural sentences:
+- Acknowledge their answer positively
+- Add brief context or excitement
+${nextQuestion ? `- Smoothly transition to the next question` : `- Celebrate completion and build excitement`}
+
+Be kind, human, and engaging.`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: answerValue! },
+        { role: 'user', content: answerValue },
       ],
-      temperature: 0.7,
-      max_tokens: 150,
+      temperature: 0.75,
+      max_tokens: 160,
     });
 
-    const reply = completion.choices[0].message.content || 'Great, thanks!';
+    const reply = completion.choices[0].message.content?.trim() || 'Thanks!';
 
     return NextResponse.json({
       reply,
-      extracted: {
-        mappingKey: currentQuestion.mappingKey,
-        value: answerValue!,
-      },
+      extracted,
       nextQuestion: nextQuestion
         ? {
             id: nextQuestion.id,
@@ -181,10 +261,10 @@ Keep it concise and conversational.`;
       progress,
       isComplete: isLastQuestion,
     });
-  } catch (error) {
-    console.error('chat-smart API error:', error);
+  } catch (error: any) {
+    console.error('chat-smart error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Something went wrong. Please try again.' },
       { status: 500 }
     );
   }

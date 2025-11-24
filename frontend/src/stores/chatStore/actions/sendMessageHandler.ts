@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti';
 import { useConversationStore } from '@/stores/conversationConfig/conversation.store';
 import { ChatMessage, ChatState } from '../types';
 import { checkFlowCompletion } from './completionChecker';
-import { triggerNormalization } from '@/lib/openai/normalizers/triggerNormalization';
+
 
 // stores/chatStore/sendMessageHandler.ts - FIXED VERSION
 

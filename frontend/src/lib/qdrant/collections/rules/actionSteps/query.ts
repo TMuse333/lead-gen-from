@@ -2,7 +2,7 @@
 import type { ActionStepScenario, ActionStepMatch } from './types';
 import { COLLECTIONS, qdrant } from '@/lib/qdrant/client';
 import { calculateMatchScore } from '@/lib/qdrant/engines/rules';
-import { normalizeToRealEstateSchema } from '@/lib/openai/normalizers/normalizeToRealEstateSchema';
+import { getUserProfileState } from '@/stores/profileStore/userProfile.store';
 import type { UserProfile } from '@/types';
 
 interface ActionStepPayload {
@@ -24,62 +24,22 @@ interface ActionStepPayload {
   relatedStepIds?: string[];
 }
 
-// In-memory cache (you can move to Redis later)
-const normalizationCache = new Map<string, { profile: UserProfile; timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
 export async function queryActionSteps(
   agentId: string,
   flow: 'sell' | 'buy' | 'browse',
-  userInput: Record<string, string>,
   sessionId?: string,
   maxSteps = 5
 ): Promise<ActionStepMatch[]> {
-
-
-  
   try {
     console.log('Querying action steps → agent:', agentId, '| flow:', flow);
 
-    // ——————————————————————————————
-    // 1. Normalize → Canonical Profile (FIXED: Initialized to undefined)
-    // ——————————————————————————————
-    let canonicalProfile: UserProfile | undefined;
+    // Use the canonical profile from Zustand (normalized by chat-smart API)
+    const { userProfile } = getUserProfileState();
 
-    const cacheKey = sessionId ? `${sessionId}:${flow}` : null;
+    const canonicalProfile = userProfile || { intent: flow };
 
-    if (cacheKey && normalizationCache.has(cacheKey)) {
-      const cached = normalizationCache.get(cacheKey)!;
-      if (Date.now() - cached.timestamp < CACHE_TTL) {
-        console.log('Using cached canonical profile');
-        canonicalProfile = cached.profile;
-      } else {
-        normalizationCache.delete(cacheKey);
-      }
-    }
+    console.log('Using canonical profile from store:', canonicalProfile);
 
-    // Only run LLM if not cached (This check now passes TypeScript's definite assignment rule)
-    if (!canonicalProfile) {
-      console.log('Running LLM normalizer on user input...');
-      const normalized = await normalizeToRealEstateSchema(userInput, flow);
-      canonicalProfile = {
-        intent: flow, // always fallback to flow
-        ...normalized,
-      };
-
-      if (cacheKey) {
-        normalizationCache.set(cacheKey, {
-          profile: canonicalProfile,
-          timestamp: Date.now(),
-        });
-      }
-    }
-
-    console.log('Final canonical profile:', canonicalProfile);
-
-    // ——————————————————————————————
-    // 2. Fetch action steps
-    // ——————————————————————————————
     const result = await qdrant.scroll(COLLECTIONS.ACTION_STEPS, {
       filter: { must: [{ key: 'agentId', match: { value: agentId } }] },
       with_payload: true,
@@ -112,13 +72,10 @@ export async function queryActionSteps(
       })
       .filter(Boolean) as ActionStepScenario[];
 
-    // ——————————————————————————————
-    // 3. Score with your rule engine (now 100% reliable)
-    // ——————————————————————————————
     const matches = steps
       .map((step) => ({
         step,
-        matchScore: calculateMatchScore(step, canonicalProfile as any, flow), // safe cast — your engine expects Record<string, any>
+        matchScore: calculateMatchScore(step, canonicalProfile as any, flow),
         matchedRules: [],
       }))
       .filter((m) => m.matchScore > 0)

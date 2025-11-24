@@ -1,65 +1,44 @@
-// lib/openai/classifiers/classifyIntent.ts
-import { callJsonLlm } from '../utils';
-import { getClassifyIntentPrompt } from '../prompts/classifyIntent';
+// lib/openai/prompts/classifyIntentPrompt.ts
 
-export interface IntentAnalysis {
-  primary:
-    | 'direct_answer'
-    | 'clarification_question'
-    | 'objection'
-    | 'chitchat'
-    | 'escalation_request'
-    | 'off_topic'
-    | 'attempted_answer_but_unclear';
-  clarification?:
-    | 'needs_definition'
-    | 'needs_examples'
-    | 'scope_concern'
-    | 'privacy_concern'
-    | 'not_sure_how_to_answer'
-    | 'too_many_options';
-  objection?:
-    | 'privacy_refusal'
-    | 'trust_issue'
-    | 'time_constraint'
-    | 'price_sensitivity'
-    | 'not_ready';
-  confidence?: number;
-  partialAnswer?: string;
-  suggestedTone?: 'empathetic' | 'firm' | 'playful' | 'educational';
-}
-
-export async function classifyUserIntent({
-  userMessage,
-  currentQuestion,
-  flowName,
-  previousContext,
-}: {
-  userMessage: string;
-  currentQuestion: string;
-  flowName: string;
-  previousContext?: string;
-}): Promise<IntentAnalysis> {
-  const prompt = getClassifyIntentPrompt({
+export interface ClassifyIntentParams {
+    userMessage: string;
+    currentQuestion: string;
+    flowName: string;
+    previousContext?: string;
+  }
+  
+  export function classifyIntentPrompt({
     userMessage,
     currentQuestion,
     flowName,
-    previousContext,
-  });
-
-  try {
-    const json = await callJsonLlm(prompt);
-
-    return {
-      primary: json.primary || 'clarification_question',
-      clarification: json.clarification,
-      objection: json.objection,
-      confidence: json.confidence ?? 0.9,
-      partialAnswer: json.partialAnswer,
-      suggestedTone: json.suggestedTone,
-    };
-  } catch (error) {
-    console.error('classifyUserIntent failed:', error);
-    return { primary: 'clarification_question' };
+    previousContext = '',
+  }: ClassifyIntentParams): string {
+    return `You are an expert conversation analyst for a real estate AI assistant.
+  
+  Flow: ${flowName}
+  Current question asked: "${currentQuestion}"
+  
+  ${previousContext ? `Recent context:\n${previousContext}\n` : ''}
+  
+  User just said: "${userMessage}"
+  
+  Classify the user's intent with extreme accuracy.
+  
+  Return VALID JSON with this exact schema:
+  {
+    "primary": "direct_answer" | "clarification_question" | "objection" | "chitchat" | "escalation_request" | "off_topic" | "attempted_answer_but_unclear",
+    "clarification"?: "needs_definition" | "needs_examples" | "scope_concern" | "privacy_concern" | "not_sure_how_to_answer" | "too_many_options",
+    "objection"?: "privacy_refusal" | "trust_issue" | "time_constraint" | "price_sensitivity" | "not_ready",
+    "confidence": number,                    // 0.0 to 1.0
+    "partialAnswer"?: string,                // if they tried to answer but were unclear
+    "suggestedTone"?: "empathetic" | "firm" | "playful" | "educational"
   }
-}
+  
+  Rules:
+  - If user clearly answers → primary = "direct_answer", partialAnswer = their answer if extractable
+  - If user asks a question back → "clarification_question"
+  - If user says "I don't want to share" → "objection" + "privacy_refusal"
+  - If user says "not yet", "later", "busy" → "objection" + "time_constraint"
+  - Never guess. If unsure → primary = "clarification_question"
+  - Output raw JSON only. No markdown. No explanations.`;
+  }

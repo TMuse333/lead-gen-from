@@ -2,6 +2,7 @@
 "use client";
 
 import  { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
@@ -16,6 +17,7 @@ const STORAGE_KEY = "llmResultsCache";
 const DEBUG_STORAGE_KEY = "llmDebugCache";
 
 export default function ResultsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [localDebugInfo, setLocalDebugInfo] = useState<GenerationDebugInfo | null>(null);
@@ -134,8 +136,53 @@ export default function ResultsPage() {
     );
   }
 
-  // Safe render
-  const data = llmOutput!;
+  // Validate data before rendering
+  if (!llmOutput) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
+        <div className="max-w-md rounded-lg bg-yellow-50 p-6 text-yellow-800 shadow-md">
+          <h2 className="text-xl font-bold">No Results Available</h2>
+          <p className="mt-2">No results data found. Please complete the chat to generate results.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="mt-4 rounded bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700"
+          >
+            Go Back
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // Validate that all required fields exist
+  const data = llmOutput;
+  const missingFields: string[] = [];
+  
+  if (!data.hero) missingFields.push('hero');
+  if (!data.profileSummary) missingFields.push('profileSummary');
+  if (!data.personalMessage) missingFields.push('personalMessage');
+  if (!data.marketInsights) missingFields.push('marketInsights');
+  if (!data.actionPlan) missingFields.push('actionPlan');
+  if (!data.nextStepsCTA) missingFields.push('nextStepsCTA');
+
+  if (missingFields.length > 0) {
+    console.error('Missing required fields in llmOutput:', missingFields, 'Full data:', data);
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
+        <div className="max-w-md rounded-lg bg-red-50 p-6 text-red-800 shadow-md">
+          <h2 className="text-xl font-bold">Invalid Results Data</h2>
+          <p className="mt-2">The results data is missing required fields: {missingFields.join(', ')}</p>
+          <p className="mt-2 text-sm text-red-600">Please check the console for more details.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="bg-blue-100">

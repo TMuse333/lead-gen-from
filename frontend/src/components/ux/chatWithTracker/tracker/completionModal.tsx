@@ -86,36 +86,51 @@ export function CompletionModal({ showModal, calculationStep, answersArray }: Co
 
             {/* Steps List */}
             <div className="relative z-10 px-8 space-y-3">
-              {steps.map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: calculationStep > i ? 1 : 0.5, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-center gap-4 py-2"
-                >
-                  <div className={`p-2 rounded-lg ${calculationStep > i ? 'bg-cyan-500/20' : 'bg-slate-700/50'}`}>
-                    <div className={calculationStep > i ? 'text-cyan-400' : 'text-cyan-600/50'}>
-                      {item.icon}
+              {steps.map((item, i) => {
+                const isActive = calculationStep > i;
+                const isCurrent = calculationStep === i + 1;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ 
+                      opacity: isActive ? 1 : (isCurrent ? 0.8 : 0.5), 
+                      x: 0 
+                    }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-4 py-2"
+                  >
+                    <div className={`p-2 rounded-lg transition-colors ${
+                      isActive 
+                        ? 'bg-cyan-500/20' 
+                        : isCurrent 
+                        ? 'bg-cyan-500/10 animate-pulse' 
+                        : 'bg-slate-700/50'
+                    }`}>
+                      <div className={isActive ? 'text-cyan-400' : isCurrent ? 'text-cyan-400/70' : 'text-cyan-600/50'}>
+                        {item.icon}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${calculationStep > i ? 'text-cyan-50' : 'text-cyan-300/60'}`}>
-                      {item.text}
-                    </p>
-                    <p className="text-xs text-cyan-300/70">{item.subtext}</p>
-                  </div>
-                  {calculationStep > i && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                    >
-                      <Check size={20} className="text-cyan-400" />
-                    </motion.div>
-                  )}
-                </motion.div>
-              ))}
+                    <div className="flex-1">
+                      <p className={`font-medium transition-colors ${
+                        isActive ? 'text-cyan-50' : isCurrent ? 'text-cyan-200' : 'text-cyan-300/60'
+                      }`}>
+                        {item.text}
+                      </p>
+                      <p className="text-xs text-cyan-300/70">{item.subtext}</p>
+                    </div>
+                    {isActive && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                      >
+                        <Check size={20} className="text-cyan-400" />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
 
             {/* Loading Bar + Status */}
