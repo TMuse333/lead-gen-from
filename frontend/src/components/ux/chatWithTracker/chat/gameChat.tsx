@@ -9,6 +9,7 @@ import { MessageBubble } from './messageBubble';
 import { IntegratedTracker } from './integratedTracker';
 import AnalysisTracker from '../tracker';
 import { AnalysisTrackerBar } from '../tracker/trackerbar';
+import { CompletionModal } from '../tracker/completionModal';
 
 interface ChatButton {
   id: string;
@@ -86,8 +87,13 @@ export function GameChat({
 
 
   useEffect(() => {
-    // Scroll to bottom when messages or loading state changes
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only scroll to bottom when there are actual messages (not on initial mount)
+    if (messages.length > 1 && messagesEndRef.current) {
+      // Use a small timeout to ensure DOM is updated
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
   }, [messages, loading, isChatOpen]); 
 
   useEffect(() => {
@@ -256,6 +262,9 @@ export function GameChat({
           <AnalysisTracker />
         </div>
       </div>
+
+      {/* Completion Modal - Conditionally rendered when progress is complete (important for mobile) */}
+      {progress >= 100 && <CompletionModal />}
     </>
   );
 }

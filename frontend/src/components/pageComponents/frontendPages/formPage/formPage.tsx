@@ -34,6 +34,22 @@ export default function FormPage() {
     setPageUrl(window.location.href);
   }, []);
 
+  // Scroll to top on page load to prevent auto-scroll to chatbot container
+  useEffect(() => {
+    // Scroll to top immediately
+    window.scrollTo(0, 0);
+    
+    // Also handle hash navigation - prevent auto-scroll if hash exists
+    if (window.location.hash) {
+      // Remove hash from URL without scrolling
+      const hash = window.location.hash;
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      
+      // Optionally, you can scroll to the element after a delay if needed
+      // But for now, we'll just prevent the auto-scroll
+    }
+  }, []);
+
 
 
 
@@ -56,7 +72,7 @@ export default function FormPage() {
       <AuroraHero/>
       <WhyDifferentSection/>
       <TechSpecs/>
-      <UserProfilePanel/>
+
 
       <div className="container mx-auto px-4">
         {/* Header */}

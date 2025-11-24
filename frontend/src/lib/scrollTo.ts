@@ -7,7 +7,9 @@ import { useCallback } from 'react';
 
 
 export const scrollToId = (id: string, offset: number = 80) => {
-  const element = document.getElementById(id);
+  // Handle 'chatbot' as an alias for 'chatbot-container'
+  const actualId = id === 'chatbot' ? 'chatbot-container' : id;
+  const element = document.getElementById(actualId);
   if (!element) return;
 
   const elementPosition = element.getBoundingClientRect().top + window.scrollY;

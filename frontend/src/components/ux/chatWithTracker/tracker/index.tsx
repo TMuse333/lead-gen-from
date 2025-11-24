@@ -23,8 +23,6 @@ export default function AnalysisTracker() {
   const currentInsightFromStore = useChatStore(selectCurrentInsight);
   const dbActivityFromStore = useChatStore(selectDbActivity);
 
-  const [showModal, setShowModal] = useState(false);
-  const [calculationStep, setCalculationStep] = useState(0);
   const [currentInsight, setCurrentInsight] = useState("Gathering your information...");
   const [dbActivity, setDbActivity] = useState("Processing your answers...");
 
@@ -41,25 +39,6 @@ export default function AnalysisTracker() {
   useEffect(() => {
     if (dbActivityFromStore) setDbActivity(dbActivityFromStore);
   }, [dbActivityFromStore]);
-
-  // Completion modal - auto-progress through all 7 steps
-  useEffect(() => {
-    if (isComplete && !showModal) {
-      setShowModal(true);
-      // Start at step 1 immediately so the first item lights up right away
-      setCalculationStep(1);
-      let step = 1;
-      const interval = setInterval(() => {
-        step++;
-        setCalculationStep(step);
-        // Stop after completing all 7 steps (step 7 is the last one)
-        if (step >= 7) {
-          clearInterval(interval);
-        }
-      }, 2000); // 2 seconds per step
-      return () => clearInterval(interval);
-    }
-  }, [isComplete, showModal]);
 
   const formatKey = (key: string): string =>
     key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
@@ -117,11 +96,7 @@ export default function AnalysisTracker() {
         />
       </motion.div>
 
-      <CompletionModal 
-        showModal={showModal}
-        calculationStep={calculationStep}
-        answersArray={answersArray}
-      />
+      {isComplete && <CompletionModal />}
     </>
   );
 }
