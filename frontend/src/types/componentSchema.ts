@@ -7,14 +7,18 @@ import { ComponentSchema } from "./schemas";
 
 // ==================== COMPLETE LLM OUTPUT ====================
 
-export interface LlmOutput {
-  hero: LlmHeroBannerProps;
-  profileSummary: LlmProfileSummaryProps;
-  personalMessage: LlmPersonalMessageProps;
-  marketInsights: LlmMarketInsightsProps;
-  actionPlan: LlmActionPlanProps;
-  nextStepsCTA: LlmNextStepsCTAProps;
-}
+// Flexible LLM output that can handle varying structures from different flows
+export type LlmOutput = Record<string, any> & {
+  // Common components (optional - may not exist in all flows)
+  hero?: LlmHeroBannerProps;
+  profileSummary?: LlmProfileSummaryProps;
+  personalMessage?: LlmPersonalMessageProps;
+  marketInsights?: LlmMarketInsightsProps;
+  actionPlan?: LlmActionPlanProps;
+  nextStepsCTA?: LlmNextStepsCTAProps;
+  // Allow any other custom components
+  [key: string]: any;
+};
 
 // ==================== ALL COMPONENT SCHEMAS ====================
 
@@ -44,13 +48,24 @@ export interface LlmOutput {
 // }
 
 /**
- * Validate that LlmOutput has all required components
+ * Validate that LlmOutput has at least some components
+ * More flexible - just checks that it's an object with some data
  */
 export function validateLlmOutput(output: Partial<LlmOutput>): {
   valid: boolean;
   missing: string[];
+  available: string[];
 } {
-  const required: (keyof LlmOutput)[] = [
+  if (!output || typeof output !== 'object') {
+    return {
+      valid: false,
+      missing: [],
+      available: [],
+    };
+  }
+
+  // Common components that we typically expect
+  const commonComponents = [
     'hero',
     'profileSummary',
     'personalMessage',
@@ -59,11 +74,20 @@ export function validateLlmOutput(output: Partial<LlmOutput>): {
     'nextStepsCTA',
   ];
 
-  const missing = required.filter(key => !output[key]);
+  const available = Object.keys(output).filter(key => 
+    output[key] !== null && 
+    output[key] !== undefined && 
+    typeof output[key] === 'object' &&
+    key !== '_debug' // Exclude debug info
+  );
 
+  const missing = commonComponents.filter(key => !output[key]);
+
+  // Valid if we have at least one component
   return {
-    valid: missing.length === 0,
+    valid: available.length > 0,
     missing,
+    available,
   };
 }
 

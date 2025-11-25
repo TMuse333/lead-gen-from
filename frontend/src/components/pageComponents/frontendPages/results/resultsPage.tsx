@@ -12,6 +12,7 @@ import { ActionPlan, LlmProfileSummary, MarketInsights, NextStepsCTA, PersonalMe
 
 import { GenerationDebugInfo } from "@/stores/chatStore";
 import { GenerationSummary } from "@/components/ux/resultsComponents/generationSummary";
+import { ErrorBoundary } from "@/components/errorBoundary";
 
 const STORAGE_KEY = "llmResultsCache";
 const DEBUG_STORAGE_KEY = "llmDebugCache";
@@ -21,36 +22,81 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [localDebugInfo, setLocalDebugInfo] = useState<GenerationDebugInfo | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const llmOutput = useChatStore(selectLlmOutput);
   const isComplete = useChatStore(selectIsComplete);
   const setLlmOutput = useChatStore((s) => s.setLlmOutput);
   const zustandDebugInfo = useChatStore(state => state.debugInfo);
 
+  // Wait for client-side hydration before accessing Zustand/store
+  useEffect(() => {
+    setIsHydrated(true);
+    console.log('✅ Results page hydrated');
+  }, []);
+
   // Sync zustand debugInfo to local state when it changes
   useEffect(() => {
     if (zustandDebugInfo) {
-      console.log("Zustand debugInfo detected, syncing to local state");
-      setLocalDebugInfo(zustandDebugInfo);
-      // Also cache it
-      localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(zustandDebugInfo));
+      try {
+        console.log("Zustand debugInfo detected, syncing to local state");
+        setLocalDebugInfo(zustandDebugInfo);
+        // Also cache it
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(zustandDebugInfo));
+        }
+      } catch (err) {
+        console.error('Error syncing debug info:', err);
+      }
     }
   }, [zustandDebugInfo]);
   
   // Load from cache on mount
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     const loadFromCache = (): LlmOutput | null => {
       try {
         const cached = localStorage.getItem(STORAGE_KEY);
-        if (!cached) return null;
+        if (!cached) {
+          console.log("No cached data found in localStorage");
+          return null;
+        }
 
         const parsed = JSON.parse(cached);
-        if (parsed && typeof parsed.hero === "object" && typeof parsed.profileSummary === "object") {
-          console.log("Cache hit: Loaded LLM result from localStorage");
-          return parsed as LlmOutput;
+        console.log("Parsed cached data:", parsed);
+        
+        // More flexible validation - just check that it's an object with at least one component
+        if (parsed && typeof parsed === "object") {
+          const componentKeys = Object.keys(parsed).filter(key => 
+            key !== '_debug' && 
+            parsed[key] !== null && 
+            parsed[key] !== undefined && 
+            typeof parsed[key] === 'object'
+          );
+          if (componentKeys.length > 0) {
+            console.log("✅ Cache hit: Loaded LLM result from localStorage");
+            console.log("Available components:", componentKeys);
+            return parsed as LlmOutput;
+          } else {
+            console.warn("⚠️ Cached data exists but no valid components found");
+            console.warn("Cached data keys:", Object.keys(parsed));
+          }
         }
       } catch (err) {
-        console.warn("Failed to parse cached LLM data:", err);
+        console.error("❌ Failed to parse cached LLM data:", err);
+        console.error("Error details:", {
+          error: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        });
+        // Clear corrupted cache
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          console.log("Cleared corrupted cache");
+        } catch (clearErr) {
+          console.error("Failed to clear corrupted cache:", clearErr);
+        }
       }
       return null;
     };
@@ -80,16 +126,68 @@ export default function ResultsPage() {
       setLocalDebugInfo(cachedDebug);
     }
   }, [setLlmOutput]);
-
-  // Detect when Zustand has fresh output
+  
+  // Catch any unhandled errors
   useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('❌ Unhandled error:', event.error);
+      console.error('Error details:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error,
+      });
+      setError(`An error occurred: ${event.message || 'Unknown error'}`);
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error('❌ Unhandled promise rejection:', event.reason);
+      setError(`An error occurred: ${event.reason?.message || 'Unknown error'}`);
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }, []);
+
+  // Detect when Zustand has fresh output (only after hydration)
+  useEffect(() => {
+    if (!isHydrated) {
+      console.log("⏳ Waiting for hydration...");
+      return;
+    }
+
+    console.log("🔍 Checking for llmOutput (hydrated):", {
+      hasLlmOutput: !!llmOutput,
+      isComplete,
+      llmOutputKeys: llmOutput ? Object.keys(llmOutput) : [],
+    });
+
     if (llmOutput) {
-      console.log("Zustand llmOutput ready:", llmOutput);
+      console.log("✅ Zustand llmOutput ready:", llmOutput);
+      console.log("Output keys:", Object.keys(llmOutput));
       setLoading(false);
     } else if (isComplete) {
-      console.log("Chat complete, awaiting results...");
+      console.log("⏳ Chat complete, awaiting results...");
+      // Set a timeout to show error if results don't arrive
+      const timeout = setTimeout(() => {
+        if (!llmOutput) {
+          console.error("⚠️ Results not received after completion");
+          setError("Results are taking longer than expected. Please try refreshing the page.");
+          setLoading(false);
+        }
+      }, 10000); // 10 second timeout
+      return () => clearTimeout(timeout);
+    } else {
+      // Not complete and no output - might be a fresh page load
+      console.log("ℹ️ No output yet, checking cache...");
     }
-  }, [llmOutput, isComplete]);
+  }, [llmOutput, isComplete, isHydrated]);
 
   // CLEAR CACHE + ZUSTAND WHEN LEAVING PAGE
   useEffect(() => {
@@ -101,14 +199,16 @@ export default function ResultsPage() {
     };
   }, []);
 
-  // Loading state
-  if (loading) {
+  // Loading state - show loading until hydrated
+  if (!isHydrated || loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-blue-100 p-6">
         <Loader2 className="h-14 w-14 animate-spin text-blue-600" />
         <div className="text-center max-w-md">
           <p className="text-lg font-medium text-blue-900">
-            {llmOutput
+            {!isHydrated
+              ? "Initializing..."
+              : llmOutput
               ? "Loading your report…"
               : isComplete
               ? "Finalizing your personalized results…"
@@ -154,24 +254,27 @@ export default function ResultsPage() {
     );
   }
 
-  // Validate that all required fields exist
+  // Render components conditionally - only show what's available
   const data = llmOutput;
-  const missingFields: string[] = [];
   
-  if (!data.hero) missingFields.push('hero');
-  if (!data.profileSummary) missingFields.push('profileSummary');
-  if (!data.personalMessage) missingFields.push('personalMessage');
-  if (!data.marketInsights) missingFields.push('marketInsights');
-  if (!data.actionPlan) missingFields.push('actionPlan');
-  if (!data.nextStepsCTA) missingFields.push('nextStepsCTA');
-
-  if (missingFields.length > 0) {
-    console.error('Missing required fields in llmOutput:', missingFields, 'Full data:', data);
+  // Wrap in try-catch for safety
+  let availableComponents: string[] = [];
+  try {
+    availableComponents = Object.keys(data).filter(key => 
+      key !== '_debug' && 
+      data[key] !== null && 
+      data[key] !== undefined && 
+      typeof data[key] === 'object'
+    );
+  } catch (err) {
+    console.error('❌ Error processing llmOutput:', err);
+    console.error('llmOutput data:', data);
+    setError('Error processing results data. Please try again.');
     return (
       <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
         <div className="max-w-md rounded-lg bg-red-50 p-6 text-red-800 shadow-md">
-          <h2 className="text-xl font-bold">Invalid Results Data</h2>
-          <p className="mt-2">The results data is missing required fields: {missingFields.join(', ')}</p>
+          <h2 className="text-xl font-bold">Error Processing Results</h2>
+          <p className="mt-2">An error occurred while processing the results data.</p>
           <p className="mt-2 text-sm text-red-600">Please check the console for more details.</p>
           <button
             onClick={() => window.location.reload()}
@@ -184,26 +287,85 @@ export default function ResultsPage() {
     );
   }
 
+  if (availableComponents.length === 0) {
+    console.error('❌ No valid components found in llmOutput');
+    console.error('Full llmOutput:', JSON.stringify(data, null, 2));
+    console.error('llmOutput type:', typeof data);
+    console.error('llmOutput keys:', Object.keys(data || {}));
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
+        <div className="max-w-md rounded-lg bg-red-50 p-6 text-red-800 shadow-md">
+          <h2 className="text-xl font-bold">Invalid Results Data</h2>
+          <p className="mt-2">No valid components found in the results data.</p>
+          <p className="mt-2 text-sm text-red-600">Please check the console for more details.</p>
+          <p className="mt-2 text-xs text-red-500">Data keys: {Object.keys(data || {}).join(', ') || 'none'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  console.log('✅ Available components:', availableComponents);
+
+  // Render components with error boundaries
+  const renderComponent = (name: string, Component: any, componentData: any) => {
+    if (!componentData || !Component) return null;
+    
+    // Validate componentData is an object
+    if (typeof componentData !== 'object' || Array.isArray(componentData)) {
+      console.warn(`⚠️ Invalid data for ${name}:`, componentData);
+      return null;
+    }
+    
+    return (
+      <ErrorBoundary
+        key={name}
+        fallback={
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 m-4">
+            <p className="text-yellow-800">Error rendering {name} component</p>
+          </div>
+        }
+      >
+        <Component data={componentData} />
+      </ErrorBoundary>
+    );
+  };
+
   return (
-    <main className="bg-blue-100">
-      <LlmHerobanner data={data.hero} />
-      <LlmProfileSummary data={data.profileSummary} />
-      <PersonalMessage data={data.personalMessage} />
-      <MarketInsights data={data.marketInsights} />
-      <ActionPlan data={data.actionPlan} />
-      <NextStepsCTA data={data.nextStepsCTA} />
-      
-      {/* Show debug info if available from either zustand or local state */}
-      {localDebugInfo && (
-        <GenerationSummary
-          metadata={localDebugInfo.qdrantRetrieval}
-          promptLength={localDebugInfo.promptLength}
-          adviceUsed={localDebugInfo.adviceUsed}
-          generationTime={localDebugInfo.generationTime}
-          userInput={localDebugInfo.userInput}  // ADD THIS
-          flow={localDebugInfo.flow}  
-        />
-      )}
-    </main>
+    <ErrorBoundary>
+      <main className="bg-blue-100">
+        {data.hero && renderComponent('hero', LlmHerobanner, data.hero)}
+        {data.profileSummary && renderComponent('profileSummary', LlmProfileSummary, data.profileSummary)}
+        {data.personalMessage && renderComponent('personalMessage', PersonalMessage, data.personalMessage)}
+        {data.marketInsights && renderComponent('marketInsights', MarketInsights, data.marketInsights)}
+        {data.actionPlan && renderComponent('actionPlan', ActionPlan, data.actionPlan)}
+        {data.nextStepsCTA && renderComponent('nextStepsCTA', NextStepsCTA, data.nextStepsCTA)}
+        
+        {/* Show debug info if available from either zustand or local state */}
+        {localDebugInfo && (
+          <ErrorBoundary
+            fallback={
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 m-4">
+                <p className="text-yellow-800">Error rendering debug summary</p>
+              </div>
+            }
+          >
+            <GenerationSummary
+              metadata={localDebugInfo.qdrantRetrieval}
+              promptLength={localDebugInfo.promptLength}
+              adviceUsed={localDebugInfo.adviceUsed}
+              generationTime={localDebugInfo.generationTime}
+              userInput={localDebugInfo.userInput}
+              flow={localDebugInfo.flow}  
+            />
+          </ErrorBoundary>
+        )}
+      </main>
+    </ErrorBoundary>
   );
 }

@@ -29,20 +29,18 @@ const DEFAULT_SCHEMAS: ComponentSchema[] = [
 function isValidLlmOutput(obj: unknown): obj is LlmOutput {
   if (!obj || typeof obj !== "object") return false;
   const o = obj as Record<string, unknown>;
-  return (
-    typeof o.hero === "object" &&
-    o.hero !== null &&
-    typeof o.profileSummary === "object" &&
-    o.profileSummary !== null &&
-    typeof o.personalMessage === "object" &&
-    o.personalMessage !== null &&
-    typeof o.marketInsights === "object" &&
-    o.marketInsights !== null &&
-    typeof o.actionPlan === "object" &&
-    o.actionPlan !== null &&
-    typeof o.nextStepsCTA === "object" &&
-    o.nextStepsCTA !== null
+  
+  // More flexible validation - just check that it's an object with at least one component
+  // Exclude _debug from component count
+  const componentKeys = Object.keys(o).filter(key => 
+    key !== '_debug' && 
+    o[key] !== null && 
+    o[key] !== undefined && 
+    typeof o[key] === 'object'
   );
+  
+  // Valid if we have at least one component
+  return componentKeys.length > 0;
 }
 
 export async function POST(req: NextRequest) {

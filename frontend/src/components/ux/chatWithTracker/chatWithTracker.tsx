@@ -126,37 +126,100 @@ export default function ChatWithTracker() {
           throw new Error(data.error);
         }
         
-        // Validate that data has required fields
-        if (!data.hero || !data.profileSummary || !data.personalMessage || 
-            !data.marketInsights || !data.actionPlan || !data.nextStepsCTA) {
-          console.error('❌ Invalid response structure:', data);
-          throw new Error('API returned incomplete data. Missing required fields.');
+        // Validate that data has at least some components (flexible for different flows)
+        const componentKeys = Object.keys(data).filter(key => 
+          key !== '_debug' && 
+          data[key] !== null && 
+          data[key] !== undefined && 
+          typeof data[key] === 'object'
+        );
+        
+        if (componentKeys.length === 0) {
+          console.error('❌ Invalid response structure - no components found:', data);
+          throw new Error('API returned invalid data. No components found.');
         }
+        
+        console.log('✅ Valid response with components:', componentKeys);
         
         // Separate debug info from actual data
         const { _debug, ...llmOutput } = data;
         
-        // Store LLM output in Zustand
-        setLlmOutput(llmOutput);
+        // Store to localStorage FIRST (more reliable than Zustand for cross-page navigation)
+        try {
+          localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
+          console.log('✅ Results cached to localStorage');
+        } catch (cacheErr) {
+          console.error('⚠️ Error caching to localStorage:', cacheErr);
+          throw new Error('Failed to cache results. Please try again.');
+        }
+        
+        // Store debug info to localStorage
+        if (_debug) {
+          try {
+            localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
+            console.log('📊 Debug info stored in localStorage:', _debug);
+          } catch (debugErr) {
+            console.error('⚠️ Error storing debug info:', debugErr);
+            // Non-critical, continue
+          }
+        }
+        
+        // Store LLM output in Zustand (for immediate access if on same page)
+        try {
+          setLlmOutput(llmOutput);
+          console.log('✅ LLM output stored in Zustand');
+        } catch (storeErr) {
+          console.error('⚠️ Error storing in Zustand (non-critical):', storeErr);
+          // Non-critical since we have localStorage
+        }
         
         // Store debug info in Zustand (if it exists)
         if (_debug) {
-          setDebugInfo(_debug);
-          localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
-          console.log('📊 Debug info stored:', _debug);
+          try {
+            setDebugInfo(_debug);
+            console.log('📊 Debug info stored in Zustand');
+          } catch (debugErr) {
+            console.error('⚠️ Error storing debug info in Zustand:', debugErr);
+            // Non-critical, continue
+          }
         }
-        
-        // Cache to localStorage
-        localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
         
         // Reset chat for next user
         resetChat();
         
-        // Go straight to results
-        router.push('/results');
+        // Longer delay to ensure localStorage is written and state is set
+        // This is critical for slower devices/networks
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Navigate to results page
+        // Using window.location for more reliable navigation across different browsers
+        window.location.href = '/results';
       } catch (err: any) {
         console.error('❌ Fast track failed:', err);
-        alert(`Error: ${err.response?.data?.error || err.message || 'Unknown error'}`);
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+          userInput,
+          currentFlow,
+          stack: err.stack,
+        });
+        
+        // Log to console with full context for debugging
+        const errorDetails = {
+          timestamp: new Date().toISOString(),
+          error: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+          userInput,
+          currentFlow,
+          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+        };
+        console.error('📋 Full error context:', JSON.stringify(errorDetails, null, 2));
+        
+        // Show user-friendly error message
+        const errorMessage = err.response?.data?.error || err.message || 'Unknown error occurred';
+        alert(`Error generating results: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
         submissionCalledRef.current = false; // allow retry
       }
     };
