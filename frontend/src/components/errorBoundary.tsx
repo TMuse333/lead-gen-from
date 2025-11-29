@@ -59,15 +59,17 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
-          <div className="max-w-md rounded-lg bg-red-50 p-6 text-red-800 shadow-md">
-            <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-            <p className="mt-2 text-sm">
+        <main className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
+          <div className="max-w-md rounded-lg bg-slate-800 border border-red-700 p-6 text-red-300 shadow-md">
+            <h2 className="text-xl font-bold mb-2 text-red-400">Something went wrong</h2>
+            <p className="mt-2 text-sm text-slate-300">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <details className="mt-4 text-xs">
-              <summary className="cursor-pointer font-semibold">Error Details</summary>
-              <pre className="mt-2 overflow-auto max-h-40 bg-red-100 p-2 rounded">
+              <summary className="cursor-pointer font-semibold text-slate-400 hover:text-slate-200">
+                Error Details
+              </summary>
+              <pre className="mt-2 overflow-auto max-h-40 bg-slate-900 p-2 rounded text-slate-400 border border-slate-700">
                 {this.state.error?.stack}
               </pre>
             </details>
@@ -76,7 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 this.setState({ hasError: false, error: null, errorInfo: null });
                 window.location.reload();
               }}
-              className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+              className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 transition-colors"
             >
               Reload Page
             </button>

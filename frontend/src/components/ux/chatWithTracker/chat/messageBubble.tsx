@@ -3,6 +3,7 @@
 
 import { motion } from 'framer-motion';
 import { Bot, User } from 'lucide-react';
+import { determineTextColorForGradient } from '@/lib/colors/contrastUtils';
 
 interface MessageBubbleProps {
   role: 'user' | 'assistant';
@@ -12,6 +13,15 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ role, content, index }: MessageBubbleProps) {
   const isUser = role === 'user';
+  
+  // Helper to get CSS variable value
+  const getCSSVar = (varName: string, fallback: string = '#3b82f6'): string => {
+    if (typeof window === 'undefined') return fallback;
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(varName)
+      .trim();
+    return value || fallback;
+  };
 
   return (
     <motion.div
@@ -46,9 +56,16 @@ export function MessageBubble({ role, content, index }: MessageBubbleProps) {
       <motion.div
         className={`max-w-[70%] px-5 py-3 rounded-2xl relative ${
           isUser
-            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-tr-sm'
+            ? 'bg-gradient-to-br rounded-tr-sm'
             : 'bg-white text-gray-900 border-2 border-purple-200 rounded-tl-sm shadow-lg'
         }`}
+        style={isUser ? {
+          background: `linear-gradient(to bottom right, var(--color-gradient-from), var(--color-gradient-to))`,
+          color: determineTextColorForGradient(
+            getCSSVar('--color-gradient-from', '#3b82f6'),
+            getCSSVar('--color-gradient-to', '#2563eb')
+          ),
+        } : {}}
         whileHover={{ scale: 1.02 }}
         transition={{ type: 'spring', stiffness: 400 }}
       >

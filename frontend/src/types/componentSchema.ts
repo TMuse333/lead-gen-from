@@ -1,23 +1,28 @@
 // types/resultsPageComponents/landingPageSchemas.ts
 
-
-
-import { LlmActionPlanProps, LlmHeroBannerProps, LlmMarketInsightsProps, LlmNextStepsCTAProps, LlmPersonalMessageProps, LlmProfileSummaryProps } from "@/components/ux/resultsComponents";
-import { ComponentSchema } from "./schemas";
+import type { OutputValue } from './genericOutput.types';
 
 // ==================== COMPLETE LLM OUTPUT ====================
 
-// Flexible LLM output that can handle varying structures from different flows
-export type LlmOutput = Record<string, any> & {
-  // Common components (optional - may not exist in all flows)
-  hero?: LlmHeroBannerProps;
-  profileSummary?: LlmProfileSummaryProps;
-  personalMessage?: LlmPersonalMessageProps;
-  marketInsights?: LlmMarketInsightsProps;
-  actionPlan?: LlmActionPlanProps;
-  nextStepsCTA?: LlmNextStepsCTAProps;
-  // Allow any other custom components
-  [key: string]: any;
+/**
+ * Flexible LLM output type that can handle any structure from the LLM
+ * 
+ * This type is intentionally generic to support:
+ * - Different offer types (PDF, landing page, video, custom)
+ * - Different flow types (buy, sell, browse)
+ * - Future offer types without code changes
+ * 
+ * For production, you can extend this with specific offer types:
+ * @example
+ * export type LlmOutput = {
+ *   homeEvaluation?: HomeEvaluationOutput;
+ *   pdfGuide?: PdfGuideOutput;
+ *   [key: string]: OutputValue | undefined;
+ * };
+ */
+export type LlmOutput = Record<string, OutputValue | undefined> & {
+  // Debug info (excluded from main output)
+  _debug?: unknown;
 };
 
 // ==================== ALL COMPONENT SCHEMAS ====================
@@ -64,16 +69,6 @@ export function validateLlmOutput(output: Partial<LlmOutput>): {
     };
   }
 
-  // Common components that we typically expect
-  const commonComponents = [
-    'hero',
-    'profileSummary',
-    'personalMessage',
-    'actionPlan',
-    'marketInsights',
-    'nextStepsCTA',
-  ];
-
   const available = Object.keys(output).filter(key => 
     output[key] !== null && 
     output[key] !== undefined && 
@@ -81,7 +76,8 @@ export function validateLlmOutput(output: Partial<LlmOutput>): {
     key !== '_debug' // Exclude debug info
   );
 
-  const missing = commonComponents.filter(key => !output[key]);
+  // No longer checking for specific components - fully flexible
+  const missing: string[] = [];
 
   // Valid if we have at least one component
   return {

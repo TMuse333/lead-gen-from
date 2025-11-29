@@ -12,8 +12,8 @@ import axios from 'axios'
 import { useEffect , useRef, useState} from 'react';
 import MarketAnalysisDisplay from '@/components/ux/marketAnalysis/marketAnalysis';
 import PropertyList from '@/components/ux/propertyList/propertyList';
-import ViewAgentAdvice from '@/components/admin/adviceDashboard/viewAgentAdvice';
-import AgentAdviceUploader from '@/components/admin/adviceDashboard/agentAdviceUploader';
+import ViewAgentAdvice from '@/components/dashboard/user/adviceDashboard/viewAgentAdvice';
+import AgentAdviceUploader from '@/components/dashboard/user/adviceDashboard/agentAdviceUploader';
 import { useChatStore } from '@/stores/chatStore';
 import { GameChat } from '@/components/ux/chatWithTracker/chat/gameChat';
 import AuroraHero from '@/components/landingPage/auroraHero';
@@ -21,6 +21,8 @@ import WhyDifferentSection from '@/components/landingPage/whyDifferent';
 import TechSpecs from '@/components/landingPage/techSpecs';
 import Navbar from '@/components/landingPage/navbar';
 import { UserProfilePanel } from '@/components/debug/userProfilePanel';
+import { DEFAULT_THEME } from '@/lib/colors/defaultTheme';
+import { injectColorTheme } from '@/lib/colors/colorUtils';
 
 
 export default function FormPage() {
@@ -47,6 +49,12 @@ export default function FormPage() {
       
       // Optionally, you can scroll to the element after a delay if needed
       // But for now, we'll just prevent the auto-scroll
+    }
+    
+    // Inject default theme for homepage (if no client config)
+    const existingTheme = document.getElementById('bot-color-theme');
+    if (!existingTheme) {
+      injectColorTheme(DEFAULT_THEME);
     }
   }, []);
 

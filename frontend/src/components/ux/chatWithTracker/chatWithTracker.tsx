@@ -18,8 +18,30 @@ import {
 import { GameChat } from './chat/gameChat';
 import { Loader2 } from 'lucide-react';
 import { useConversationStore } from '@/stores/conversationConfig/conversation.store';
+import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
 
-export default function ChatWithTracker() {
+interface ClientConfig {
+  id: string;
+  businessName: string;
+  industry: string;
+  dataCollection: string[];
+  selectedIntentions: string[];
+  selectedOffers: string[];
+  customOffer?: string;
+  conversationFlows: Record<string, any>;
+  colorConfig?: any; // ColorTheme
+  qdrantCollectionName: string;
+  isActive: boolean;
+  onboardingCompletedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ChatWithTrackerProps {
+  clientConfig?: ClientConfig;
+}
+
+export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps = {}) {
   const router = useRouter();
 
   // Chat store selectors
@@ -35,15 +57,19 @@ export default function ChatWithTracker() {
   const setLlmOutput = useChatStore((s) => s.setLlmOutput);
   const resetChat = useChatStore((s) => s.reset);
   const setDebugInfo = useChatStore((s) => s.setDebugInfo);
+  const conversationId = useChatStore((s) => s.conversationId);
+  const updateConversation = useChatStore((s) => s.updateConversation);
 
   // Config store
   const configHydrated = useConversationStore((s) => s.hydrated);
   const getFlow = useConversationStore((s) => s.getFlow);
+  const loadClientFlows = useConversationStore((s) => s.loadClientFlows);
 
   // Local state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false); // NEW: State for chat open/close
   const submissionCalledRef = useRef(false);
+  const clientConfigLoadedRef = useRef(false);
   
   // Handlers for chat toggle
   const toggleChat = () => setIsChatOpen(prev => !prev);
@@ -54,9 +80,47 @@ export default function ChatWithTracker() {
     console.log('🔄 isComplete changed to:', isComplete);
   }, [isComplete]);
 
+  // Load client config flows and colors if provided
+  useEffect(() => {
+    if (clientConfig && !clientConfigLoadedRef.current && configHydrated) {
+      console.log('🔄 Loading client configuration flows...', {
+        businessName: clientConfig.businessName,
+        flows: Object.keys(clientConfig.conversationFlows),
+      });
+      
+      // Store client identifier for API calls
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('clientId', clientConfig.businessName);
+        sessionStorage.setItem('clientQdrantCollection', clientConfig.qdrantCollectionName);
+      }
+      
+      // Load client's flows into conversation store
+      loadClientFlows(clientConfig.conversationFlows);
+      
+      // Inject color theme CSS variables
+      const theme = getTheme(clientConfig.colorConfig);
+      injectColorTheme(theme);
+      
+      clientConfigLoadedRef.current = true;
+      console.log('✅ Client flows and colors loaded');
+    }
+  }, [clientConfig, configHydrated, loadClientFlows]);
+
   // Initialize: Wait for hydration + run migration once
   useEffect(() => {
     if (!configHydrated) return;
+
+    // If client config is provided, skip default migration
+    if (clientConfig) {
+      setIsInitialized(true);
+      return;
+    }
+
+    // Inject default theme if no client config (for default bot)
+    if (!clientConfig && typeof window !== 'undefined') {
+      const { DEFAULT_THEME } = require('@/lib/colors/defaultTheme');
+      injectColorTheme(DEFAULT_THEME);
+    }
 
     // Check if migration already ran
     const migrated = localStorage.getItem('flows-migrated');
@@ -72,7 +136,7 @@ export default function ChatWithTracker() {
     }
 
     setIsInitialized(true);
-  }, [configHydrated]);
+  }, [configHydrated, clientConfig]);
 
   // Calculate dynamic steps from current flow
   const currentFlowData = currentFlow ? getFlow(currentFlow) : null;
@@ -109,14 +173,28 @@ export default function ChatWithTracker() {
 
     const submitFastResults = async () => {
       try {
-        console.log('🚀 Fast-tracking results via /api/test-component...', { 
+        console.log('🚀 Fast-tracking results via /api/generation/generate-offer...', { 
           currentFlow, 
           userInput 
         });
         
-        const { data } = await axios.post("/api/test-component", {
+        // Include client identifier if available (for public bots)
+        const clientId = typeof window !== 'undefined' 
+          ? sessionStorage.getItem('clientId') 
+          : null;
+        
+        const requestBody: any = {
           flow: currentFlow,
           userInput,
+          conversationId: conversationId || undefined,
+        };
+        
+        if (clientId) {
+          requestBody.clientId = clientId;
+        }
+        
+        const { data } = await axios.post("/api/generation/generate-offer", requestBody, {
+          params: clientId ? { client: clientId } : {},
         });
         
         console.log('✅ Results generated!', data);
@@ -180,6 +258,20 @@ export default function ChatWithTracker() {
             console.log('📊 Debug info stored in Zustand');
           } catch (debugErr) {
             console.error('⚠️ Error storing debug info in Zustand:', debugErr);
+            // Non-critical, continue
+          }
+        }
+
+        // Update conversation status to completed
+        if (conversationId) {
+          try {
+            await updateConversation({
+              status: 'completed',
+              progress: 100,
+            });
+            console.log('✅ Conversation marked as completed');
+          } catch (convErr) {
+            console.error('⚠️ Error updating conversation status:', convErr);
             // Non-critical, continue
           }
         }

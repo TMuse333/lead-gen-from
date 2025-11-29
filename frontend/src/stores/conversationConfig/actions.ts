@@ -230,4 +230,16 @@ export const createActions = (
     set((s) => ({ settings: { ...s.settings, ...updates } })),
 
   getFlow: (id: string) => get().flows[id],
+
+  // Load client flows from configuration
+  loadClientFlows: (clientFlows: Record<string, ConversationFlow>) => {
+    console.log('🔄 Loading client flows:', Object.keys(clientFlows));
+    set((s) => ({
+      flows: clientFlows,
+      // Keep activeFlowId if it still exists in new flows
+      activeFlowId: s.activeFlowId && clientFlows[s.activeFlowId] 
+        ? s.activeFlowId 
+        : Object.keys(clientFlows)[0] || undefined,
+    }));
+  },
 });

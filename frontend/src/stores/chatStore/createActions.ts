@@ -95,6 +95,116 @@ export function createActions(
 
     clearLlmOutput: () => set({ llmOutput: null, debugInfo: null }),
 
+    // === CONVERSATION TRACKING ===
+    setConversationId: (id: string | null) => {
+      set({ conversationId: id });
+    },
+
+    createConversation: async () => {
+      const state = get();
+      if (!state.currentFlow || state.messages.length === 0) {
+        console.warn('[ChatStore] Cannot create conversation: missing flow or messages');
+        return null;
+      }
+
+      try {
+        // Get client identifier if available
+        const clientIdentifier = typeof window !== 'undefined' 
+          ? sessionStorage.getItem('clientId') || undefined
+          : undefined;
+
+        const response = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            flow: state.currentFlow,
+            messages: state.messages.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              buttons: msg.buttons?.map(b => ({ label: b.label, value: b.value })),
+              timestamp: msg.timestamp,
+              questionId: msg.visual?.value, // Store questionId if available
+            })),
+            userInput: state.userInput,
+            clientIdentifier,
+            sessionId: typeof window !== 'undefined' ? sessionStorage.getItem('sessionId') || undefined : undefined,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create conversation: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.success && data._id) {
+          set({ conversationId: data._id });
+          console.log('[ChatStore] Conversation created:', data._id);
+          return data._id;
+        }
+        return null;
+      } catch (error) {
+        console.error('[ChatStore] Error creating conversation:', error);
+        return null;
+      }
+    },
+
+    updateConversation: async (updates) => {
+      const state = get();
+      if (!state.conversationId) {
+        console.warn('[ChatStore] Cannot update conversation: no conversationId');
+        return;
+      }
+
+      try {
+        const updateBody: any = {};
+
+        if (updates.messages) {
+          // Only send new messages (not all messages)
+          const existingCount = state.messages.length;
+          const newMessages = updates.messages.slice(existingCount);
+          if (newMessages.length > 0) {
+            updateBody.messages = newMessages.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              buttons: msg.buttons?.map(b => ({ label: b.label, value: b.value })),
+              timestamp: msg.timestamp,
+              questionId: msg.visual?.value,
+            }));
+          }
+        }
+
+        if (updates.userInput) {
+          updateBody.userInput = updates.userInput;
+        }
+
+        if (updates.status) {
+          updateBody.status = updates.status;
+        }
+
+        if (updates.progress !== undefined) {
+          updateBody.progress = updates.progress;
+        }
+
+        if (updates.currentNodeId) {
+          updateBody.currentNodeId = updates.currentNodeId;
+        }
+
+        const response = await fetch(`/api/conversations/${state.conversationId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateBody),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update conversation: ${response.statusText}`);
+        }
+
+        console.log('[ChatStore] Conversation updated');
+      } catch (error) {
+        console.error('[ChatStore] Error updating conversation:', error);
+      }
+    },
+
     // === RESET ===
     reset: async () => {
       const { initialState } = await import('./initialState');

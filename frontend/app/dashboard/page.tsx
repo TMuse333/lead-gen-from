@@ -1,21 +1,13 @@
-import AdminDashboard from '@/components/admin/adminDashboard/adminDashboard'
-import AgentAdviceDashboard from '@/components/admin/adviceDashboard/agentAdviceDashboard'
-import FlowManager from '@/components/admin/conversationEditor/components/promptSection'
-import ConversationEditor from '@/components/admin/conversationEditor/conversationEditor'
+import UserDashboard from '@/components/dashboard/user/userDashboard/userDashboard'
+import { UserConfigProvider } from '@/contexts/UserConfigContext'
 import React from 'react'
 
-
-
-
-
-
 export default function Page() {
-
-
-
     return (
-        <main className='bg-blue-100'>
-          <AdminDashboard/>
-        </main>
+        <UserConfigProvider>
+            <main className='bg-blue-100'>
+                <UserDashboard/>
+            </main>
+        </UserConfigProvider>
     )
 }

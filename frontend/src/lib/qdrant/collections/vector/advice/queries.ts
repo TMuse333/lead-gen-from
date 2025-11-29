@@ -3,23 +3,28 @@
 import { qdrant } from '../../../client';
 import { ADVICE_COLLECTION } from './collection';
 import { AgentAdviceScenario } from '@/types';
+import { calculateMatchScore } from '../../engines/rules';
+import { getAdviceTypeFromTags, DEFAULT_ADVICE_TYPE } from '@/types/advice.types';
 
 export async function queryRelevantAdvice(
   agentId: string,
   embedding: number[],
   flow: string,
   userInput: Record<string, string>,
-  limit: number = 5
+  limit: number = 5,
+  collectionName?: string // Optional: if not provided, uses default ADVICE_COLLECTION
 ): Promise<AgentAdviceScenario[]> {
   try {
+    const collection = collectionName || ADVICE_COLLECTION;
+    
     console.log(`\n🔍 [queryRelevantAdvice] Starting Qdrant search...`);
-    console.log(`   Collection: ${ADVICE_COLLECTION}`);
+    console.log(`   Collection: ${collection}`);
     console.log(`   Agent ID: ${agentId}`);
     console.log(`   Flow: ${flow}`);
     console.log(`   Limit: ${limit}`);
     console.log(`   Embedding dimensions: ${embedding.length}`);
 
-    const searchResult = await qdrant.search(ADVICE_COLLECTION, {
+    const searchResult = await qdrant.search(collection, {
       vector: embedding,
       limit: limit * 3, // Get 3x candidates for filtering
       with_payload: true,
@@ -62,10 +67,29 @@ export async function queryRelevantAdvice(
           return false;
         }
 
-        // Conditions check (OR logic)
+        // Priority 1: Check ruleGroups if present (complex rules)
+        const ruleGroups = p?.ruleGroups;
+        if (ruleGroups && Array.isArray(ruleGroups) && ruleGroups.length > 0) {
+          console.log(`      📋 Evaluating rule groups (${ruleGroups.length} group(s))...`);
+          const score = calculateMatchScore(
+            {
+              applicableWhen: {
+                flow: flows,
+                ruleGroups: ruleGroups,
+              },
+            },
+            userInput,
+            flow as 'sell' | 'buy' | 'browse'
+          );
+          const matched = score > 0;
+          console.log(`      ${matched ? '✅' : '❌'} Rule groups match: ${matched} (score: ${score.toFixed(2)})`);
+          return matched;
+        }
+
+        // Priority 2: Check simple conditions (OR logic) if no ruleGroups
         const conditions: Record<string, string[]> = p?.conditions || {};
         if (Object.keys(conditions).length === 0) {
-          console.log(`      ✅ No conditions - match (universal)`);
+          console.log(`      ✅ No conditions or rules - match (universal)`);
           return true;
         }
 
@@ -83,22 +107,30 @@ export async function queryRelevantAdvice(
 
     console.log(`   ✅ After filtering: ${filtered.length} items match`);
 
-    const results: AgentAdviceScenario[] = filtered.map((r) => ({
-      id: r.id as string,
-      agentId: (r.payload as any)?.agentId,
-      title: (r.payload as any)?.title,
-      tags: ((r.payload as any)?.tags as string[]) || [],
-      advice: (r.payload as any)?.advice,
-      applicableWhen: {
-        flow: (r.payload as any)?.flow,
-        conditions: (r.payload as any)?.conditions,
-      },
-      createdAt: new Date((r.payload as any)?.createdAt),
-      updatedAt: (r.payload as any)?.updatedAt
-        ? new Date((r.payload as any)?.updatedAt)
-        : undefined,
-      usageCount: (r.payload as any)?.usageCount,
-    }));
+    const results: AgentAdviceScenario[] = filtered.map((r) => {
+      const payload = r.payload as any;
+      const tags = (payload?.tags as string[]) || [];
+      const type = payload?.type || getAdviceTypeFromTags(tags);
+      
+      return {
+        id: r.id as string,
+        agentId: payload?.agentId,
+        title: payload?.title,
+        tags,
+        advice: payload?.advice,
+        type, // Include type in result
+        applicableWhen: {
+          flow: payload?.flow,
+          conditions: payload?.conditions,
+          ruleGroups: payload?.ruleGroups, // Include ruleGroups if present
+        },
+        createdAt: new Date(payload?.createdAt),
+        updatedAt: payload?.updatedAt
+          ? new Date(payload?.updatedAt)
+          : undefined,
+        usageCount: payload?.usageCount,
+      };
+    });
 
     console.log(`   Final results:`);
     results.forEach((r, i) => {
@@ -126,22 +158,30 @@ export async function getAgentAdvice(
       },
     });
 
-    return result.points.map((point) => ({
-      id: point.id as string,
-      agentId: (point.payload as any)?.agentId,
-      title: (point.payload as any)?.title,
-      tags: ((point.payload as any)?.tags as string[]) || [],
-      advice: (point.payload as any)?.advice,
-      applicableWhen: {
-        flow: (point.payload as any)?.flow,
-        conditions: (point.payload as any)?.conditions,
-      },
-      createdAt: new Date((point.payload as any)?.createdAt),
-      updatedAt: (point.payload as any)?.updatedAt
-        ? new Date((point.payload as any)?.updatedAt)
-        : undefined,
-      usageCount: (point.payload as any)?.usageCount,
-    }));
+    return result.points.map((point) => {
+      const payload = point.payload as any;
+      const tags = (payload?.tags as string[]) || [];
+      const type = payload?.type || getAdviceTypeFromTags(tags);
+      
+      return {
+        id: point.id as string,
+        agentId: payload?.agentId,
+        title: payload?.title,
+        tags,
+        advice: payload?.advice,
+        type, // Include type in result
+        applicableWhen: {
+          flow: payload?.flow,
+          conditions: payload?.conditions,
+          ruleGroups: payload?.ruleGroups, // Include ruleGroups if present
+        },
+        createdAt: new Date(payload?.createdAt),
+        updatedAt: payload?.updatedAt
+          ? new Date(payload?.updatedAt)
+          : undefined,
+        usageCount: payload?.usageCount,
+      };
+    });
   } catch (error) {
     console.error('Error fetching agent advice:', error);
     return [];

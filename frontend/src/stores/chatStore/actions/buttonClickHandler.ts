@@ -30,6 +30,10 @@ export function createButtonClickHandler(
       };
       set((s) => ({ messages: [...s.messages, userMsg] }));
 
+      // Create conversation when flow starts
+      const { createConversation } = get();
+      await createConversation();
+
       const firstQuestion = getNextQuestion(button.value);
       if (firstQuestion) {
         const aiMsg: ChatMessage = {
@@ -48,6 +52,13 @@ export function createButtonClickHandler(
           messages: [...s.messages, aiMsg],
           currentNodeId: firstQuestion.id,
         }));
+
+        // Update conversation with new message
+        const { updateConversation } = get();
+        await updateConversation({
+          messages: get().messages,
+          currentNodeId: firstQuestion.id,
+        });
       }
       return;
     }
@@ -68,12 +79,22 @@ export function createButtonClickHandler(
     };
     set((s) => ({ messages: [...s.messages, userMsg], loading: true }));
 
+    // Update conversation with new message
+    const { updateConversation, addAnswer } = get();
+    addAnswer(currentQuestion.mappingKey, button.value);
+    await updateConversation({
+      messages: get().messages,
+      userInput: { ...get().userInput, [currentQuestion.mappingKey]: button.value },
+      progress: get().progress,
+      currentNodeId: state.currentNodeId,
+    });
+
     try {
-      console.log('📞 Calling /api/chat-smart for button click...');
+      console.log('📞 Calling /api/chat/smart for button click...');
 
       const flow = useConversationStore.getState().getFlow(state.currentFlow);
 
-      const response = await fetch('/api/chat-smart', {
+      const response = await fetch('/api/chat/smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

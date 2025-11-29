@@ -43,7 +43,8 @@ export const initialChatState: ChatStateData = {
   shouldCelebrate: false,
   isComplete: false,
   currentInsight: '',
-dbActivity: '',
+  dbActivity: '',
+  conversationId: null,
 };
 
 export const initialLlmState: Pick<LlmResultState, 'llmOutput' | 'debugInfo'> = {

@@ -3,6 +3,7 @@
 import { qdrant } from '../../../client';
 import { ADVICE_COLLECTION } from './collection';
 import { AgentAdviceScenario } from '@/types';
+import type { RuleGroup } from '@/types/rules.types';
 
 interface StoreAdviceParams {
   agentId: string;
@@ -12,7 +13,8 @@ interface StoreAdviceParams {
   metadata: {
     tags?: string[];
     flow?: string[];
-    conditions?: Record<string, string[]>;
+    conditions?: Record<string, string[]>; // Simple conditions (OR logic)
+    ruleGroups?: RuleGroup[]; // Complex rules (AND/OR logic) - optional
   };
 }
 
@@ -39,6 +41,7 @@ export async function storeAgentAdvice({
             tags: metadata.tags || [],
             flow: metadata.flow || [],
             conditions: metadata.conditions || {},
+            ruleGroups: metadata.ruleGroups || undefined, // Optional: only include if provided
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             usageCount: 0,
@@ -63,6 +66,7 @@ export async function updateAdvice(
     tags?: string[];
     flow?: string[];
     conditions?: Record<string, string[]>;
+    ruleGroups?: RuleGroup[];
     embedding?: number[];
   }
 ) {

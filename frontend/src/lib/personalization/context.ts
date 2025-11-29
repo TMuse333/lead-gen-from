@@ -40,9 +40,11 @@ export async function getPersonalizedAdvice(
         console.log(`   ✅ Embedding generated: ${embedding.length} dimensions`);
         console.log(`   First 5 values: [${embedding.slice(0, 5).join(', ')}...]`);
         
-        // Query Qdrant
+        // Query Qdrant - use collection name from knowledgeSet if provided
+        const collectionName = knowledgeSet.name; // knowledgeSet.name should be the Qdrant collection name
         console.log('   Querying Qdrant...');
-        const adviceItems = await queryRelevantAdvice(agentId, embedding, flow, userInput, 5);
+        console.log(`   Using collection: ${collectionName}`);
+        const adviceItems = await queryRelevantAdvice(agentId, embedding, flow, userInput, 5, collectionName);
         console.log(`   ✅ Qdrant returned ${adviceItems.length} items`);
         
         if (adviceItems.length === 0) {

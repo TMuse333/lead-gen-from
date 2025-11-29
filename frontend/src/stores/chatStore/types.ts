@@ -43,6 +43,8 @@ export interface ChatStateData {
   currentInsight: string;
   dbActivity: string;
 
+  // Conversation tracking
+  conversationId: string | null;
 }
 
 export interface ChatStateActions {
@@ -61,6 +63,11 @@ export interface ChatStateActions {
 
   setCurrentInsight: (text: string) => void;
   setDbActivity: (text: string) => void;
+  
+  // Conversation tracking
+  setConversationId: (id: string | null) => void;
+  createConversation: () => Promise<string | null>;
+  updateConversation: (updates: { messages?: ChatMessage[]; userInput?: Record<string, string>; status?: 'in-progress' | 'completed' | 'abandoned'; progress?: number; currentNodeId?: string }) => Promise<void>;
 }
 
 export type ChatState = ChatStateData & ChatStateActions & LlmResultState;

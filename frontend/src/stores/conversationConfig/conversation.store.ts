@@ -62,7 +62,8 @@ export interface ConversationStore {
   getFlow: (id: string) => ConversationFlow | undefined;
   _setHydrated: () => void;
 
-  getQuestion: (flowId: string, questionId: string) => ConversationQuestion | undefined; // ← ADD THIS
+  getQuestion: (flowId: string, questionId: string) => ConversationQuestion | undefined;
+  loadClientFlows: (clientFlows: Record<string, ConversationFlow>) => void; // Load flows from client config
 }
 
 export const useConversationStore = create<ConversationStore>()(

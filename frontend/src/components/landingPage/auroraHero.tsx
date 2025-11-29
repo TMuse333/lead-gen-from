@@ -140,6 +140,16 @@ const AuroraHero = () => {
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </motion.button>
        
+          <Link href="/auth/signin">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 rounded-full border-2 border-cyan-500/60 bg-transparent px-8 py-4 text-cyan-100 font-semibold backdrop-blur-sm hover:bg-cyan-500/10 transition-all"
+            >
+              Get Your Own
+              <ArrowRight className="h-4 w-4" />
+            </motion.button>
+          </Link>
 
           <Link href="#specs">
             <motion.button

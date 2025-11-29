@@ -5,14 +5,22 @@ import  { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import { LlmHerobanner } from "@/components/ux/resultsComponents/herobanner";
 import { useChatStore, selectLlmOutput, selectIsComplete } from "@/stores/chatStore";
 import { LlmOutput } from "@/types/componentSchema";
-import { ActionPlan, LlmProfileSummary, MarketInsights, NextStepsCTA, PersonalMessage } from "@/components/ux/resultsComponents";
-
 import { GenerationDebugInfo } from "@/stores/chatStore";
 import { GenerationSummary } from "@/components/ux/resultsComponents/generationSummary";
 import { ErrorBoundary } from "@/components/errorBoundary";
+import { 
+  GenericOutputDisplay, 
+  GenericContentCard, 
+  GenericKeyValueList,
+  CompactDebugPanel 
+} from "@/components/ux/resultsComponents/genericOutput";
+import { 
+  isSimpleContent, 
+  isKeyValueData, 
+  isValidOutputComponent 
+} from "@/types/genericOutput.types";
 
 const STORAGE_KEY = "llmResultsCache";
 const DEBUG_STORAGE_KEY = "llmDebugCache";
@@ -312,59 +320,89 @@ export default function ResultsPage() {
 
   console.log('✅ Available components:', availableComponents);
 
-  // Render components with error boundaries
-  const renderComponent = (name: string, Component: any, componentData: any) => {
-    if (!componentData || !Component) return null;
-    
-    // Validate componentData is an object
-    if (typeof componentData !== 'object' || Array.isArray(componentData)) {
-      console.warn(`⚠️ Invalid data for ${name}:`, componentData);
-      return null;
-    }
-    
-    return (
-      <ErrorBoundary
-        key={name}
-        fallback={
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 m-4">
-            <p className="text-yellow-800">Error rendering {name} component</p>
-          </div>
-        }
-      >
-        <Component data={componentData} />
-      </ErrorBoundary>
-    );
-  };
+  // Filter out debug data from main output
+  const { _debug, ...mainOutput } = data;
+  
+  // Convert main output to array of entries for flexible rendering
+  const outputEntries = Object.entries(mainOutput).filter(([key, value]) => 
+    isValidOutputComponent(value)
+  );
 
   return (
     <ErrorBoundary>
-      <main className="bg-blue-100">
-        {data.hero && renderComponent('hero', LlmHerobanner, data.hero)}
-        {data.profileSummary && renderComponent('profileSummary', LlmProfileSummary, data.profileSummary)}
-        {data.personalMessage && renderComponent('personalMessage', PersonalMessage, data.personalMessage)}
-        {data.marketInsights && renderComponent('marketInsights', MarketInsights, data.marketInsights)}
-        {data.actionPlan && renderComponent('actionPlan', ActionPlan, data.actionPlan)}
-        {data.nextStepsCTA && renderComponent('nextStepsCTA', NextStepsCTA, data.nextStepsCTA)}
-        
-        {/* Show debug info if available from either zustand or local state */}
-        {localDebugInfo && (
-          <ErrorBoundary
-            fallback={
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 m-4">
-                <p className="text-yellow-800">Error rendering debug summary</p>
-              </div>
-            }
-          >
-            <GenerationSummary
-              metadata={localDebugInfo.qdrantRetrieval}
-              promptLength={localDebugInfo.promptLength}
-              adviceUsed={localDebugInfo.adviceUsed}
-              generationTime={localDebugInfo.generationTime}
-              userInput={localDebugInfo.userInput}
-              flow={localDebugInfo.flow}  
-            />
-          </ErrorBoundary>
-        )}
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
+        <div className="max-w-5xl mx-auto space-y-8">
+          {/* Main Generation Summary - Always show if debug info exists */}
+          {localDebugInfo && (
+            <ErrorBoundary
+              fallback={
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800">Error rendering generation summary</p>
+                </div>
+              }
+            >
+              <GenerationSummary
+                metadata={localDebugInfo.qdrantRetrieval}
+                promptLength={localDebugInfo.promptLength}
+                adviceUsed={localDebugInfo.adviceUsed}
+                generationTime={localDebugInfo.generationTime}
+                userInput={localDebugInfo.userInput}
+                flow={localDebugInfo.flow}  
+              />
+            </ErrorBoundary>
+          )}
+
+          {/* Generic LLM Output Display */}
+          {outputEntries.length > 0 && (
+            <div className="space-y-6">
+              {outputEntries.map(([key, value], index) => {
+                // Use type guards to determine the best component type
+                const isSimple = isSimpleContent(value);
+                const isKeyValue = !isSimple && isKeyValueData(value);
+
+                return (
+                  <ErrorBoundary
+                    key={key}
+                    fallback={
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-yellow-800">Error rendering {key}</p>
+                      </div>
+                    }
+                  >
+                    {isSimple ? (
+                      <GenericContentCard
+                        title={(value as { title?: string; heading?: string }).title || 
+                               (value as { heading?: string }).heading || 
+                               key.replace(/([A-Z])/g, ' $1').trim()}
+                        content={(value as { content?: string; text?: string; message?: string }).content || 
+                                 (value as { text?: string; message?: string }).text || 
+                                 (value as { message?: string }).message || 
+                                 JSON.stringify(value, null, 2)}
+                        type="info"
+                        className="w-full"
+                      />
+                    ) : isKeyValue ? (
+                      <GenericKeyValueList
+                        data={value as Record<string, import('@/types/genericOutput.types').OutputValue>}
+                        title={key.replace(/([A-Z])/g, ' $1').trim()}
+                        className="w-full"
+                      />
+                    ) : (
+                      <GenericOutputDisplay
+                        data={value as Record<string, import('@/types/genericOutput.types').OutputValue>}
+                        title={key.replace(/([A-Z])/g, ' $1').trim()}
+                        className="w-full"
+                      />
+                    )}
+                  </ErrorBoundary>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Compact Debug Panel - Fixed position */}
+          <CompactDebugPanel debugInfo={localDebugInfo} />
+        </div>
       </main>
     </ErrorBoundary>
   );

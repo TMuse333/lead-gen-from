@@ -29,12 +29,12 @@ export function createSendMessageHandler(
     set((s) => ({ messages: [...s.messages, userMsg] }));
 
     try {
-      console.log('📞 Calling /api/chat-smart...');
+      console.log('📞 Calling /api/chat/smart...');
 
       const flow = useConversationStore.getState().getFlow(state.currentFlow!);
       const currentQuestion = flow?.questions.find(q => q.id === state.currentNodeId);
 
-      const response = await fetch('/api/chat-smart', {
+      const response = await fetch('/api/chat/smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
