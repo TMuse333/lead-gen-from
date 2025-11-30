@@ -1,4 +1,4 @@
-# Offer System Architecture - Brainstorming
+# Offer System Architecture - Approach 1 Implementation Guide
 
 ## Overview
 Each offer type needs:
@@ -9,9 +9,11 @@ Each offer type needs:
 
 ---
 
-## Approach 1: Offer Definition Object (Recommended)
+## Approach 1: Offer Definition Object
 
 **Concept**: Each offer type has a complete definition object that contains everything needed to generate it.
+
+### Base Types
 
 ```typescript
 // types/offers/offerDefinitions.ts
@@ -105,9 +107,11 @@ export interface OfferDefinition<T extends BaseOfferProps = BaseOfferProps> {
   maxTokens?: number;
   temperature?: number;
 }
+```
 
-// ==================== OFFER-SPECIFIC OUTPUT TYPES ====================
+### Offer-Specific Output Types
 
+```typescript
 export interface PdfOfferOutput extends BaseOfferProps {
   type: 'pdf';
   title: string;
@@ -180,9 +184,11 @@ export interface VideoOfferOutput extends BaseOfferProps {
     videoUrl?: string;
   };
 }
+```
 
-// ==================== OFFER DEFINITIONS ====================
+### Example Offer Definition
 
+```typescript
 export const PDF_OFFER_DEFINITION: OfferDefinition<PdfOfferOutput> = {
   type: 'pdf',
   label: 'PDF Guide',
@@ -258,7 +264,6 @@ Make it actionable, specific to their situation, and valuable.`;
   },
   
   postProcess: (output, userInput) => {
-    // Add any post-processing logic
     return {
       ...output,
       id: `pdf-${Date.now()}`,
@@ -270,113 +275,19 @@ Make it actionable, specific to their situation, and valuable.`;
   maxTokens: 4000,
   temperature: 0.7,
 };
+```
 
-export const HOME_ESTIMATE_OFFER_DEFINITION: OfferDefinition<HomeEstimateOfferOutput> = {
-  type: 'home-estimate',
-  label: 'Home Estimate',
-  description: 'Property valuation estimate',
-  icon: '🏠',
-  
-  inputRequirements: {
-    requiredFields: ['propertyAddress', 'propertyType', 'propertyAge', 'renovations', 'timeline'],
-    optionalFields: ['bedrooms', 'bathrooms', 'squareFeet'],
-    fieldValidations: {
-      propertyAddress: { type: 'text', minLength: 5 },
-    },
-  },
-  
-  buildPrompt: (userInput, context) => {
-    return `You are a real estate valuation expert. Generate a detailed home estimate.
+### Offer Registry
 
-PROPERTY INFORMATION:
-Address: ${userInput.propertyAddress}
-Type: ${userInput.propertyType}
-Age: ${userInput.propertyAge}
-Renovations: ${userInput.renovations}
-Timeline: ${userInput.timeline}
-
-${context.qdrantAdvice ? `MARKET KNOWLEDGE:\n${context.qdrantAdvice.join('\n\n')}` : ''}
-
-Generate a comprehensive home estimate with:
-{
-  "propertyAddress": "${userInput.propertyAddress}",
-  "estimatedValue": {
-    "low": 350000,
-    "high": 425000,
-    "confidence": 0.85,
-    "currency": "USD"
-  },
-  "comparables": [
-    {
-      "address": "123 Similar St",
-      "soldPrice": 380000,
-      "soldDate": "2024-01-15",
-      "similarity": 0.92
-    }
-  ],
-  "factors": [
-    {
-      "factor": "Recent renovations",
-      "impact": "positive",
-      "description": "Kitchen renovation adds value"
-    }
-  ],
-  "recommendations": [
-    "Consider staging before listing",
-    "Market timing is favorable"
-  ]
-}
-
-Be realistic and data-driven.`;
-  },
-  
-  outputSchema: {
-    type: 'object',
-    properties: {
-      propertyAddress: { type: 'string', required: true },
-      estimatedValue: { type: 'object', required: true },
-      comparables: { type: 'array', required: true },
-      factors: { type: 'array', required: true },
-      recommendations: { type: 'array', required: true },
-    },
-    outputType: 'HomeEstimateOfferOutput',
-  },
-  
-  outputValidator: (output) => {
-    const o = output as Partial<HomeEstimateOfferOutput>;
-    const errors: string[] = [];
-    
-    if (!o.propertyAddress) errors.push('Missing propertyAddress');
-    if (!o.estimatedValue?.low || !o.estimatedValue?.high) {
-      errors.push('Missing estimatedValue range');
-    }
-    
-    return {
-      valid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined,
-      normalized: errors.length === 0 ? output : undefined,
-    };
-  },
-  
-  model: 'gpt-4o', // Use more powerful model for estimates
-  maxTokens: 3000,
-  temperature: 0.3, // Lower temperature for more consistent estimates
-};
-
+```typescript
 // ==================== OFFER REGISTRY ====================
 
 export const OFFER_DEFINITIONS: Record<OfferType, OfferDefinition> = {
   'pdf': PDF_OFFER_DEFINITION,
-  'landingPage': {
-    // Similar structure...
-  },
-  'video': {
-    // Similar structure...
-  },
+  'landingPage': LANDING_PAGE_OFFER_DEFINITION,
+  'video': VIDEO_OFFER_DEFINITION,
   'home-estimate': HOME_ESTIMATE_OFFER_DEFINITION,
-  'custom': {
-    // Flexible custom offer definition
-  },
+  'custom': CUSTOM_OFFER_DEFINITION,
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -403,254 +314,6 @@ export function validateOfferInputs(
     missing,
   };
 }
-
----
-
-## Approach 2: Class-Based Pattern
-
-**Concept**: Use classes to encapsulate offer logic (more OOP approach).
-
-```typescript
-// lib/offers/BaseOffer.ts
-
-export abstract class BaseOffer<T extends BaseOfferProps> {
-  abstract type: OfferType;
-  abstract label: string;
-  abstract description: string;
-  
-  abstract inputRequirements: InputRequirements;
-  abstract outputSchema: OutputSchema;
-  
-  abstract buildPrompt(
-    userInput: Record<string, string>,
-    context: OfferContext
-  ): string;
-  
-  abstract validateOutput(output: unknown): ValidationResult;
-  
-  abstract postProcess(
-    output: T,
-    userInput: Record<string, string>
-  ): T;
-  
-  // Common methods
-  validateInputs(userInput: Record<string, string>): ValidationResult {
-    // Implementation
-  }
-  
-  getModel(): string {
-    return 'gpt-4o-mini';
-  }
-  
-  getMaxTokens(): number {
-    return 4000;
-  }
-}
-
-// lib/offers/PdfOffer.ts
-
-export class PdfOffer extends BaseOffer<PdfOfferOutput> {
-  type = 'pdf' as const;
-  label = 'PDF Guide';
-  description = 'Downloadable resource guide';
-  
-  inputRequirements = {
-    requiredFields: ['email'],
-  };
-  
-  buildPrompt(userInput, context) {
-    // Implementation
-  }
-  
-  validateOutput(output) {
-    // Implementation
-  }
-  
-  postProcess(output, userInput) {
-    // Implementation
-  }
-}
-```
-
----
-
-## Approach 3: Functional Composition Pattern
-
-**Concept**: Compose offer definitions from smaller functions.
-
-```typescript
-// lib/offers/composeOffer.ts
-
-export function createOfferDefinition<T extends BaseOfferProps>(config: {
-  type: OfferType;
-  label: string;
-  inputRequirements: InputRequirements;
-  promptTemplate: string | PromptBuilder;
-  outputSchema: OutputSchema;
-  validator: OutputValidator;
-  postProcessor?: (output: T, userInput: Record<string, string>) => T;
-}): OfferDefinition<T> {
-  return {
-    ...config,
-    buildPrompt: typeof config.promptTemplate === 'string'
-      ? (userInput, context) => {
-          // Template string replacement
-          return config.promptTemplate
-            .replace('{{userName}}', userInput.email?.split('@')[0] || 'there')
-            .replace('{{flow}}', context.flow)
-            // ... more replacements
-        }
-      : config.promptTemplate,
-    outputValidator: config.validator,
-    postProcess: config.postProcessor,
-  };
-}
-
-// Usage:
-export const PDF_OFFER = createOfferDefinition<PdfOfferOutput>({
-  type: 'pdf',
-  label: 'PDF Guide',
-  inputRequirements: {
-    requiredFields: ['email'],
-  },
-  promptTemplate: `Create a PDF guide for {{userName}}...`,
-  outputSchema: { /* ... */ },
-  validator: (output) => { /* ... */ },
-});
-```
-
----
-
-## Approach 4: Schema-Driven Pattern
-
-**Concept**: Define offers using JSON Schema-like definitions.
-
-```typescript
-// lib/offers/schemaDriven.ts
-
-export interface OfferSchema {
-  type: OfferType;
-  metadata: {
-    label: string;
-    description: string;
-    icon?: string;
-  };
-  input: {
-    required: string[];
-    optional?: string[];
-    validations?: Record<string, any>;
-  };
-  prompt: {
-    template: string;
-    variables?: string[]; // Variables to replace in template
-    includeQdrant?: boolean;
-    includeMarketData?: boolean;
-  };
-  output: {
-    schema: JSONSchema; // Full JSON Schema
-    examples?: any[];
-  };
-  generation: {
-    model: string;
-    maxTokens: number;
-    temperature: number;
-  };
-  processing?: {
-    validator?: string; // Function name or path
-    transformer?: string;
-    formatter?: string;
-  };
-}
-
-// Example:
-export const PDF_OFFER_SCHEMA: OfferSchema = {
-  type: 'pdf',
-  metadata: {
-    label: 'PDF Guide',
-    description: 'Downloadable resource',
-  },
-  input: {
-    required: ['email'],
-    optional: ['propertyAddress'],
-  },
-  prompt: {
-    template: 'Create a PDF guide for {{userName}} based on {{flow}} flow...',
-    variables: ['userName', 'flow'],
-    includeQdrant: true,
-  },
-  output: {
-    schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        sections: { type: 'array' },
-      },
-      required: ['title', 'sections'],
-    },
-  },
-  generation: {
-    model: 'gpt-4o-mini',
-    maxTokens: 4000,
-    temperature: 0.7,
-  },
-};
-```
-
----
-
-## Recommended: Hybrid Approach (Approach 1 + Extensions)
-
-**Best of both worlds**: Use the definition object pattern but with type-safe extensions.
-
-```typescript
-// types/offers/offerDefinitions.ts
-
-// Base definition (what we showed in Approach 1)
-export interface OfferDefinition<T extends BaseOfferProps = BaseOfferProps> {
-  // ... (from Approach 1)
-}
-
-// Type-safe offer definitions with generics
-export interface TypedOfferDefinition<
-  TInput extends Record<string, string>,
-  TOutput extends BaseOfferProps
-> extends OfferDefinition<TOutput> {
-  // Type-safe input requirements
-  inputRequirements: {
-    requiredFields: (keyof TInput)[];
-    optionalFields?: (keyof TInput)[];
-  };
-  
-  // Type-safe prompt builder
-  buildPrompt: (
-    userInput: TInput,
-    context: OfferContext
-  ) => string;
-  
-  // Type-safe validator
-  outputValidator: (output: unknown) => {
-    valid: boolean;
-    errors?: string[];
-    normalized?: TOutput;
-  };
-  
-  // Type-safe post-processor
-  postProcess?: (output: TOutput, userInput: TInput) => TOutput;
-}
-
-// Example usage:
-export const PDF_OFFER: TypedOfferDefinition<
-  { email: string; propertyAddress?: string },
-  PdfOfferOutput
-> = {
-  type: 'pdf',
-  // ... rest of definition
-  inputRequirements: {
-    requiredFields: ['email'], // TypeScript knows 'email' is valid
-    optionalFields: ['propertyAddress'],
-  },
-  // ... rest
-};
 ```
 
 ---
@@ -684,7 +347,7 @@ app/api/generation/
 
 ---
 
-## Key Benefits of Approach 1 (Recommended)
+## Key Benefits
 
 1. **Self-contained**: Everything for an offer is in one place
 2. **Type-safe**: TypeScript ensures correctness
@@ -695,13 +358,131 @@ app/api/generation/
 
 ---
 
+## Onboarding Changes Required
+
+### Overview
+The onboarding flow already has most of the validation logic in place. Only **minor changes** are needed to switch from the static `OFFER_REQUIREMENTS` object to the new `OFFER_DEFINITIONS` registry.
+
+### Changes Required
+
+#### 1. Step 2: Offers Selection (`step2Offers.tsx`)
+
+**Current State:**
+- Uses `getOfferRequirements()` from `@/lib/offers/offerRequirements`
+- Reads from static `OFFER_REQUIREMENTS` object
+- Displays required fields from `requiredFields` array
+
+**Changes Needed:**
+```typescript
+// BEFORE:
+import { getOfferRequirements, FIELD_LABELS } from "@/lib/offers/offerRequirements";
+
+const requirements = getOfferRequirements(offer.value);
+
+// AFTER:
+import { getOfferDefinition } from "@/lib/offers/registry";
+import { FIELD_LABELS } from "@/lib/offers/offerRequirements"; // Keep for labels
+
+const definition = getOfferDefinition(offer.value);
+const requirements = definition.inputRequirements;
+```
+
+**Impact:** 
+- Low complexity
+- UI structure stays the same
+- Just swap data source
+- ~5 minutes to update
+
+#### 2. Validation Function (`validateOfferRequirements.ts`)
+
+**Current State:**
+- Uses `getOfferRequirements()` from `@/lib/offers/offerRequirements`
+- Extracts `requiredFields` from static object
+
+**Changes Needed:**
+```typescript
+// BEFORE:
+import { getOfferRequirements } from "@/lib/offers/offerRequirements";
+
+const requirements = getOfferRequirements(offerType);
+const requiredFields = requirements.requiredFields;
+
+// AFTER:
+import { getOfferDefinition } from "@/lib/offers/registry";
+
+const definition = getOfferDefinition(offerType);
+const requiredFields = definition.inputRequirements.requiredFields;
+```
+
+**Impact:**
+- Low complexity
+- Function signature stays the same
+- Just swap data source
+- ~5 minutes to update
+
+#### 3. Step 2: Offer Options Array (Optional Enhancement)
+
+**Current State:**
+- Hardcoded `OFFER_OPTIONS` array with static labels/icons
+
+**Optional Enhancement:**
+```typescript
+// Could dynamically generate from registry:
+import { OFFER_DEFINITIONS } from "@/lib/offers/registry";
+
+const OFFER_OPTIONS = Object.values(OFFER_DEFINITIONS)
+  .filter(def => def.type !== 'custom')
+  .map(def => ({
+    value: def.type,
+    label: def.label,
+    icon: def.icon || <FileText />,
+    description: def.description,
+  }));
+```
+
+**Impact:**
+- Optional enhancement
+- Makes it easier to add new offers (no code changes needed)
+- ~10 minutes to implement
+
+### Summary of Changes
+
+| File | Change Type | Complexity | Time Estimate |
+|------|-------------|------------|---------------|
+| `step2Offers.tsx` | Data source swap | Low | ~5 min |
+| `validateOfferRequirements.ts` | Data source swap | Low | ~5 min |
+| `step2Offers.tsx` (optional) | Dynamic generation | Low | ~10 min |
+
+**Total Estimated Time: ~20 minutes** (including optional enhancement)
+
+### What Stays the Same
+
+✅ **Step 2 UI structure** - No visual changes needed  
+✅ **Step 3 validation logic** - Already works correctly  
+✅ **User experience** - Same flow, same validation  
+✅ **Storage format** - Still stores `selectedOffers: OfferType[]`  
+✅ **Validation timing** - Still validates in Step 3 before proceeding  
+
+### Migration Path
+
+1. **Create offer definitions** - Build the new `OFFER_DEFINITIONS` registry
+2. **Update imports** - Change `getOfferRequirements` → `getOfferDefinition` in 2 files
+3. **Update property access** - Change `requirements.requiredFields` → `definition.inputRequirements.requiredFields`
+4. **Test** - Verify validation still works correctly
+5. **Optional** - Make offer options dynamic from registry
+
+### Backward Compatibility
+
+The old `OFFER_REQUIREMENTS` object can remain temporarily for reference, but should be deprecated once the new system is in place. The new system provides the same data structure (`requiredFields` array) so the validation logic doesn't need to change.
+
+---
+
 ## Next Steps
 
-1. Choose an approach (recommend Approach 1)
-2. Create base types and interfaces
-3. Implement first offer definition (PDF as example)
-4. Create offer registry
-5. Update generation API to use definitions
-6. Add validation and error handling
-7. Create UI for offer configuration (future)
-
+1. ✅ Create base types and interfaces (`types.ts`)
+2. ✅ Create offer registry (`registry.ts`)
+3. ✅ Implement first offer definition (PDF as example)
+4. ⏳ Update onboarding to use definitions (Step 2 + validation)
+5. ⏳ Update generation API to use definitions
+6. ⏳ Add validation and error handling
+7. ⏳ Create UI for offer configuration (future)

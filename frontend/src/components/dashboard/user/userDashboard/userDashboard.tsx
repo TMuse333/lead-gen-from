@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, LayoutGrid, ArrowLeft, Home,
-Mic, FileText, Eye, ExternalLink, Palette, BarChart3, Menu, X, Users, Target, Sparkles, DollarSign } from 'lucide-react';
+Mic, FileText, Eye, ExternalLink, Palette, BarChart3, Menu, X, Users, Target, Sparkles, DollarSign, Gift } from 'lucide-react';
 import ConversationEditor from '../conversationEditor/conversationEditor';
 import AgentAdviceDashboard from '../adviceDashboard/agentAdviceDashboard';
 import logo from '../../../../../public/logo.png'
@@ -18,7 +19,10 @@ import LeadsDashboard from '../leads/leadsDashboard';
 import RulesExplanation from '../rules/rulesExplanation';
 import RecommendedRules from '../rules/recommendedRules';
 import ViewAllRules from '../rules/viewAllRules';
+import OffersDashboard from '../offers/OffersDashboard';
+import { OfferEditor } from '../offers/editor/OfferEditor';
 import { useUserConfig } from '@/contexts/UserConfigContext';
+import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import dynamic from 'next/dynamic';
 
 const TokenUsageDashboard = dynamic(
@@ -27,125 +31,179 @@ const TokenUsageDashboard = dynamic(
 );
 
 
-// Define user dashboard sections
-const USER_SECTIONS = [
-    {
-        id:'config',
-        label:'My Setup',
-        icon:FileText,
-        component:ConfigSummary,
-        description:'Complete overview of your bot configuration'
-    },
-    {
-        id:'analytics',
-        label:'Analytics',
-        icon:BarChart3,
-        component:UserAnalytics,
-        description:'Track your bot\'s performance and user engagement'
-    },
-    {
-        id:'leads',
-        label:'Leads',
-        icon:Users,
-        component:LeadsDashboard,
-        description:'View all leads and their generated offers'
-    },
-    {
-        id:'Overview',
-        label:'Getting Started',
-        icon:Home,
-        component:WelcomeOverview,
-        description:'Learn how to upload quality data to your bot'
-    },
+// Define user dashboard sections organized by category
+interface DashboardSection {
+  id: string;
+  label: string;
+  icon: any;
+  component: React.ComponentType;
+  description: string;
+}
+
+interface SectionGroup {
+  title: string;
+  sections: DashboardSection[];
+}
+
+const SECTION_GROUPS: SectionGroup[] = [
   {
-    id: 'conversations',
-    label: 'Conversation Flows',
-    icon: MessageSquare,
-    component: ConversationEditor,
-    description: 'Edit questions, buttons, and flow logic'
+    title: 'Core Features',
+    sections: [
+      {
+        id: 'offers',
+        label: 'Offers',
+        icon: Gift,
+        component: OffersDashboard,
+        description: 'Configure and manage your offer generation settings'
+      },
+      {
+        id: 'leads',
+        label: 'Leads',
+        icon: Users,
+        component: LeadsDashboard,
+        description: 'View all leads and their generated offers'
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: BarChart3,
+        component: UserAnalytics,
+        description: 'Track your bot\'s performance and user engagement'
+      }
+    ]
   },
   {
-    id: 'advice',
-    label: 'Agent Advice',
-    icon: BookOpen,
-    component: AgentAdviceDashboard,
-    description: 'Manage personalized advice content'
+    title: 'Configuration',
+    sections: [
+      {
+        id: 'config',
+        label: 'My Setup',
+        icon: FileText,
+        component: ConfigSummary,
+        description: 'Complete overview of your bot configuration'
+      },
+      {
+        id: 'conversations',
+        label: 'Conversation Flows',
+        icon: MessageSquare,
+        component: ConversationEditor,
+        description: 'Edit questions, buttons, and flow logic'
+      },
+      {
+        id: 'colors',
+        label: 'Colors',
+        icon: Palette,
+        component: ColorConfig,
+        description: 'Customize your bot\'s color theme'
+      }
+    ]
   },
   {
-    id: 'colors',
-    label: 'Colors',
-    icon: Palette,
-    component: ColorConfig,
-    description: 'Customize your bot\'s color theme'
+    title: 'Knowledge Base',
+    sections: [
+      {
+        id: 'advice',
+        label: 'Agent Advice',
+        icon: BookOpen,
+        component: AgentAdviceDashboard,
+        description: 'Manage personalized advice content'
+      },
+      {
+        id: 'Speech upload',
+        label: 'Speech Uploader',
+        icon: Mic,
+        component: AgentAdviceSpeechUploader,
+        description: 'Upload your knowledge via script'
+      },
+      {
+        id: 'rules-explanation',
+        label: 'Client Situations Explained',
+        icon: Target,
+        component: RulesExplanation,
+        description: 'Learn how client situations help target advice to different client circumstances'
+      },
+      {
+        id: 'recommended-rules',
+        label: 'Recommended Client Situations',
+        icon: Sparkles,
+        component: RecommendedRules,
+        description: 'AI-generated client situation recommendations based on your flow'
+      },
+      {
+        id: 'view-all-rules',
+        label: 'View All Client Situations',
+        icon: Target,
+        component: ViewAllRules,
+        description: 'View all client situations currently attached to advice in Qdrant'
+      }
+    ]
   },
   {
-    id:'Speech upload',
-    label:'Speech uploader',
-    icon:Mic,
-    component:AgentAdviceSpeechUploader,
-    description:'Upload your knowledge via script'
+    title: 'Resources',
+    sections: [
+      {
+        id: 'Overview',
+        label: 'Getting Started',
+        icon: Home,
+        component: WelcomeOverview,
+        description: 'Learn how to upload quality data to your bot'
+      }
+    ]
   },
   {
-    id: 'rules-explanation',
-    label: 'Client Situations Explained',
-    icon: Target,
-    component: RulesExplanation,
-    description: 'Learn how client situations help target advice to different client circumstances'
-  },
-  {
-    id: 'recommended-rules',
-    label: 'Recommended Client Situations',
-    icon: Sparkles,
-    component: RecommendedRules,
-    description: 'AI-generated client situation recommendations based on your flow'
-  },
-  {
-    id: 'view-all-rules',
-    label: 'View All Client Situations',
-    icon: Target,
-    component: ViewAllRules,
-    description: 'View all client situations currently attached to advice in Qdrant'
-  },
-  {
-    id: 'token-usage',
-    label: 'Token Usage',
-    icon: DollarSign,
-    component: TokenUsageDashboard,
-    description: 'Track LLM API usage and costs across all features'
+    title: 'Advanced',
+    sections: [
+      {
+        id: 'token-usage',
+        label: 'Token Usage',
+        icon: DollarSign,
+        component: TokenUsageDashboard,
+        description: 'Track LLM API usage and costs across all features'
+      }
+    ]
   }
 ];
 
+// Flatten sections for easy lookup
+const USER_SECTIONS: DashboardSection[] = SECTION_GROUPS.flatMap(group => group.sections);
+
 export default function UserDashboard() {
-  const [activeSection, setActiveSection] = useState<string>('config');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { config } = useUserConfig();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // Handle URL search params for section navigation
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const section = params.get('section');
-      if (section && USER_SECTIONS.find(s => s.id === section)) {
-        setActiveSection(section);
-      }
-    }
-  }, []);
-
+  // Derive state from URL - single source of truth
+  const offerParam = searchParams.get('offer') as OfferType | null;
+  const sectionParam = searchParams.get('section');
+  
+  // Determine active section (default to 'config' if not specified)
+  const activeSection = sectionParam || 'config';
+  
+  // Determine if we're editing an offer
+  const editingOfferType = offerParam;
+  
   const currentSection = USER_SECTIONS.find(s => s.id === activeSection);
   const ActiveComponent = currentSection?.component;
+  
+  // Handle back from offer editor
+  const handleBackFromEditor = () => {
+    router.push('/dashboard?section=offers');
+  };
   
   const botUrl = config?.businessName ? `/bot/${config.businessName}` : null;
 
   return (
     <div className="min-h-screen bg-slate-900 flex">
-      {/* Sidebar */}
+      {/* Sidebar - Fixed positioning */}
       <aside className={`
         ${sidebarOpen ? 'w-64' : 'w-20'} 
         bg-slate-800 border-r border-slate-700 transition-all duration-300 flex-shrink-0
-        fixed h-screen z-40 lg:relative lg:z-auto
+        fixed top-0 left-0 h-screen z-40 lg:z-auto
+        flex flex-col
       `}>
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
           {sidebarOpen && (
             <div className="flex items-center gap-2">
               <Image
@@ -166,40 +224,63 @@ export default function UserDashboard() {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-80px)]">
-          {USER_SECTIONS.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-            
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`
-                  w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all
-                  ${isActive 
-                    ? 'bg-indigo-600 text-white shadow-lg' 
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                  }
-                `}
-                title={sidebarOpen ? undefined : section.label}
-              >
-                <Icon size={20} />
-                {sidebarOpen && <span>{section.label}</span>}
-              </button>
-            );
-          })}
+        {/* Navigation - Scrollable with sections */}
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-4 space-y-6">
+            {SECTION_GROUPS.map((group, groupIndex) => (
+              <div key={group.title} className="space-y-2">
+                {/* Section Header */}
+                {sidebarOpen && (
+                  <div className="px-3 py-2">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      {group.title}
+                    </h3>
+                  </div>
+                )}
+                
+                {/* Section Items */}
+                <div className="space-y-1">
+                  {group.sections.map((section) => {
+                    const Icon = section.icon;
+                    const isActive = activeSection === section.id;
+                    
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => {
+                          // Simply navigate to the section - URL is source of truth
+                          router.push(`/dashboard?section=${section.id}`);
+                        }}
+                        className={`
+                          w-full flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all text-sm
+                          ${isActive 
+                            ? 'bg-indigo-600 text-white shadow-lg' 
+                            : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                          }
+                        `}
+                        title={sidebarOpen ? undefined : section.label}
+                      >
+                        <Icon size={18} className="flex-shrink-0" />
+                        {sidebarOpen && (
+                          <span className="truncate">{section.label}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </nav>
 
-        {/* See Your Bot Live Button */}
+        {/* See Your Bot Live Button - Fixed at bottom */}
         {botUrl && sidebarOpen && (
-          <div className="p-4 border-t border-slate-700">
+          <div className="p-4 border-t border-slate-700 flex-shrink-0">
             <Link
               href={botUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg w-full justify-center"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg w-full justify-center text-sm"
             >
               <Eye size={18} />
               <span>See Your Bot Live</span>
@@ -209,19 +290,27 @@ export default function UserDashboard() {
         )}
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content - Add left margin/padding to account for fixed sidebar */}
+      <div className={`flex-1 flex flex-col min-w-0 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Top Bar */}
         <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-30">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-white">
-                  {currentSection?.label || 'Dashboard'}
+                  {editingOfferType 
+                    ? `${editingOfferType.toUpperCase()} Offer Editor`
+                    : currentSection?.label || 'Dashboard'
+                  }
                 </h1>
-                {currentSection && (
+                {currentSection && !editingOfferType && (
                   <p className="text-sm text-slate-400 mt-1">
                     {currentSection.description}
+                  </p>
+                )}
+                {editingOfferType && (
+                  <p className="text-sm text-slate-400 mt-1">
+                    Customize settings, test generation, and view analytics
                   </p>
                 )}
               </div>
@@ -238,7 +327,14 @@ export default function UserDashboard() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          {ActiveComponent && <ActiveComponent />}
+          {editingOfferType ? (
+            <OfferEditor 
+              offerType={editingOfferType} 
+              onBack={handleBackFromEditor}
+            />
+          ) : (
+            ActiveComponent && <ActiveComponent />
+          )}
         </div>
       </div>
 
