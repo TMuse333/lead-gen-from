@@ -1,7 +1,11 @@
 // MongoDB client promise for NextAuth adapter
 import { MongoClient } from 'mongodb';
+import 'dotenv/config'
+import dotenv from 'dotenv'
 
-if (!process.env.MONGODB_URI) {
+dotenv.config({ path: '../../.env' });
+
+if (!process.env.MONGODB_URI!) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
 }
 

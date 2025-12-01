@@ -8,6 +8,7 @@ import OpenAI from 'openai';
 import { discoverFieldsFromFlows } from '@/lib/rules/fieldDiscovery';
 import { getAllConcepts } from '@/lib/rules/concepts';
 import type { SmartRuleGroup } from '@/lib/rules/ruleTypes';
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_KEY,
@@ -18,6 +19,27 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check rate limits
+    const ip = getClientIP(request);
+    const rateLimit = await checkRateLimit('rulesTranslation', session.user.id, ip);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Please try again after ${rateLimit.resetAt.toISOString()}`,
+          resetAt: rateLimit.resetAt,
+          remaining: rateLimit.remaining,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000).toString(),
+          },
+        }
+      );
     }
 
     const { naturalLanguage, flow } = await request.json();

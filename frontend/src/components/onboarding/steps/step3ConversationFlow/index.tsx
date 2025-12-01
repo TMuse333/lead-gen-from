@@ -40,6 +40,7 @@ export default function Step3ConversationFlow() {
 
   const [activeFlowType, setActiveFlowType] = useState<FlowIntention | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [addingQuestion, setAddingQuestion] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
 
@@ -102,8 +103,33 @@ export default function Step3ConversationFlow() {
   const completedFlows = selectedIntentions.filter(intention => conversationFlows[intention]);
 
   // Get validation result for real-time display
-  const validation = validateOfferRequirements(selectedOffers, conversationFlows);
+  const { offerFlowMap } = useOnboardingStore();
+  const validation = validateOfferRequirements(selectedOffers, conversationFlows, offerFlowMap);
   const hasValidationIssues = !validation.isValid;
+
+  // Handle adding a new question
+  const handleAddQuestion = () => {
+    if (!activeFlowType || !activeFlow) return;
+    
+    const maxOrder = activeFlow.questions.length > 0
+      ? Math.max(...activeFlow.questions.map(q => q.order))
+      : 0;
+    
+    const newQuestionId = `q-${Date.now()}`;
+    const newQuestion = {
+      id: newQuestionId,
+      question: 'New Question',
+      order: maxOrder + 1,
+      allowFreeText: true,
+    };
+    
+    updateConversationFlow(activeFlowType, {
+      questions: [...activeFlow.questions, newQuestion],
+    });
+    
+    setEditingQuestionId(newQuestionId);
+    setAddingQuestion(true);
+  };
 
   // If editing a question, show the mini flow
   if (editingQuestionId && activeFlowType) {
@@ -111,8 +137,20 @@ export default function Step3ConversationFlow() {
       <QuestionConfigFlow
         flowType={activeFlowType}
         questionId={editingQuestionId}
-        onComplete={() => setEditingQuestionId(null)}
-        onBack={() => setEditingQuestionId(null)}
+        onComplete={() => {
+          setEditingQuestionId(null);
+          setAddingQuestion(false);
+        }}
+        onBack={() => {
+          // If this was a new question being added, remove it on back
+          if (addingQuestion && activeFlow) {
+            updateConversationFlow(activeFlowType, {
+              questions: activeFlow.questions.filter(q => q.id !== editingQuestionId),
+            });
+          }
+          setEditingQuestionId(null);
+          setAddingQuestion(false);
+        }}
       />
     );
   }
@@ -250,7 +288,11 @@ export default function Step3ConversationFlow() {
         <FlowSummary
           flow={activeFlow}
           flowType={activeFlowType!}
-          onEditQuestion={(questionId) => setEditingQuestionId(questionId)}
+          onEditQuestion={(questionId) => {
+            setAddingQuestion(false);
+            setEditingQuestionId(questionId);
+          }}
+          onAddQuestion={handleAddQuestion}
           onEnhanceWithAI={() => {
             // TODO: Implement AI enhancement
             alert("AI enhancement coming soon!");

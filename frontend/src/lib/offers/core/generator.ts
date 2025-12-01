@@ -263,6 +263,8 @@ export async function generateOffer<T extends BaseOfferProps>(
       data: finalOutput,
       metadata: {
         tokensUsed: llmResponse.usage.totalTokens,
+        promptTokens: llmResponse.usage.promptTokens,
+        completionTokens: llmResponse.usage.completionTokens,
         cost,
         duration,
         retries: retryCount,

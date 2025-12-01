@@ -8,6 +8,7 @@ import { createBaseTrackingObject, updateTrackingWithResponse } from '@/lib/toke
 import { trackUsageAsync } from '@/lib/tokenUsage/trackUsage';
 import type { DocumentExtractionUsage } from '@/types/tokenUsage.types';
 import { chunkText } from '@/lib/document-extraction/extractors';
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -25,6 +26,27 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check rate limits
+    const ip = getClientIP(request);
+    const rateLimit = await checkRateLimit('documentExtraction', session.user.id, ip);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Please try again after ${rateLimit.resetAt.toISOString()}`,
+          resetAt: rateLimit.resetAt,
+          remaining: rateLimit.remaining,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000).toString(),
+          },
+        }
+      );
     }
 
     const body = await request.json();
@@ -52,6 +74,10 @@ export async function POST(request: NextRequest) {
     const allItems: ExtractedItem[] = [];
 
     const startTime = Date.now();
+
+    // Track total tokens across all chunks
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
 
     // Process each chunk
     for (let i = 0; i < chunks.length; i++) {
@@ -100,6 +126,10 @@ RULES:
         response_format: { type: 'json_object' },
       });
 
+      // Accumulate actual token usage from API
+      totalInputTokens += completion.usage?.prompt_tokens || 0;
+      totalOutputTokens += completion.usage?.completion_tokens || 0;
+
       const content = completion.choices[0].message.content?.trim() || '{}';
       try {
         const parsed = JSON.parse(content);
@@ -114,7 +144,7 @@ RULES:
 
     const endTime = Date.now();
 
-    // Track usage
+    // Track usage with actual token counts from API
     const baseTracking = createBaseTrackingObject({
       userId: session.user.id,
       provider: 'openai',
@@ -125,8 +155,8 @@ RULES:
 
     const usage: DocumentExtractionUsage = {
       ...updateTrackingWithResponse(baseTracking, {
-        inputTokens: 0, // Will be calculated from all chunks
-        outputTokens: 0, // Will be calculated from all chunks
+        inputTokens: totalInputTokens, // Actual tokens from API
+        outputTokens: totalOutputTokens, // Actual tokens from API
         contentLength: allItems.reduce((sum, item) => sum + item.advice.length, 0),
         endTime,
       }),
@@ -145,17 +175,6 @@ RULES:
         chunksProcessed: chunks.length,
       },
     };
-
-    // Calculate total tokens from all chunks (approximate)
-    // In production, you'd track this per chunk
-    const estimatedInputTokens = Math.ceil(text.length / 4); // Rough estimate
-    const estimatedOutputTokens = Math.ceil(
-      allItems.reduce((sum, item) => sum + item.advice.length + item.title.length, 0) / 4
-    );
-
-    usage.tokens.input = estimatedInputTokens;
-    usage.tokens.output = estimatedOutputTokens;
-    usage.tokens.total = estimatedInputTokens + estimatedOutputTokens;
 
     trackUsageAsync(usage);
 

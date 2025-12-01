@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth/authConfig';
 import { createBaseTrackingObject, updateTrackingWithResponse } from '@/lib/tokenUsage/createTrackingObject';
 import { trackUsageAsync } from '@/lib/tokenUsage/trackUsage';
 import type { ChatIntentClassificationUsage, ChatReplyGenerationUsage } from '@/types/tokenUsage.types';
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
 
 
 const openai = new OpenAI({
@@ -166,6 +167,35 @@ export async function POST(req: NextRequest) {
   console.log('API Route: /api/chat/smart called');
 
   try {
+    // Check rate limits
+    let userId: string | undefined;
+    try {
+      const session = await auth();
+      userId = session?.user?.id;
+    } catch (error) {
+      // Not authenticated, continue
+    }
+
+    const ip = getClientIP(req);
+    const rateLimit = await checkRateLimit('chat.replyGeneration', userId, ip);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Please try again after ${rateLimit.resetAt.toISOString()}`,
+          resetAt: rateLimit.resetAt,
+          remaining: rateLimit.remaining,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000).toString(),
+          },
+        }
+      );
+    }
+
     const body: ChatRequest = await req.json();
     const {
       buttonId,
@@ -211,15 +241,6 @@ export async function POST(req: NextRequest) {
         ?.slice(-3)
         .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n');
-
-      // Get user ID for tracking
-      let userId: string | undefined;
-      try {
-        const session = await auth();
-        userId = session?.user?.id;
-      } catch (error) {
-        // Not authenticated, continue
-      }
 
       const intent = await analyzeUserIntent({
         userMessage: freeText!,
@@ -299,15 +320,6 @@ Reply in 2–3 warm, natural sentences:
 ${nextQuestion ? `- Smoothly transition to the next question` : `- Celebrate completion and build excitement`}
 
 Be kind, human, and engaging.`;
-
-    // Get user ID for tracking
-    let userId: string | undefined;
-    try {
-      const session = await auth();
-      userId = session?.user?.id;
-    } catch (error) {
-      // Not authenticated, continue
-    }
 
     const replyStartTime = Date.now();
     const completion = await openai.chat.completions.create({

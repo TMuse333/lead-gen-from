@@ -5,9 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { connectToDatabase } from '@/lib/mongodb/db';
+import { auth } from '@/lib/auth/authConfig';
+import { getDatabase } from '@/lib/mongodb/db';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { OfferStats } from '@/types/offerCustomization.types';
 
@@ -17,23 +16,25 @@ import type { OfferStats } from '@/types/offerCustomization.types';
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const offerType = params.type as OfferType;
-    const { db } = await connectToDatabase();
+    // Await params (Next.js 15+ requirement)
+    const { type } = await params;
+    const offerType = type as OfferType;
+    const db = await getDatabase();
 
     // For now, return mock data
     // TODO: Implement actual analytics collection
     const stats: OfferStats = await getOfferStats(
       db,
-      session.user.email,
+      session.user.id,
       offerType
     );
 

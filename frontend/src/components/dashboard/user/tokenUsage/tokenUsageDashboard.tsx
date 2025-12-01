@@ -14,6 +14,7 @@ import {
   XCircle,
   RefreshCw
 } from 'lucide-react';
+import { formatFeatureName } from '@/lib/utils/formatFeatureName';
 
 interface UsageStats {
   totalTokens: {
@@ -101,12 +102,6 @@ export default function TokenUsageDashboard() {
     return num.toLocaleString();
   };
 
-  const formatFeatureName = (feature: string) => {
-    return feature
-      .split('.')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
 
   if (loading && !stats) {
     return (
@@ -226,7 +221,7 @@ export default function TokenUsageDashboard() {
           </div>
           <div className="space-y-3">
             {featureEntries.map(([feature, data], index) => {
-              const percentage = (data.cost / stats.totalCost) * 100;
+              const percentage = stats.totalCost > 0 ? (data.cost / stats.totalCost) * 100 : 0;
               return (
                 <div
                   key={feature}
@@ -268,7 +263,7 @@ export default function TokenUsageDashboard() {
           </h2>
           <div className="space-y-3">
             {modelEntries.map(([model, data]) => {
-              const percentage = (data.cost / stats.totalCost) * 100;
+              const percentage = stats.totalCost > 0 ? (data.cost / stats.totalCost) * 100 : 0;
               return (
                 <div key={model} className="p-3 rounded-lg bg-slate-900/50">
                   <div className="flex items-center justify-between mb-2">

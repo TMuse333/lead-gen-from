@@ -205,6 +205,8 @@ export interface GenerationSuccess<T extends BaseOfferProps = BaseOfferProps> {
   data: T;
   metadata: {
     tokensUsed: number;
+    promptTokens?: number; // Input tokens
+    completionTokens?: number; // Output tokens
     cost: number;
     duration: number;
     retries: number;

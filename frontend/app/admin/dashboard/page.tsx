@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import AdminAnalytics from '@/components/dashboard/admin/analytics/adminAnalytics';
 import AdminConfigsList from '@/components/dashboard/admin/adminConfigsList/adminConfigsList';
 import AdminTokenUsage from '@/components/dashboard/admin/tokenUsage/adminTokenUsage';
-import { BarChart3, Building2, Loader2, DollarSign } from 'lucide-react';
+import AdminRateLimits from '@/components/dashboard/admin/rateLimits/AdminRateLimits';
+import AdminConversations from '@/components/dashboard/admin/conversations/AdminConversations';
+import { BarChart3, Building2, Loader2, DollarSign, Shield, MessageSquare } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'configs' | 'token-usage'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'configs' | 'token-usage' | 'rate-limits' | 'conversations'>('analytics');
 
   if (status === "loading") {
     return (
@@ -76,6 +78,28 @@ export default function AdminDashboardPage() {
               <DollarSign size={20} />
               Token Usage
             </button>
+            <button
+              onClick={() => setActiveTab('rate-limits')}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+                activeTab === 'rate-limits'
+                  ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
+                  : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
+              }`}
+            >
+              <Shield size={20} />
+              Rate Limits
+            </button>
+            <button
+              onClick={() => setActiveTab('conversations')}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+                activeTab === 'conversations'
+                  ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
+                  : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
+              }`}
+            >
+              <MessageSquare size={20} />
+              Conversations
+            </button>
           </div>
         </div>
 
@@ -84,6 +108,8 @@ export default function AdminDashboardPage() {
           {activeTab === 'analytics' && <AdminAnalytics />}
           {activeTab === 'configs' && <AdminConfigsList />}
           {activeTab === 'token-usage' && <AdminTokenUsage />}
+          {activeTab === 'rate-limits' && <AdminRateLimits />}
+          {activeTab === 'conversations' && <AdminConversations />}
         </div>
       </div>
     </div>

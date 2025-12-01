@@ -262,7 +262,7 @@ export default function AdminTokenUsage() {
           </h3>
           <div className="space-y-3">
             {featureEntries.map(([feature, data]) => {
-              const percentage = (data.cost / stats.totalCost) * 100;
+              const percentage = stats.totalCost > 0 ? (data.cost / stats.totalCost) * 100 : 0;
               return (
                 <div
                   key={feature}
@@ -306,7 +306,7 @@ export default function AdminTokenUsage() {
           </h3>
           <div className="space-y-3">
             {modelEntries.map(([model, data]) => {
-              const percentage = (data.cost / stats.totalCost) * 100;
+              const percentage = stats.totalCost > 0 ? (data.cost / stats.totalCost) * 100 : 0;
               return (
                 <div key={model} className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
                   <div className="flex items-center justify-between mb-2">

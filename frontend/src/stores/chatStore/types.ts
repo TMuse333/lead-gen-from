@@ -67,7 +67,14 @@ export interface ChatStateActions {
   // Conversation tracking
   setConversationId: (id: string | null) => void;
   createConversation: () => Promise<string | null>;
-  updateConversation: (updates: { messages?: ChatMessage[]; userInput?: Record<string, string>; status?: 'in-progress' | 'completed' | 'abandoned'; progress?: number; currentNodeId?: string }) => Promise<void>;
+  updateConversation: (updates: { 
+    messages?: ChatMessage[]; 
+    userInput?: Record<string, string>; 
+    status?: 'in-progress' | 'completed' | 'abandoned'; 
+    progress?: number; 
+    currentNodeId?: string;
+    answer?: { questionId: string; mappingKey: string; value: string; answeredVia: 'button' | 'text' };
+  }) => Promise<void>;
 }
 
 export type ChatState = ChatStateData & ChatStateActions & LlmResultState;

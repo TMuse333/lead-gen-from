@@ -56,7 +56,18 @@ export function createSendMessageHandler(
       // Save the answer (API always extracts now)
       if (data.extracted) {
         console.log('💾 Saving answer:', data.extracted.mappingKey, '=', data.extracted.value);
-        get().addAnswer(data.extracted.mappingKey, data.extracted.value);
+        const { addAnswer, updateConversation } = get();
+        addAnswer(data.extracted.mappingKey, data.extracted.value);
+
+        // Track answer with timestamp
+        await updateConversation({
+          answer: {
+            questionId: state.currentNodeId,
+            mappingKey: data.extracted.mappingKey,
+            value: data.extracted.value,
+            answeredVia: 'text',
+          },
+        });
 
         // await triggerNormalization();
 

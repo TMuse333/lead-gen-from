@@ -21,6 +21,7 @@ export interface OnboardingState {
   // Step 2: Offers
   selectedOffers: OfferType[];
   customOffer: string;
+  offerFlowMap: Record<OfferType, FlowIntention[]>; // Which flows each offer applies to
   
   // Step 3: Conversation Flows
   conversationFlows: Record<string, ConversationFlow>; // keyed by flow type (buy/sell/browse)
@@ -51,6 +52,7 @@ export interface OnboardingState {
   setSelectedIntentions: (intentions: FlowIntention[]) => void;
   setSelectedOffers: (offers: OfferType[]) => void;
   setCustomOffer: (offer: string) => void;
+  setOfferFlowMap: (offer: OfferType, flows: FlowIntention[]) => void;
   setConversationFlows: (flows: Record<string, ConversationFlow>) => void;
   addConversationFlow: (flow: ConversationFlow) => void;
   updateConversationFlow: (flowType: string, flow: Partial<ConversationFlow>) => void;
@@ -70,6 +72,7 @@ const initialState = {
   selectedIntentions: [] as FlowIntention[],
   selectedOffers: [] as OfferType[],
   customOffer: '',
+  offerFlowMap: {} as Record<OfferType, FlowIntention[]>,
   conversationFlows: {} as Record<string, ConversationFlow>,
   knowledgeBaseItems: [] as Array<{
     id: string;
@@ -97,6 +100,9 @@ export const useOnboardingStore = create<OnboardingState>()(
       setSelectedIntentions: (intentions) => set({ selectedIntentions: intentions }),
       setSelectedOffers: (offers) => set({ selectedOffers: offers }),
       setCustomOffer: (offer) => set({ customOffer: offer }),
+      setOfferFlowMap: (offer, flows) => set((state) => ({
+        offerFlowMap: { ...state.offerFlowMap, [offer]: flows },
+      })),
       setConversationFlows: (flows) => set({ conversationFlows: flows }),
       addConversationFlow: (flow) =>
         set((state) => ({

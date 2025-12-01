@@ -33,22 +33,37 @@ export function useOfferCustomizations(
 
   // Fetch offer data
   const fetchOffer = useCallback(async () => {
-    if (!offerType) return;
+    if (!offerType) {
+      console.log('🟡 [useOfferCustomizations] No offerType provided, skipping fetch');
+      return;
+    }
 
+    console.log('🟢 [useOfferCustomizations] Fetching offer data for:', offerType);
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await fetch(`/api/offers/${offerType}`);
+      console.log('🟢 [useOfferCustomizations] API response status:', response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔴 [useOfferCustomizations] API error:', response.status, errorText);
         throw new Error('Failed to fetch offer definition');
       }
 
       const data = await response.json();
+      console.log('🟢 [useOfferCustomizations] Data received:', {
+        hasDefinition: !!data.definition,
+        hasCustomization: !!data.customization,
+        hasCustomizations: data.hasCustomizations
+      });
+      
       setDefinition(data.definition);
       setCustomization(data.customization);
       setHasCustomizations(data.hasCustomizations);
     } catch (err: any) {
+      console.error('🔴 [useOfferCustomizations] Error fetching offer:', err.message);
       setError(err.message);
     } finally {
       setIsLoading(false);

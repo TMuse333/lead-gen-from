@@ -21,11 +21,24 @@ export default function OnboardingPage() {
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [incompleteData, setIncompleteData] = useState<any>(null);
-  const { currentStep, reset } = useOnboardingStore();
+  const { currentStep, reset, setCurrentStep } = useOnboardingStore();
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Check for step query parameter
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const stepParam = urlParams.get('step');
+      if (stepParam) {
+        const stepNum = parseInt(stepParam, 10);
+        if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= 6) {
+          console.log('🟢 [OnboardingPage] Setting step from URL param:', stepNum);
+          setCurrentStep(stepNum);
+        }
+      }
+    }
+  }, [setCurrentStep]);
 
   useEffect(() => {
     if (status === "unauthenticated" && mounted) {
@@ -42,7 +55,21 @@ export default function OnboardingPage() {
           if (response.ok) {
             const data = await response.json();
             if (data.hasCompletedOnboarding) {
+              // Check if user came from "Add Offers" button (check URL params or referrer)
+              const urlParams = new URLSearchParams(window.location.search);
+              const step = urlParams.get('step');
+              const allowAccess = urlParams.get('allowAccess') === 'true';
+              
+              // If user explicitly wants to add offers, allow access to step 2
+              if (step === '2' || allowAccess) {
+                console.log('🟢 [OnboardingPage] User has completed onboarding but accessing for offer configuration');
+                setCheckingOnboarding(false);
+                return; // Allow access
+              }
+              
               // User has already completed onboarding, redirect to dashboard
+              console.log('🟡 [OnboardingPage] User has completed onboarding - redirecting to /dashboard');
+              console.log('🟡 [OnboardingPage] Redirecting back to configuration summary');
               router.push('/dashboard');
               return;
             }

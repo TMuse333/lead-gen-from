@@ -6,15 +6,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { connectToDatabase } from '@/lib/mongodb/db';
+import { auth } from '@/lib/auth/authConfig';
+import { getDatabase } from '@/lib/mongodb/db';
 import {
   getOfferCustomization,
   upsertOfferCustomization,
   deleteOfferCustomization,
 } from '@/lib/mongodb/models/offerCustomization';
-import { getOfferDefinition } from '@/lib/offers';
+import { getOfferDefinition, getAvailableOfferTypes } from '@/lib/offers';
 import { mergeOfferDefinition } from '@/lib/offers/utils/mergeCustomizations';
 import { validateCustomizations } from '@/lib/offers/utils/validateCustomizations';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
@@ -26,31 +25,68 @@ import type { OfferCustomizations } from '@/types/offerCustomization.types';
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const offerType = params.type as OfferType;
+    // Await params (Next.js 15+ requirement)
+    const { type } = await params;
+
+    // Normalize the offer type (handle URL encoding, case, etc.)
+    let offerType = type as OfferType;
+    
+    // Handle potential URL encoding issues (e.g., "home-estimate" might come through differently)
+    // Also handle case variations
+    const normalizedType = offerType.toLowerCase().trim();
+    
+    // Map common variations to correct types
+    const typeMap: Record<string, OfferType> = {
+      'homeestimate': 'home-estimate',
+      'home-estimate': 'home-estimate',
+      'home_estimate': 'home-estimate',
+      'landingpage': 'landingPage',
+      'landing-page': 'landingPage',
+      'landing_page': 'landingPage',
+      'pdf': 'pdf',
+      'video': 'video',
+      'custom': 'custom',
+    };
+    
+    offerType = (typeMap[normalizedType] || normalizedType) as OfferType;
+    
+    console.log('[GET /api/offers/[type]] Original param:', type);
+    console.log('[GET /api/offers/[type]] Normalized offer type:', offerType);
+    
+    // Get available types for debugging
+    const availableTypes = getAvailableOfferTypes();
+    console.log('[GET /api/offers/[type]] Available offer types:', availableTypes);
 
     // Get system definition
     const systemDef = getOfferDefinition(offerType);
     if (!systemDef) {
+      console.error('[GET /api/offers/[type]] Offer type not found:', offerType);
+      console.error('[GET /api/offers/[type]] Available types:', availableTypes);
       return NextResponse.json(
-        { error: 'Offer type not found' },
+        { 
+          error: `Offer type "${type}" not found. Available types: ${availableTypes.join(', ')}`,
+          requested: type,
+          normalized: offerType,
+          available: availableTypes
+        },
         { status: 404 }
       );
     }
 
     // Get user customizations
-    const { db } = await connectToDatabase();
+    const db = await getDatabase();
     const customization = await getOfferCustomization(
       db,
-      session.user.email,
+      session.user.id,
       offerType
     );
 
@@ -81,16 +117,18 @@ export async function GET(
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const offerType = params.type as OfferType;
+    // Await params (Next.js 15+ requirement)
+    const { type } = await params;
+    const offerType = type as OfferType;
     const body = await req.json();
     const customizations: OfferCustomizations = body.customizations;
 
@@ -117,10 +155,10 @@ export async function PUT(
     }
 
     // Save to database
-    const { db } = await connectToDatabase();
+    const db = await getDatabase();
     const result = await upsertOfferCustomization(
       db,
-      session.user.email,
+      session.user.id,
       offerType,
       customizations
     );
@@ -145,22 +183,24 @@ export async function PUT(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const offerType = params.type as OfferType;
+    // Await params (Next.js 15+ requirement)
+    const { type } = await params;
+    const offerType = type as OfferType;
 
     // Delete customizations
-    const { db } = await connectToDatabase();
+    const db = await getDatabase();
     const deleted = await deleteOfferCustomization(
       db,
-      session.user.email,
+      session.user.id,
       offerType
     );
 

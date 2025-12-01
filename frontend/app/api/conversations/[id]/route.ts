@@ -148,6 +148,18 @@ export async function PATCH(
       update.userInput = { ...existing.userInput, ...body.userInput };
     }
 
+    if (body.answer) {
+      // Add answer to answers array with timestamp
+      const answers = existing.answers || [];
+      update.answers = [...answers, {
+        questionId: body.answer.questionId,
+        mappingKey: body.answer.mappingKey,
+        value: body.answer.value,
+        answeredVia: body.answer.answeredVia,
+        timestamp: new Date(),
+      }];
+    }
+
     if (body.status) {
       update.status = body.status;
       if (body.status === 'completed') {

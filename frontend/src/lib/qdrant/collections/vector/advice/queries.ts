@@ -3,7 +3,7 @@
 import { qdrant } from '../../../client';
 import { ADVICE_COLLECTION } from './collection';
 import { AgentAdviceScenario } from '@/types';
-import { calculateMatchScore } from '../../engines/rules';
+import { calculateMatchScore } from '../../../engines/rules';
 import { getAdviceTypeFromTags, DEFAULT_ADVICE_TYPE } from '@/types/advice.types';
 
 export async function queryRelevantAdvice(

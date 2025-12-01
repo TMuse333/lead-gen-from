@@ -13,6 +13,7 @@ import type { GenerationDocument } from "@/lib/mongodb/models/generation";
 import { createBaseTrackingObject, updateTrackingWithResponse } from "@/lib/tokenUsage/createTrackingObject";
 import { trackUsageAsync } from "@/lib/tokenUsage/trackUsage";
 import type { OfferGenerationUsage } from "@/types/tokenUsage.types";
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -133,6 +134,35 @@ export async function POST(req: NextRequest) {
   console.log("POST /api/generation/generate-offer – Request received");
 
   try {
+    // Check rate limits
+    let userId: string | undefined;
+    try {
+      const session = await auth();
+      userId = session?.user?.id;
+    } catch (error) {
+      // Not authenticated, continue
+    }
+
+    const ip = getClientIP(req);
+    const rateLimit = await checkRateLimit('offerGeneration', userId, ip);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Please try again after ${rateLimit.resetAt.toISOString()}`,
+          resetAt: rateLimit.resetAt,
+          remaining: rateLimit.remaining,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000).toString(),
+          },
+        }
+      );
+    }
+
     // 1. Parse request body
     let body: unknown;
     try {
@@ -251,15 +281,6 @@ export async function POST(req: NextRequest) {
     // 5. Call OpenAI with tracking
     console.log("Calling OpenAI (gpt-4o-mini)...");
     
-    // Get user ID for tracking
-    let userId: string | undefined;
-    try {
-      const session = await auth();
-      userId = session?.user?.id;
-    } catch (error) {
-      // Not authenticated, continue
-    }
-    
     const llmStartTime = Date.now();
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -271,44 +292,6 @@ export async function POST(req: NextRequest) {
 
     const raw = completion.choices[0].message.content?.trim() ?? "";
     console.log(`Raw LLM response received. Length: ${raw.length}`);
-    
-    // Track usage
-    const baseTracking = createBaseTrackingObject({
-      userId,
-      sessionId: (body as any)?.conversationId,
-      provider: 'openai',
-      model: 'gpt-4o-mini',
-      apiType: 'chat',
-      startTime: llmStartTime,
-    });
-    
-    const usage: OfferGenerationUsage = {
-      ...updateTrackingWithResponse(baseTracking, {
-        inputTokens: completion.usage?.prompt_tokens || 0,
-        outputTokens: completion.usage?.completion_tokens || 0,
-        finishReason: completion.choices[0].finish_reason || undefined,
-        contentLength: raw.length,
-        endTime: llmEndTime,
-      }),
-      feature: 'offerGeneration',
-      apiType: 'chat',
-      model: 'gpt-4o-mini',
-      featureData: {
-        generationId: (body as any)?.conversationId,
-        conversationId: (body as any)?.conversationId,
-        flow,
-        clientIdentifier: clientId,
-        qdrantRetrieval: {
-          collectionsQueried: metadata.map(m => m.collection),
-          itemsRetrieved: metadata.reduce((sum, m) => sum + m.count, 0),
-          adviceUsed: metadata.reduce((sum, m) => sum + m.count, 0),
-        },
-        outputComponents: Object.keys(parsed).filter(k => k !== '_debug'),
-        componentCount: Object.keys(parsed).filter(k => k !== '_debug').length,
-      },
-    };
-    
-    trackUsageAsync(usage);
 
     if (!raw) {
       console.error("LLM returned empty response");
@@ -350,6 +333,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Track usage (after parsing so we can calculate component count)
+    const baseTracking = createBaseTrackingObject({
+      userId,
+      sessionId: (body as any)?.conversationId,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      apiType: 'chat',
+      startTime: llmStartTime,
+    });
+    
+    const usage: OfferGenerationUsage = {
+      ...updateTrackingWithResponse(baseTracking, {
+        inputTokens: completion.usage?.prompt_tokens || 0,
+        outputTokens: completion.usage?.completion_tokens || 0,
+        finishReason: completion.choices[0].finish_reason || undefined,
+        contentLength: raw.length,
+        endTime: llmEndTime,
+      }),
+      feature: 'offerGeneration',
+      apiType: 'chat',
+      model: 'gpt-4o-mini',
+      featureData: {
+        generationId: (body as any)?.conversationId,
+        conversationId: (body as any)?.conversationId,
+        flow,
+        clientIdentifier: clientId,
+        qdrantRetrieval: {
+          collectionsQueried: metadata.map(m => m.collection),
+          itemsRetrieved: metadata.reduce((sum, m) => sum + m.count, 0),
+          adviceUsed: metadata.reduce((sum, m) => sum + m.count, 0),
+        },
+        outputComponents: Object.keys(parsed).filter(k => k !== '_debug'),
+        componentCount: Object.keys(parsed).filter(k => k !== '_debug').length,
+      },
+    };
+    
+    trackUsageAsync(usage);
+
     // 8. Calculate generation time
     const generationTime = Date.now() - startTime;
 
@@ -365,16 +386,8 @@ export async function POST(req: NextRequest) {
     
     if (conversationId && ObjectId.isValid(conversationId)) {
       try {
-        // Get user ID if authenticated
-        let userId: string | undefined;
-        try {
-          const session = await auth();
-          userId = session?.user?.id;
-          console.log('👤 User ID from session:', userId || 'not authenticated');
-        } catch (error) {
-          // Not authenticated, continue with clientIdentifier
-          console.log('ℹ️ No session found, using clientIdentifier');
-        }
+        // userId is already available from the rate limit check above
+        console.log('👤 User ID from session:', userId || 'not authenticated');
 
         const generationsCollection = await getGenerationsCollection();
 

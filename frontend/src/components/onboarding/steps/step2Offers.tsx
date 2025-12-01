@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Layout, Video, Plus, X, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
-import { useOnboardingStore, OfferType } from "@/stores/onboardingStore/onboarding.store";
+import { FileText, Layout, Video, Plus, X, ArrowRight, ArrowLeft, AlertCircle, ShoppingCart, Home, Eye } from "lucide-react";
+import { useOnboardingStore, OfferType, FlowIntention } from "@/stores/onboardingStore/onboarding.store";
 import { getOfferRequirements, FIELD_LABELS } from "@/lib/offers/offerRequirements";
 
 const OFFER_OPTIONS: { value: OfferType; label: string; icon: React.ReactNode; description: string }[] = [
@@ -33,25 +33,50 @@ const OFFER_OPTIONS: { value: OfferType; label: string; icon: React.ReactNode; d
   },
 ];
 
+const FLOW_OPTIONS: { value: FlowIntention; label: string; icon: React.ReactNode }[] = [
+  { value: 'buy', label: 'Buy', icon: <ShoppingCart className="h-4 w-4" /> },
+  { value: 'sell', label: 'Sell', icon: <Home className="h-4 w-4" /> },
+  { value: 'browse', label: 'Browse', icon: <Eye className="h-4 w-4" /> },
+];
+
 export default function Step2Offers() {
   const {
     selectedOffers,
     customOffer,
+    selectedIntentions,
+    offerFlowMap,
     setSelectedOffers,
     setCustomOffer,
+    setOfferFlowMap,
     setCurrentStep,
     markStepComplete,
   } = useOnboardingStore();
 
   const [showCustomOfferInput, setShowCustomOfferInput] = useState(false);
   const [customOfferValue, setCustomOfferValue] = useState(customOffer);
+  const [expandedOffer, setExpandedOffer] = useState<OfferType | null>(null);
 
   const handleOfferToggle = (offer: OfferType) => {
     if (selectedOffers.includes(offer)) {
       setSelectedOffers(selectedOffers.filter(o => o !== offer));
+      // Remove from flow map when deselected - handled by clearing the map entry
     } else {
       setSelectedOffers([...selectedOffers, offer]);
+      // Set default flows based on offer's applicableFlows or all selected intentions
+      const requirements = getOfferRequirements(offer);
+      const defaultFlows = requirements.applicableFlows || selectedIntentions;
+      if (defaultFlows.length > 0) {
+        setOfferFlowMap(offer, defaultFlows);
+      }
     }
+  };
+
+  const handleFlowToggle = (offer: OfferType, flow: FlowIntention) => {
+    const currentFlows = offerFlowMap[offer] || [];
+    const newFlows = currentFlows.includes(flow)
+      ? currentFlows.filter(f => f !== flow)
+      : [...currentFlows, flow];
+    setOfferFlowMap(offer, newFlows);
   };
 
   const handleAddCustomOffer = () => {
@@ -109,14 +134,21 @@ export default function Step2Offers() {
             const hasRequirements = requirements.requiredFields.length > 0;
             
             return (
-              <motion.button
+              <motion.div
                 key={offer.value}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => handleOfferToggle(offer.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleOfferToggle(offer.value);
+                  }
+                }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className={`
-                  flex flex-col items-start gap-3 px-6 py-5 rounded-xl border-2 transition-all text-left
+                  flex flex-col items-start gap-3 px-6 py-5 rounded-xl border-2 transition-all text-left cursor-pointer
                   ${isSelected
                     ? 'bg-cyan-500/20 border-cyan-500 shadow-lg shadow-cyan-500/20'
                     : 'bg-white/5 border-cyan-500/30 hover:border-cyan-500/50'
@@ -136,6 +168,54 @@ export default function Step2Offers() {
                     </div>
                   </div>
                 </div>
+                
+                {/* Flow Selection - Only show if offer is selected */}
+                {isSelected && (
+                  <div className="w-full pt-3 border-t border-cyan-500/20">
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-cyan-200/80 mb-2">
+                          Applicable to Flows:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {FLOW_OPTIONS.filter(fo => {
+                            // Show flows that are both:
+                            // 1. Selected by the user in step 1 (selectedIntentions)
+                            // 2. Applicable to this offer (requirements.applicableFlows, or all if undefined)
+                            const isInSelectedIntentions = selectedIntentions.includes(fo.value);
+                            const isApplicableToOffer = !requirements.applicableFlows || requirements.applicableFlows.includes(fo.value);
+                            return isInSelectedIntentions && isApplicableToOffer;
+                          }).map((flow) => {
+                            const isSelectedFlow = (offerFlowMap[offer.value] || []).includes(flow.value);
+                            return (
+                              <button
+                                key={flow.value}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFlowToggle(offer.value, flow.value);
+                                }}
+                                className={`
+                                  flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                                  ${isSelectedFlow
+                                    ? 'bg-cyan-500/30 border border-cyan-500 text-cyan-200'
+                                    : 'bg-slate-700/50 border border-slate-600 text-slate-400 hover:border-slate-500'
+                                  }
+                                `}
+                              >
+                                {flow.icon}
+                                {flow.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-cyan-200/50 mt-2">
+                          Select which conversation flows this offer applies to
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Required Fields */}
                 {hasRequirements && (
@@ -168,7 +248,7 @@ export default function Step2Offers() {
                     </p>
                   </div>
                 )}
-              </motion.button>
+              </motion.div>
             );
           })}
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, Edit2, Type, MousePointerClick } from "lucide-react";
+import { Sparkles, Edit2, Type, MousePointerClick, Plus } from "lucide-react";
 import type { ConversationFlow } from "@/stores/conversationConfig/conversation.store";
 import type { FlowIntention } from "@/stores/onboardingStore/onboarding.store";
 
@@ -9,6 +9,7 @@ interface FlowSummaryProps {
   flow: ConversationFlow;
   flowType: FlowIntention;
   onEditQuestion: (questionId: string) => void;
+  onAddQuestion: () => void;
   onEnhanceWithAI: () => void;
 }
 
@@ -16,9 +17,13 @@ export default function FlowSummary({
   flow,
   flowType,
   onEditQuestion,
+  onAddQuestion,
   onEnhanceWithAI,
 }: FlowSummaryProps) {
   const sortedQuestions = [...flow.questions].sort((a, b) => a.order - b.order);
+  const nextOrder = sortedQuestions.length > 0 
+    ? Math.max(...sortedQuestions.map(q => q.order)) + 1 
+    : 1;
 
   return (
     <motion.div
@@ -43,14 +48,19 @@ export default function FlowSummary({
       </div>
 
       <div className="space-y-3">
-        {sortedQuestions.map((question) => (
+        {sortedQuestions.map((question) => {
+          const mappingKeyLabel = question.mappingKey 
+            ? question.mappingKey.charAt(0).toUpperCase() + question.mappingKey.slice(1).replace(/([A-Z])/g, ' $1')
+            : null;
+          
+          return (
           <div
             key={question.id}
             className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 hover:border-cyan-500/50 transition-colors"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <span className="text-xs font-medium text-cyan-400 bg-cyan-500/20 px-2 py-1 rounded">
                     Question {question.order}
                   </span>
@@ -63,6 +73,11 @@ export default function FlowSummary({
                     <span className="text-xs text-cyan-300 bg-cyan-500/20 px-2 py-1 rounded flex items-center gap-1">
                       <MousePointerClick className="h-3 w-3" />
                       Buttons ({question.buttons?.length || 0})
+                    </span>
+                  )}
+                  {question.mappingKey && (
+                    <span className="text-xs text-green-300 bg-green-500/20 px-2 py-1 rounded">
+                      Maps to: {mappingKeyLabel}
                     </span>
                   )}
                 </div>
@@ -94,7 +109,17 @@ export default function FlowSummary({
               </button>
             </div>
           </div>
-        ))}
+        );
+        })}
+        
+        {/* Add Question Button */}
+        <button
+          onClick={onAddQuestion}
+          className="w-full p-4 border-2 border-dashed border-cyan-500/30 hover:border-cyan-500/50 rounded-lg bg-cyan-500/5 hover:bg-cyan-500/10 transition-all flex items-center justify-center gap-2 text-cyan-300 hover:text-cyan-200"
+        >
+          <Plus className="h-5 w-5" />
+          <span className="font-medium">Add New Question</span>
+        </button>
       </div>
     </motion.div>
   );

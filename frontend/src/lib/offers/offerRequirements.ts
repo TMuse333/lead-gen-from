@@ -9,8 +9,11 @@ export interface OfferRequirement {
   description: string;
   requiredFields: string[]; // mappingKeys that must be collected
   requiredQuestionThemes?: string[]; // Optional: semantic themes
+  applicableFlows?: FlowIntention[]; // Which flows this offer applies to (undefined = all flows)
   icon?: string;
 }
+
+export type FlowIntention = 'buy' | 'sell' | 'browse';
 
 export const OFFER_REQUIREMENTS: Record<OfferType, OfferRequirement> = {
   'home-estimate': {
@@ -19,6 +22,7 @@ export const OFFER_REQUIREMENTS: Record<OfferType, OfferRequirement> = {
     description: 'Property valuation estimate',
     requiredFields: ['propertyAddress', 'propertyType', 'propertyAge', 'renovations', 'timeline'],
     requiredQuestionThemes: ['property-details', 'location', 'condition', 'timeline'],
+    applicableFlows: ['sell'], // Only applicable to sellers
     icon: '🏠',
   },
   'pdf': {

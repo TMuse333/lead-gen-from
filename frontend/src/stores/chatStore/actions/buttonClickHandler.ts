@@ -87,6 +87,12 @@ export function createButtonClickHandler(
       userInput: { ...get().userInput, [currentQuestion.mappingKey]: button.value },
       progress: get().progress,
       currentNodeId: state.currentNodeId,
+      answer: {
+        questionId: state.currentNodeId,
+        mappingKey: currentQuestion.mappingKey,
+        value: button.value,
+        answeredVia: 'button',
+      },
     });
 
     try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Type, MousePointerClick, Plus, Trash2, X } from "lucide-react";
 import { useOnboardingStore, FlowIntention } from "@/stores/onboardingStore/onboarding.store";
@@ -32,11 +32,37 @@ export default function QuestionConfigFlow({
   // Step 1: Define Question
   const Step1DefineQuestion = () => {
     const [questionText, setQuestionText] = useState(question.question);
+    const [mappingKey, setMappingKey] = useState(question.mappingKey || '');
+
+    // Common mapping keys for real estate
+    const commonMappingKeys = [
+      { value: 'propertyAddress', label: 'Property Address' },
+      { value: 'propertyType', label: 'Property Type' },
+      { value: 'propertyAge', label: 'Property Age' },
+      { value: 'renovations', label: 'Renovations' },
+      { value: 'timeline', label: 'Timeline' },
+      { value: 'email', label: 'Email Address' },
+      { value: 'phone', label: 'Phone Number' },
+      { value: 'budget', label: 'Budget' },
+      { value: 'bedrooms', label: 'Bedrooms' },
+      { value: 'bathrooms', label: 'Bathrooms' },
+      { value: 'sellingReason', label: 'Selling Reason' },
+      { value: 'buyingReason', label: 'Buying Reason' },
+      { value: 'location', label: 'Location' },
+      { value: '', label: 'None (No mapping)' },
+    ];
 
     const handleNext = () => {
+      // Ensure mappingKey is either a valid string or undefined (not empty string)
+      const finalMappingKey = mappingKey && mappingKey.trim() ? mappingKey.trim() : undefined;
+      
+      console.log(`[QuestionConfig] Saving question ${questionId} with mappingKey:`, finalMappingKey);
+      
       updateConversationFlow(flowType, {
         questions: flow.questions.map((q) =>
-          q.id === questionId ? { ...q, question: questionText } : q
+          q.id === questionId 
+            ? { ...q, question: questionText, mappingKey: finalMappingKey } 
+            : q
         ),
       });
       setCurrentStep(2);
@@ -56,6 +82,30 @@ export default function QuestionConfigFlow({
             className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-cyan-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 resize-none"
             placeholder="e.g., What type of property are you interested in?"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-cyan-200 mb-2">
+            Data Mapping Key (Optional)
+          </label>
+          <p className="text-xs text-cyan-200/70 mb-3">
+            This links the question to a specific data field. Required for offers that need this information (e.g., "propertyAddress" for home estimates).
+          </p>
+          <select
+            value={mappingKey}
+            onChange={(e) => setMappingKey(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-cyan-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+          >
+            {commonMappingKeys.map((key) => (
+              <option key={key.value} value={key.value}>
+                {key.label}
+              </option>
+            ))}
+          </select>
+          {mappingKey && (
+            <p className="text-xs text-green-400 mt-2">
+              ✓ This question will collect: <strong>{commonMappingKeys.find(k => k.value === mappingKey)?.label}</strong>
+            </p>
+          )}
         </div>
         <div className="flex justify-end">
           <button
@@ -175,6 +225,29 @@ export default function QuestionConfigFlow({
   const Step3ConfigureButtons = () => {
     const currentQuestion = flow?.questions.find((q) => q.id === questionId);
     const buttons = currentQuestion?.buttons || [];
+    
+    // Use local state for button labels to prevent input from losing focus
+    const [localButtonLabels, setLocalButtonLabels] = useState<Record<string, string>>(() => {
+      const initial: Record<string, string> = {};
+      buttons.forEach(btn => {
+        initial[btn.id] = btn.label;
+      });
+      return initial;
+    });
+
+    // Sync local state when buttons change externally
+    useEffect(() => {
+      const newLabels: Record<string, string> = {};
+      buttons.forEach(btn => {
+        newLabels[btn.id] = btn.label;
+      });
+      setLocalButtonLabels(prev => {
+        // Only update if there are actual changes to avoid unnecessary re-renders
+        const hasChanges = Object.keys(newLabels).some(id => prev[id] !== newLabels[id]) ||
+                          Object.keys(prev).some(id => !newLabels[id]);
+        return hasChanges ? newLabels : prev;
+      });
+    }, [buttons.length, buttons.map(b => b.id).join(',')]);
 
     const generateValueFromLabel = (label: string): string => {
       return label
@@ -184,7 +257,14 @@ export default function QuestionConfigFlow({
         .replace(/^-+|-+$/g, '');
     };
 
-    const handleUpdateButton = (buttonId: string, label: string) => {
+    // Update local state immediately (for responsive UI)
+    const handleInputChange = (buttonId: string, label: string) => {
+      setLocalButtonLabels(prev => ({ ...prev, [buttonId]: label }));
+    };
+
+    // Sync to Zustand store on blur (when user finishes typing)
+    const handleInputBlur = (buttonId: string) => {
+      const label = localButtonLabels[buttonId] || '';
       const autoValue = generateValueFromLabel(label);
       updateConversationFlow(flowType, {
         questions: flow.questions.map((q) =>
@@ -272,7 +352,7 @@ export default function QuestionConfigFlow({
                     Button {btnIndex + 1} Preview
                   </label>
                   <div className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-full font-medium shadow-lg shadow-cyan-500/30 inline-block">
-                    {button.label || `Button ${btnIndex + 1}`}
+                    {localButtonLabels[button.id] || button.label || `Button ${btnIndex + 1}`}
                   </div>
                 </div>
                 <div>
@@ -281,8 +361,9 @@ export default function QuestionConfigFlow({
                   </label>
                   <input
                     type="text"
-                    value={button.label}
-                    onChange={(e) => handleUpdateButton(button.id, e.target.value)}
+                    value={localButtonLabels[button.id] || ''}
+                    onChange={(e) => handleInputChange(button.id, e.target.value)}
+                    onBlur={() => handleInputBlur(button.id)}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-cyan-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                     placeholder={`Enter button text...`}
                   />

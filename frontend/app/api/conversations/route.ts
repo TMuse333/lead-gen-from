@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       lastActivityAt: new Date(),
       messages,
       userInput: userInput || {},
+      answers: [], // Initialize answers array
       progress: 0,
       messageCount: messages.length,
       currentFlowId: flow,

@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -26,6 +26,7 @@ import type { EditorTab } from '@/types/offers/offerCustomization.types';
 import type { GenerationMetadata } from '@/lib/offers/core/types';
 import { useOfferEditor } from '@/hooks/offers/useOfferEditor';
 import { useOfferCustomizations } from '@/hooks/offers/useOfferCustomizations';
+import { useUserConfig } from '@/contexts/UserConfigContext';
 import { OverviewTab } from './tabs/OverviewTab';
 import { InputsTab } from './tabs/InputsTab';
 import { PromptTab } from './tabs/PromptTab';
@@ -50,6 +51,8 @@ interface OfferEditorProps {
 }
 
 export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
+  console.log('🟢 [OfferEditor] Component rendering with offerType:', offerType);
+  
   const {
     activeTab,
     setActiveTab,
@@ -73,8 +76,24 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
     resetToDefaults,
   } = useOfferCustomizations(offerType);
 
+  const { config, refetch: refetchConfig } = useUserConfig();
+  const isOfferInConfig = config?.selectedOffers?.includes(offerType) || false;
+
   const isLoading = editorLoading || dataLoading;
   const error = editorError || dataError;
+
+  // Log when data loads
+  useEffect(() => {
+    if (definition) {
+      console.log('🟢 [OfferEditor] Definition loaded:', definition.type, definition.label);
+    }
+    if (customization) {
+      console.log('🟢 [OfferEditor] Customization loaded:', hasCustomizations);
+    }
+    if (error) {
+      console.error('🔴 [OfferEditor] Error:', error);
+    }
+  }, [definition, customization, hasCustomizations, error]);
 
   const handleToggleEnabled = async (enabled: boolean) => {
     if (!definition) return;
@@ -128,6 +147,55 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
     setEditorLoading(false);
   };
 
+  const handleAddOrSaveOffer = async () => {
+    if (!config) {
+      setEditorError('Configuration not loaded');
+      return;
+    }
+
+    setEditorLoading(true);
+    setEditorError(null);
+
+    try {
+      // Add offer to selectedOffers if not already present
+      const currentOffers = config.selectedOffers || [];
+      const updatedOffers = isOfferInConfig
+        ? currentOffers // Already in config, just save customizations
+        : [...currentOffers, offerType]; // Add to config
+
+      // Update user config
+      const response = await fetch('/api/user/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedOffers: updatedOffers }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update configuration');
+      }
+
+      // Save any customizations
+      if (customization) {
+        await saveCustomizations(customization);
+      }
+
+      // Refetch config to update UI
+      await refetchConfig();
+
+      setSuccess(
+        isOfferInConfig
+          ? 'Changes saved successfully'
+          : 'Offer added to your configuration'
+      );
+      setHasUnsavedChanges(false);
+    } catch (err: any) {
+      console.error('Error adding/saving offer:', err);
+      setEditorError(err.message || 'Failed to save offer');
+    } finally {
+      setEditorLoading(false);
+    }
+  };
+
   if (isLoading && !definition) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -163,6 +231,32 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
               Customize settings, test generation, and view analytics
             </p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleAddOrSaveOffer}
+            disabled={isLoading}
+            className={`
+              px-6 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2
+              ${isOfferInConfig
+                ? 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-lg hover:shadow-cyan-400/50'
+              }
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {isOfferInConfig ? 'Saving...' : 'Adding...'}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                {isOfferInConfig ? 'Save Changes' : 'Add Offer'}
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -225,7 +319,7 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
           />
         )}
         {activeTab === 'inputs' && <InputsTab definition={definition} />}
-        {activeTab === 'prompt' && <PromptTab definition={definition} />}
+        {activeTab === 'prompt' && <PromptTab definition={definition} offerType={offerType} />}
         {activeTab === 'output' && <OutputTab definition={definition} />}
         {activeTab === 'settings' && (
           <SettingsTab

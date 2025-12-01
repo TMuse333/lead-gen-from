@@ -177,6 +177,14 @@ export function createActions(
           updateBody.userInput = updates.userInput;
         }
 
+        if (updates.answer) {
+          // Track individual answer with timestamp
+          updateBody.answer = {
+            ...updates.answer,
+            timestamp: new Date(),
+          };
+        }
+
         if (updates.status) {
           updateBody.status = updates.status;
         }

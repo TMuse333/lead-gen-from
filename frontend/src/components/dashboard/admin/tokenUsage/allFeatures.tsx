@@ -119,6 +119,14 @@ const ALL_FEATURES: FeatureInfo[] = [
     icon: Settings,
     models: ['gpt-4o-mini'],
   },
+  {
+    id: 'documentExtraction',
+    name: 'Document Extraction',
+    description: 'Extracts structured advice and knowledge from uploaded documents (PDF, DOCX, TXT)',
+    category: 'generation',
+    icon: FileText,
+    models: ['gpt-4o-mini'],
+  },
 ];
 
 const CATEGORY_COLORS = {

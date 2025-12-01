@@ -30,6 +30,13 @@ export interface ConversationDocument {
   
   // User Input/Answers
   userInput: Record<string, string>;  // Key-value pairs of answers
+  answers: Array<{
+    questionId: string;
+    mappingKey: string;
+    value: string;
+    timestamp: Date;
+    answeredVia: 'button' | 'text'; // How the answer was provided
+  }>; // Detailed answer tracking with timestamps
   
   // Flow Context
   currentFlowId?: string;      // Which flow was used
