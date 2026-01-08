@@ -1,131 +1,191 @@
-// stores/chatStore/flowHelpers.ts
+// stores/chatStore/flowHelpers.ts - UNIFIED OFFER SYSTEM
+/**
+ * Flow helpers - now delegates to unified offer system
+ *
+ * @deprecated Most functions here are deprecated.
+ * Use functions from '@/lib/offers/unified' directly instead.
+ */
+
+import type { OfferType, Intent } from './types';
+import {
+  getNextQuestion as getNextQuestionFromRegistry,
+  getFirstQuestion as getFirstQuestionFromRegistry,
+  getQuestionCount,
+  isComplete,
+  getProgress,
+  getQuestion,
+  type Question,
+} from '@/lib/offers/unified';
 import { QuestionNode } from '@/types/conversation.types';
-import { useConversationStore } from '../conversationConfig/conversation.store';
 
-
+// ==================== CONVERSION HELPERS ====================
 
 /**
- * Get the next question in a flow
- * @param flowId - The flow identifier ('sell', 'buy', 'browse')
- * @param currentQuestionId - Current question ID (optional - if not provided, returns first question)
- * @returns The next question or null if flow is complete
+ * Convert unified Question to legacy QuestionNode format
+ */
+function toQuestionNode(question: Question | null): QuestionNode | null {
+  if (!question) return null;
+
+  return {
+    id: question.id,
+    question: question.text,
+    mappingKey: question.mappingKey,
+    order: question.order,
+    buttons: question.buttons?.map(b => ({
+      id: b.id,
+      label: b.label,
+      value: b.value,
+      tracker: b.tracker,
+    })),
+    allowFreeText: question.allowFreeText,
+    validation: {
+      type: question.inputType === 'email' ? 'email' : question.inputType === 'phone' ? 'phone' : question.inputType === 'number' ? 'number' : 'text',
+      required: question.required,
+      minLength: question.validation?.minLength,
+      maxLength: question.validation?.maxLength,
+      pattern: question.validation?.pattern,
+    },
+  };
+}
+
+// ==================== UNIFIED API ====================
+
+/**
+ * Get the next question for offer(s)+intent
+ * Supports both single offer and array of offers (merged questions)
  */
 export function getNextQuestion(
-  flowId: string,
+  offerTypes: OfferType | OfferType[],
+  intent: Intent,
   currentQuestionId?: string
 ): QuestionNode | null {
-  const flow = useConversationStore.getState().getFlow(flowId);
-  
-  if (!flow) {
-    console.warn(`[flowHelpers] Flow not found: ${flowId}`);
-    return null;
-  }
-
-  const sortedQuestions = [...flow.questions].sort((a, b) => a.order - b.order);
-
-  // If no current question, return the first one
-  if (!currentQuestionId) {
-    return sortedQuestions[0] || null;
-  }
-
-  // Find the current question index
-  const currentIndex = sortedQuestions.findIndex(q => q.id === currentQuestionId);
-  
-  if (currentIndex === -1) {
-    console.warn(`[flowHelpers] Question not found: ${currentQuestionId}`);
-    return null;
-  }
-
-  // Return the next question, or null if we're at the end
-  const nextQuestion = sortedQuestions[currentIndex + 1];
-  return nextQuestion || null;
+  const question = getNextQuestionFromRegistry(offerTypes, intent, currentQuestionId);
+  return toQuestionNode(question);
 }
 
 /**
- * Get the total number of questions in a flow
- * @param flowId - The flow identifier
- * @returns Total question count
+ * Get the first question for offer(s)+intent
+ * Supports both single offer and array of offers (merged questions)
  */
-export function getTotalQuestions(flowId: string): number {
-  const flow = useConversationStore.getState().getFlow(flowId);
-  return flow?.questions.length || 0;
+export function getFirstQuestion(
+  offerTypes: OfferType | OfferType[],
+  intent: Intent
+): QuestionNode | null {
+  const question = getFirstQuestionFromRegistry(offerTypes, intent);
+  return toQuestionNode(question);
 }
 
 /**
- * Check if a flow is complete
- * @param flowId - The flow identifier
- * @param userAnswers - The user's answers so far
- * @returns True if all required questions are answered
+ * Get total question count for offer(s)+intent
+ * Supports both single offer and array of offers (merged questions)
+ */
+export function getTotalQuestions(
+  offerTypes: OfferType | OfferType[],
+  intent: Intent
+): number {
+  return getQuestionCount(offerTypes, intent);
+}
+
+/**
+ * Check if flow is complete for offer(s)+intent
+ * Supports both single offer and array of offers (merged questions)
  */
 export function isFlowComplete(
-  flowId: string,
+  offerTypes: OfferType | OfferType[],
+  intent: Intent,
   userAnswers: Record<string, string>
 ): boolean {
-  const flow = useConversationStore.getState().getFlow(flowId);
-  
-  if (!flow) return false;
-
-  // Get all required questions
-  const requiredQuestions = flow.questions.filter(
-    q => q.validation?.required !== false && q.mappingKey
-  );
-
-  // Check if all required questions have answers
-  return requiredQuestions.every(q => 
-    q.mappingKey && userAnswers[q.mappingKey]
-  );
+  return isComplete(offerTypes, intent, userAnswers);
 }
 
 /**
- * Get the progress percentage for a flow
- * @param flowId - The flow identifier
- * @param userAnswers - The user's answers so far
- * @returns Progress percentage (0-100)
+ * Get progress percentage for offer(s)+intent
+ * Supports both single offer and array of offers (merged questions)
  */
 export function getFlowProgress(
-  flowId: string,
+  offerTypes: OfferType | OfferType[],
+  intent: Intent,
   userAnswers: Record<string, string>
 ): number {
-  const totalQuestions = getTotalQuestions(flowId);
-  
-  if (totalQuestions === 0) return 0;
+  return getProgress(offerTypes, intent, userAnswers);
+}
 
-  const answeredCount = Object.keys(userAnswers).length;
-  return Math.round((answeredCount / totalQuestions) * 100);
+// ==================== LEGACY COMPATIBILITY ====================
+
+/**
+ * @deprecated Use getNextQuestion(offerType, intent, currentQuestionId) instead
+ */
+export function getNextQuestionUnified(options: {
+  useIntentSystem?: boolean;
+  enabledOffers?: OfferType[];
+  intent: Intent | null;
+  flowId?: string | null;
+  currentQuestionId?: string;
+  selectedOffer?: OfferType | null;
+}): QuestionNode | null {
+  const { selectedOffer, enabledOffers, intent, currentQuestionId } = options;
+  const offer = selectedOffer || (enabledOffers && enabledOffers[0]) || null;
+
+  if (!offer || !intent) return null;
+  return getNextQuestion(offer, intent, currentQuestionId);
 }
 
 /**
- * Get the first question in a flow
- * @param flowId - The flow identifier
- * @returns The first question or null
+ * @deprecated Use getFirstQuestion(offerType, intent) instead
  */
-export function getFirstQuestion(flowId: string): QuestionNode | null {
-  const flow = useConversationStore.getState().getFlow(flowId);
-  
-  if (!flow || flow.questions.length === 0) return null;
+export function getFirstQuestionUnified(options: {
+  useIntentSystem?: boolean;
+  enabledOffers?: OfferType[];
+  intent: Intent | null;
+  flowId?: string | null;
+  selectedOffer?: OfferType | null;
+}): QuestionNode | null {
+  const { selectedOffer, enabledOffers, intent } = options;
+  const offer = selectedOffer || (enabledOffers && enabledOffers[0]) || null;
 
-  const sortedQuestions = [...flow.questions].sort((a, b) => a.order - b.order);
-  return sortedQuestions[0];
+  if (!offer || !intent) return null;
+  return getFirstQuestion(offer, intent);
 }
 
 /**
- * Get the previous question in a flow (for back navigation)
- * @param flowId - The flow identifier
- * @param currentQuestionId - Current question ID
- * @returns The previous question or null
+ * @deprecated Use getTotalQuestions(offerType, intent) instead
  */
-export function getPreviousQuestion(
-  flowId: string,
-  currentQuestionId: string
-): QuestionNode | null {
-  const flow = useConversationStore.getState().getFlow(flowId);
-  
-  if (!flow) return null;
+export function getTotalQuestionsUnified(options: {
+  useIntentSystem?: boolean;
+  enabledOffers?: OfferType[];
+  intent: Intent | null;
+  flowId?: string | null;
+  selectedOffer?: OfferType | null;
+}): number {
+  const { selectedOffer, enabledOffers, intent } = options;
+  const offer = selectedOffer || (enabledOffers && enabledOffers[0]) || null;
 
-  const sortedQuestions = [...flow.questions].sort((a, b) => a.order - b.order);
-  const currentIndex = sortedQuestions.findIndex(q => q.id === currentQuestionId);
-  
-  if (currentIndex <= 0) return null;
-
-  return sortedQuestions[currentIndex - 1];
+  if (!offer || !intent) return 0;
+  return getTotalQuestions(offer, intent);
 }
+
+/**
+ * @deprecated Use isFlowComplete(offerType, intent, userAnswers) instead
+ */
+export function isCompleteUnified(options: {
+  useIntentSystem?: boolean;
+  enabledOffers?: OfferType[];
+  intent: Intent | null;
+  flowId?: string | null;
+  userAnswers: Record<string, string>;
+  selectedOffer?: OfferType | null;
+}): boolean {
+  const { selectedOffer, enabledOffers, intent, userAnswers } = options;
+  const offer = selectedOffer || (enabledOffers && enabledOffers[0]) || null;
+
+  if (!offer || !intent) return false;
+  return isFlowComplete(offer, intent, userAnswers);
+}
+
+// Re-export from unified for convenience
+export {
+  getQuestion,
+  getQuestionCount,
+  isComplete,
+  getProgress,
+};

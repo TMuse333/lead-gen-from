@@ -82,7 +82,11 @@ export interface ConversationQuestion {
     pattern?: string;
   };
 
-
+  /**
+   * If true, this question triggers the contact collection modal instead of
+   * being shown as a regular chat question. The modal collects name, email, and phone.
+   */
+  triggersContactModal?: boolean;
 }
 
 // Type aliases for backward compatibility

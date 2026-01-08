@@ -99,6 +99,8 @@ export async function GET(request: NextRequest) {
           advice: payload?.advice as string,
           tags,
           type, // Include type in response
+          kind: (payload?.kind as 'tip' | 'story') || 'tip', // Include kind (tip/story)
+          placements: payload?.placements as Record<string, string[]> | undefined, // Direct placements for StoriesDashboard
           applicableWhen,
           createdAt: payload?.createdAt as string,
           updatedAt: payload?.updatedAt as string | undefined,

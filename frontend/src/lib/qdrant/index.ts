@@ -15,7 +15,9 @@ export {
 
 export {
   queryRelevantAdvice,
+  queryAdviceForLocation,
   getAgentAdvice,
+  type QueryAdviceOptions,
 } from './collections/vector/advice/queries';
 
 export { incrementAdviceUsage } from './collections/vector/advice/usage';

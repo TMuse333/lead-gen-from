@@ -13,13 +13,22 @@ import {
   Filter,
   Calendar,
   TrendingUp,
+  BarChart3,
+  List,
+  Home,
+  ShoppingCart,
+  Search,
+  Gift,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ConversationAnalytics from './ConversationAnalytics';
+
+type ViewMode = 'list' | 'analytics';
 
 interface Conversation {
   _id: string;
-  flow: string;
+  flow: string; // This is actually the intent (buy/sell/browse)
   status: 'in-progress' | 'completed' | 'abandoned';
   startedAt: string;
   completedAt?: string;
@@ -30,12 +39,20 @@ interface Conversation {
   userInput: Record<string, string>;
 }
 
+// Intent display config matching the offer system
+const INTENT_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
+  buy: { label: 'Buying', icon: Home, color: 'cyan' },
+  sell: { label: 'Selling', icon: ShoppingCart, color: 'purple' },
+  browse: { label: 'Browsing', icon: Search, color: 'amber' },
+};
+
 export default function ConversationsDashboard() {
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'completed' | 'abandoned' | 'in-progress'>('all');
-  const [flowFilter, setFlowFilter] = useState<string>('all');
+  const [intentFilter, setIntentFilter] = useState<string>('all');
   const router = useRouter();
 
   const fetchConversations = async () => {
@@ -46,8 +63,8 @@ export default function ConversationsDashboard() {
       if (filter !== 'all') {
         params.append('status', filter);
       }
-      if (flowFilter !== 'all') {
-        params.append('flow', flowFilter);
+      if (intentFilter !== 'all') {
+        params.append('flow', intentFilter); // API still uses 'flow' param
       }
 
       const response = await axios.get(`/api/conversations?${params.toString()}`);
@@ -66,7 +83,7 @@ export default function ConversationsDashboard() {
 
   useEffect(() => {
     fetchConversations();
-  }, [filter, flowFilter]);
+  }, [filter, intentFilter]);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return 'N/A';
@@ -124,7 +141,7 @@ export default function ConversationsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with View Mode Tabs */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-100 mb-2">My Conversations</h2>
@@ -133,14 +150,49 @@ export default function ConversationsDashboard() {
           </p>
         </div>
 
-        <button
-          onClick={fetchConversations}
-          className="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition flex items-center gap-2"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+              viewMode === 'list'
+                ? 'bg-cyan-500/20 text-cyan-300'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            List
+          </button>
+          <button
+            onClick={() => setViewMode('analytics')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+              viewMode === 'analytics'
+                ? 'bg-cyan-500/20 text-cyan-300'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Analytics
+          </button>
+        </div>
       </div>
+
+      {/* Analytics View */}
+      {viewMode === 'analytics' && <ConversationAnalytics />}
+
+      {/* List View */}
+      {viewMode === 'list' && (
+        <>
+          {/* Refresh Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={fetchConversations}
+              className="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
 
       {/* Filters */}
       <div className="flex items-center gap-4">
@@ -160,16 +212,16 @@ export default function ConversationsDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-400">Flow:</span>
+          <span className="text-sm text-slate-400">Intent:</span>
           <select
-            value={flowFilter}
-            onChange={(e) => setFlowFilter(e.target.value)}
+            value={intentFilter}
+            onChange={(e) => setIntentFilter(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 text-sm"
           >
-            <option value="all">All Flows</option>
-            <option value="sell">Sell</option>
-            <option value="buy">Buy</option>
-            <option value="browse">Browse</option>
+            <option value="all">All Intents</option>
+            <option value="buy">Buying</option>
+            <option value="sell">Selling</option>
+            <option value="browse">Browsing</option>
           </select>
         </div>
       </div>
@@ -193,84 +245,95 @@ export default function ConversationsDashboard() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredConversations.map((conv) => (
-            <div
-              key={conv._id}
-              className="bg-slate-800 rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <MessageSquare className="w-5 h-5 text-cyan-400" />
-                    <h3 className="text-lg font-bold text-slate-100 capitalize">
-                      {conv.flow} Flow
-                    </h3>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium border flex items-center gap-1 ${getStatusColor(
-                        conv.status
-                      )}`}
-                    >
-                      {getStatusIcon(conv.status)}
-                      {conv.status}
-                    </span>
-                  </div>
+          {filteredConversations.map((conv) => {
+            const intentConfig = INTENT_CONFIG[conv.flow] || { label: conv.flow, icon: MessageSquare, color: 'slate' };
+            const IntentIcon = intentConfig.icon;
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Started</p>
-                      <p className="text-sm text-slate-300 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(conv.startedAt)}
-                      </p>
+            return (
+              <div
+                key={conv._id}
+                className={`bg-slate-800 rounded-xl p-6 border border-slate-700 hover:border-${intentConfig.color}-500/50 transition`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      {/* Intent Badge - matching offer style */}
+                      <div
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-${intentConfig.color}-500/20 text-${intentConfig.color}-300 border border-${intentConfig.color}-500/30`}
+                      >
+                        <IntentIcon className="w-4 h-4" />
+                        <span>{intentConfig.label}</span>
+                      </div>
+
+                      {/* Status Badge */}
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium border flex items-center gap-1 ${getStatusColor(
+                          conv.status
+                        )}`}
+                      >
+                        {getStatusIcon(conv.status)}
+                        {conv.status}
+                      </span>
+
+                      {/* Offers Generated Badge */}
+                      {conv.generationCount !== undefined && conv.generationCount > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          <Gift className="w-3 h-3" />
+                          {conv.generationCount} offer{conv.generationCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
 
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Duration</p>
-                      <p className="text-sm text-slate-300 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDuration(conv.duration)}
-                      </p>
-                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Started</p>
+                        <p className="text-sm text-slate-300 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(conv.startedAt)}
+                        </p>
+                      </div>
 
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Messages</p>
-                      <p className="text-sm text-slate-300">{conv.messageCount}</p>
-                    </div>
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Duration</p>
+                        <p className="text-sm text-slate-300 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDuration(conv.duration)}
+                        </p>
+                      </div>
 
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Progress</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-cyan-500 transition-all"
-                            style={{ width: `${conv.progress}%` }}
-                          />
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Messages</p>
+                        <p className="text-sm text-slate-300">{conv.messageCount}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Progress</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full bg-${intentConfig.color}-500 transition-all`}
+                              style={{ width: `${conv.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-slate-400">{conv.progress}%</span>
                         </div>
-                        <span className="text-xs text-slate-400">{conv.progress}%</span>
                       </div>
                     </div>
                   </div>
 
-                  {conv.generationCount !== undefined && conv.generationCount > 0 && (
-                    <div className="mt-3 flex items-center gap-2 text-sm text-cyan-400">
-                      <TrendingUp className="w-4 h-4" />
-                      <span>{conv.generationCount} offer{conv.generationCount !== 1 ? 's' : ''} generated</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 ml-4">
-                  <Link
-                    href={`/dashboard/conversations/${conv._id}`}
-                    className="px-4 py-2 bg-cyan-500/20 text-cyan-200 rounded-lg hover:bg-cyan-500/30 transition flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    View Details
-                  </Link>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Link
+                      href={`/dashboard/conversations/${conv._id}`}
+                      className={`px-4 py-2 bg-${intentConfig.color}-500/20 text-${intentConfig.color}-200 rounded-lg hover:bg-${intentConfig.color}-500/30 transition flex items-center gap-2`}
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -307,6 +370,8 @@ export default function ConversationsDashboard() {
             </p>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -1,18 +1,17 @@
-// components/chat/GameChat.tsx – Neural Cyan Theme Edition (Final Toggleable, with Close Button)
+// components/chat/GameChat.tsx – Simplified Chat Component
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageSquare, X } from 'lucide-react'; 
+import { Send, MessageSquare, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { RewardSystem } from './rewardSystem';
 import { MessageBubble } from './messageBubble';
-import { IntegratedTracker } from './integratedTracker';
-import AnalysisTracker from '../tracker';
-import { AnalysisTrackerBar } from '../tracker/trackerbar';
-import { CompletionModal } from '../tracker/completionModal';
 import { DEFAULT_THEME } from '@/lib/colors/defaultTheme';
 import { injectColorTheme } from '@/lib/colors/colorUtils';
-import { determineTextColor, determineTextColorForGradient } from '@/lib/colors/contrastUtils';
+import { determineTextColorForGradient } from '@/lib/colors/contrastUtils';
+import { useChatStore, selectEnabledOffers, selectCurrentIntent } from '@/stores/chatStore';
+import { isImportantField } from '@/lib/chat/importantFields';
+import { getQuestion } from '@/lib/offers/unified';
+import ImportantInfoModal from '../modals/ImportantInfoModal';
 
 interface ChatButton {
   id: string;
@@ -38,9 +37,11 @@ interface GameChatProps {
   userInput: Record<string, string>;
   currentFlow?: string;
   progress: number;
-  isChatOpen: boolean; 
-  toggleChat: () => void; 
-  closeChat: () => void; 
+  currentNodeId?: string;
+  isChatOpen: boolean;
+  toggleChat: () => void;
+  closeChat: () => void;
+  businessName?: string;
 }
 
 export function GameChat({
@@ -54,14 +55,64 @@ export function GameChat({
   userInput,
   currentFlow,
   progress,
-  isChatOpen, 
+  currentNodeId,
+  isChatOpen,
   toggleChat,
   closeChat,
+  businessName = 'AI Assistant',
 }: GameChatProps) {
   const [input, setInput] = useState('');
-  const [rewardTrigger, setRewardTrigger] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevCompletedRef = useRef(0);
+  const [showImportantModal, setShowImportantModal] = useState(false);
+
+  // Get current question from unified offer system
+  const enabledOffers = useChatStore(selectEnabledOffers);
+  const currentIntent = useChatStore(selectCurrentIntent);
+  const currentQuestion = (enabledOffers?.length > 0 && currentIntent && currentNodeId)
+    ? getQuestion(enabledOffers, currentIntent, currentNodeId)
+    : null;
+
+  const isFieldSkipped = useChatStore((s) => s.isFieldSkipped);
+  const shouldShowModal = currentQuestion?.mappingKey && 
+    isImportantField(currentQuestion.mappingKey) &&
+    !userInput[currentQuestion.mappingKey!] &&
+    !isFieldSkipped(currentQuestion.mappingKey);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 [ImportantModal] Debug:', {
+      currentFlow,
+      currentNodeId,
+      currentQuestion: currentQuestion ? {
+        id: currentQuestion.id,
+        text: currentQuestion.text,
+        mappingKey: currentQuestion.mappingKey,
+      } : null,
+      shouldShowModal,
+      hasUserInput: currentQuestion?.mappingKey ? !!userInput[currentQuestion.mappingKey] : false,
+      isSkipped: currentQuestion?.mappingKey ? isFieldSkipped(currentQuestion.mappingKey) : false,
+      userInputKeys: Object.keys(userInput),
+    });
+  }, [currentNodeId, currentFlow, currentQuestion, shouldShowModal, userInput, isFieldSkipped]);
+  
+  // Show modal when question changes to an important field
+  useEffect(() => {
+    if (shouldShowModal && currentQuestion) {
+      console.log('✅ [ImportantModal] Showing modal for:', currentQuestion.mappingKey);
+      setShowImportantModal(true);
+    } else {
+      if (showImportantModal) {
+        console.log('❌ [ImportantModal] Hiding modal:', {
+          shouldShowModal,
+          hasQuestion: !!currentQuestion,
+          hasUserInput: currentQuestion?.mappingKey ? !!userInput[currentQuestion.mappingKey] : false,
+          isSkipped: currentQuestion?.mappingKey ? isFieldSkipped(currentQuestion.mappingKey) : false,
+        });
+      }
+      setShowImportantModal(false);
+    }
+  }, [currentNodeId, shouldShowModal, currentQuestion, userInput, isFieldSkipped]);
   
   // Custom hook to detect mobile screen size dynamically
   const useIsMobile = () => {
@@ -119,7 +170,6 @@ export function GameChat({
 
   useEffect(() => {
     if (completedSteps > prevCompletedRef.current) {
-      setRewardTrigger((prev) => prev + 1);
       prevCompletedRef.current = completedSteps;
     }
   }, [completedSteps]);
@@ -170,81 +220,17 @@ export function GameChat({
 
   return (
     <>
-      {/* 1. Mobile Chat Button (Show only on mobile, and only when chat is NOT open) */}
+      {/* Mobile Chat Button (Show only on mobile, and only when chat is NOT open) */}
       <AnimatePresence>
         {(!isChatOpen && isMobile) && <MobileChatButton />}
       </AnimatePresence>
-      
-      {/* 2. Main Chat Content - Hidden on mobile if not open, always visible on desktop */}
-      <div 
-        // Hide the full chat container when closed on mobile, but keep it flex on desktop
-        className={`flex gap-6 w-full mx-auto h-full ${!isChatOpen && isMobile && 'hidden'} ${!isMobile && 'md:flex'}`}
+
+      {/* Main Chat Content */}
+      <div
+        className={`flex w-full h-full ${!isChatOpen && isMobile && 'hidden'}`}
       >
-        {/* <RewardSystem trigger={rewardTrigger} /> */}
-
-        {/* Chat Container – LEFT */}
-        <motion.div
-          className="flex-1 md:max-w-xl backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border md:h-[700px] flex flex-col relative"
-          style={{
-            backgroundColor: 'rgba(var(--color-background-rgb), 0.7)',
-            borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
-            ...(isChatOpen && isMobile ? { height: '100vh', width: '100vw', borderRadius: 0 } : {}),
-          }}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          {/* Close Button (Desktop & Mobile Header) */}
-          
-          {/* Desktop Close Button (Top right corner) */}
-          <motion.button
-              onClick={closeChat}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full transition-colors hidden md:block"
-              style={{
-                backgroundColor: 'rgba(var(--color-primary-rgb), 0.2)',
-                color: 'var(--color-primary)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.2)';
-              }} 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <X size={24} />
-          </motion.button>
-          
-          {/* Mobile Header/Close Button */}
-          <div 
-            className="md:hidden flex justify-between items-center p-4 border-b"
-            style={{
-              backgroundColor: 'rgba(var(--color-background-rgb), 0.9)',
-              borderColor: 'rgba(var(--color-primary-rgb), 0.4)',
-            }}
-          >
-            <h3 className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>Game Chat</h3> 
-            <motion.button
-              onClick={closeChat}
-              className="p-2 rounded-full transition-colors"
-              style={{
-                backgroundColor: 'rgba(var(--color-primary-rgb), 0.2)',
-                color: 'var(--color-primary)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.2)';
-              }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <X size={24} />
-            </motion.button>
-          </div>
-
+        {/* Chat Container */}
+        <div className="flex-1 flex flex-col h-full">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-thumb-cyan-600/30">
             {messages.map((msg, i) => (
@@ -306,70 +292,89 @@ export function GameChat({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
-          <div 
-            className="p-5 border-t backdrop-blur-md flex flex-col"
+          {/* Important Info Modal */}
+          {shouldShowModal && currentQuestion && (
+            <ImportantInfoModal
+              isOpen={showImportantModal}
+              mappingKey={currentQuestion.mappingKey || ''}
+              question={currentQuestion.text}
+              onSubmit={async (value) => {
+                setShowImportantModal(false);
+                await onSend(value);
+              }}
+              onSkip={() => {
+                const skipField = useChatStore.getState().skipField;
+                if (currentQuestion?.mappingKey) {
+                  skipField(currentQuestion.mappingKey);
+                  console.log('⏭️ [ImportantModal] Field skipped:', currentQuestion.mappingKey);
+                }
+                setShowImportantModal(false);
+              }}
+              onClose={() => {
+                setShowImportantModal(false);
+              }}
+            />
+          )}
+
+          {/* Input Area - Always visible */}
+          <div
+            className="p-4 border-t backdrop-blur-md"
             style={{
-              background: `linear-gradient(to top, rgba(var(--color-background-rgb), 0.9), rgba(var(--color-surface-rgb), 0.7))`,
-              borderColor: 'rgba(var(--color-primary-rgb), 0.4)',
+              background: `linear-gradient(to top, rgba(var(--color-background-rgb), 0.95), rgba(var(--color-surface-rgb), 0.8))`,
+              borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
             }}
           >
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !loading && handleSend()}
-                placeholder="Ask me anything..."
-                className="flex-1 px-5 py-3.5 border rounded-full focus:outline-none focus:ring-2 transition-all"
-                style={{
-                  backgroundColor: 'rgba(var(--color-surface-rgb), 0.8)',
-                  borderColor: 'rgba(var(--color-primary-rgb), 0.5)',
-                  color: 'var(--color-text)',
-                }}
-                onInput={(e) => {
-                  const input = e.currentTarget;
-                  input.style.setProperty('--placeholder-color', 'var(--color-placeholder)');
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.boxShadow = '0 0 0 2px rgba(var(--color-primary-rgb), 0.3)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(var(--color-primary-rgb), 0.5)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                disabled={loading}
-              />
-              <motion.button
-                onClick={handleSend}
-                disabled={!input.trim() || loading}
-                className="p-4 rounded-full shadow-xl disabled:opacity-50 transition-all"
-                style={{
-                  background: `linear-gradient(to right, var(--color-gradient-from), var(--color-gradient-to))`,
-                  color: determineTextColorForGradient(
-                    getCSSVar('--color-gradient-from', '#06b6d4'),
-                    getCSSVar('--color-gradient-to', '#3b82f6')
-                  ),
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.92 }}
-              >
-                <Send size={22} />
-              </motion.button>
-            </div>
-            <AnalysisTrackerBar />
+            {shouldShowModal && showImportantModal ? (
+              <div className="text-center py-2">
+                <p className="text-sm" style={{ color: 'var(--color-text)' }}>
+                  Please use the modal above to provide your information
+                </p>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !loading && handleSend()}
+                  placeholder="Type your message..."
+                  className="flex-1 px-5 py-3 border rounded-full focus:outline-none focus:ring-2 transition-all"
+                  style={{
+                    backgroundColor: 'rgba(var(--color-surface-rgb), 0.8)',
+                    borderColor: 'rgba(var(--color-primary-rgb), 0.5)',
+                    color: 'var(--color-text)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(var(--color-primary-rgb), 0.3)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(var(--color-primary-rgb), 0.5)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  disabled={loading || !!(shouldShowModal && showImportantModal)}
+                />
+                <motion.button
+                  onClick={handleSend}
+                  disabled={!input.trim() || loading || !!(shouldShowModal && showImportantModal)}
+                  className="p-3.5 rounded-full shadow-xl disabled:opacity-50 transition-all"
+                  style={{
+                    background: `linear-gradient(to right, var(--color-gradient-from), var(--color-gradient-to))`,
+                    color: determineTextColorForGradient(
+                      getCSSVar('--color-gradient-from', '#06b6d4'),
+                      getCSSVar('--color-gradient-to', '#3b82f6')
+                    ),
+                  }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.92 }}
+                >
+                  <Send size={20} />
+                </motion.button>
+              </div>
+            )}
           </div>
-        </motion.div>
-
-        {/* Tracker – RIGHT (Desktop Only) */}
-        <div className="w-80 hidden md:block flex-shrink-0">
-          <AnalysisTracker />
         </div>
       </div>
-
-      {/* Completion Modal - Conditionally rendered when progress is complete (important for mobile) */}
-      {progress >= 100 && <CompletionModal />}
     </>
   );
 }

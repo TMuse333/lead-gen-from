@@ -2,6 +2,7 @@
 // Utilities for working with color themes
 
 import { ColorTheme, DEFAULT_THEME } from './defaultTheme';
+import { determineTextColor, determineTextColorForGradient } from './contrastUtils';
 
 /**
  * Convert hex color to RGB values
@@ -14,8 +15,19 @@ function hexToRgb(hex: string): string {
 
 /**
  * Generate CSS variables from a color theme
+ * Includes auto-calculated contrast text colors for accessibility
  */
 export function generateCSSVariables(theme: ColorTheme): string {
+  // Auto-calculate text colors for optimal contrast
+  const textOnBackground = determineTextColor(theme.background);
+  const textOnSurface = determineTextColor(theme.surface);
+  const textOnPrimary = determineTextColor(theme.primary);
+  const textOnGradient = determineTextColorForGradient(theme.gradientFrom, theme.gradientTo);
+
+  // Secondary text (dimmed) versions
+  const textOnBackgroundDim = textOnBackground === '#ffffff' ? 'rgba(255,255,255,0.6)' : 'rgba(30,41,59,0.6)';
+  const textOnSurfaceDim = textOnSurface === '#ffffff' ? 'rgba(255,255,255,0.6)' : 'rgba(30,41,59,0.6)';
+
   return `
     :root {
       --color-primary: ${theme.primary};
@@ -27,10 +39,19 @@ export function generateCSSVariables(theme: ColorTheme): string {
       --color-surface: ${theme.surface};
       --color-surface-rgb: ${hexToRgb(theme.surface)};
       --color-text: ${theme.text};
+      --color-text-rgb: ${hexToRgb(theme.text)};
       --color-text-secondary: ${theme.textSecondary};
       --color-text-secondary-rgb: ${hexToRgb(theme.textSecondary)};
       --color-border: ${theme.border};
-      
+
+      /* Auto-contrast text colors - use these for text on colored backgrounds */
+      --color-text-on-background: ${textOnBackground};
+      --color-text-on-background-dim: ${textOnBackgroundDim};
+      --color-text-on-surface: ${textOnSurface};
+      --color-text-on-surface-dim: ${textOnSurfaceDim};
+      --color-text-on-primary: ${textOnPrimary};
+      --color-text-on-gradient: ${textOnGradient};
+
       /* Placeholder color */
       --color-placeholder: rgba(${hexToRgb(theme.textSecondary)}, 0.5);
       --color-success: ${theme.success};
@@ -40,11 +61,8 @@ export function generateCSSVariables(theme: ColorTheme): string {
       --color-button-hover: ${theme.buttonHover};
       --color-gradient-from: ${theme.gradientFrom};
       --color-gradient-to: ${theme.gradientTo};
-      
-      /* Placeholder color */
-      --color-placeholder: rgba(${hexToRgb(theme.textSecondary)}, 0.5);
     }
-    
+
     /* Global placeholder styling */
     input::placeholder,
     textarea::placeholder {

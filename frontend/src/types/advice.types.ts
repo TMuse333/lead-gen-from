@@ -1,6 +1,8 @@
 // types/advice.types.ts
 // Advice type definitions with extensible const array approach
 
+import type { OfferType } from '@/lib/offers/unified';
+
 /**
  * All valid advice types. Add new types here as needed.
  * This is the single source of truth for advice types.
@@ -11,6 +13,15 @@ export const ADVICE_TYPES = [
 ] as const;
 
 /**
+ * Knowledge kind - distinguishes tips from stories
+ * tip: General advice ("Do X when Y")
+ * story: Past client experience with narrative arc
+ */
+export const KNOWLEDGE_KINDS = ['tip', 'story'] as const;
+export type KnowledgeKind = typeof KNOWLEDGE_KINDS[number];
+export const DEFAULT_KNOWLEDGE_KIND: KnowledgeKind = 'tip';
+
+/**
  * TypeScript union type auto-generated from ADVICE_TYPES array
  */
 export type AdviceType = typeof ADVICE_TYPES[number];
@@ -19,6 +30,100 @@ export type AdviceType = typeof ADVICE_TYPES[number];
  * Default advice type for backward compatibility
  */
 export const DEFAULT_ADVICE_TYPE: AdviceType = 'general-advice';
+
+// ==================== OFFER-SPECIFIC PLACEMENT TYPES ====================
+
+/**
+ * Timeline phase IDs - locations within the real-estate-timeline offer
+ */
+export type TimelinePhaseId =
+  | 'financial-prep'
+  | 'find-agent'
+  | 'house-hunting'
+  | 'make-offer'
+  | 'under-contract'
+  | 'closing'
+  | 'post-closing'
+  // Selling-specific phases
+  | 'home-prep'
+  | 'choose-agent-price'
+  | 'list-property'
+  | 'marketing-showings'
+  | 'review-offers'
+  | 'under-contract-sell'
+  | 'closing-sell'
+  // Browsing-specific phases
+  | 'understand-options'
+  | 'financial-education'
+  | 'market-research'
+  | 'decision-time'
+  | 'next-steps'
+  | string; // Allow custom phases
+
+/**
+ * PDF section IDs - locations within the pdf offer
+ */
+export type PdfSectionId =
+  | 'executive-summary'
+  | 'market-analysis'
+  | 'property-details'
+  | 'recommendations'
+  | 'next-steps'
+  | string;
+
+/**
+ * Video segment IDs - locations within the video offer
+ */
+export type VideoSegmentId =
+  | 'intro'
+  | 'property-tour'
+  | 'neighborhood'
+  | 'market-context'
+  | 'call-to-action'
+  | string;
+
+/**
+ * Home estimate component IDs
+ */
+export type EstimateComponentId =
+  | 'valuation'
+  | 'comparables'
+  | 'market-trends'
+  | 'recommendations'
+  | string;
+
+/**
+ * Landing page section IDs
+ */
+export type LandingPageSectionId =
+  | 'hero'
+  | 'features'
+  | 'testimonials'
+  | 'cta'
+  | string;
+
+/**
+ * Map of offer types to their location identifier types
+ * Extend this as you add new offers
+ */
+export type OfferLocationMap = {
+  'real-estate-timeline': TimelinePhaseId;
+  'pdf': PdfSectionId;
+  'video': VideoSegmentId;
+  'home-estimate': EstimateComponentId;
+  'landingPage': LandingPageSectionId;
+  'custom': string;
+};
+
+/**
+ * Placement map: which locations within which offers
+ * Keys are offer types, values are arrays of location identifiers
+ */
+export type AdvicePlacements = Partial<{
+  [K in OfferType]: string[];
+}>;
+
+// ==================== TYPE GUARDS & HELPERS ====================
 
 /**
  * Type guard to check if a string is a valid advice type
@@ -68,6 +173,31 @@ export function ensureTypeTag(
 }
 
 /**
+ * Check if advice has placement for a specific offer type
+ */
+export function hasPlacementForOffer(
+  placements: AdvicePlacements | undefined,
+  offerType: OfferType
+): boolean {
+  if (!placements) return false;
+  const locations = placements[offerType];
+  return Array.isArray(locations) && locations.length > 0;
+}
+
+/**
+ * Check if advice has placement for a specific location within an offer
+ */
+export function hasPlacementForLocation(
+  placements: AdvicePlacements | undefined,
+  offerType: OfferType,
+  location: string
+): boolean {
+  if (!placements) return false;
+  const locations = placements[offerType];
+  return Array.isArray(locations) && locations.includes(location);
+}
+
+/**
  * Agent Advice Scenario interface
  * Represents an advice item retrieved from Qdrant
  */
@@ -78,8 +208,13 @@ export interface AgentAdviceScenario {
   advice: string;
   tags: string[];
   type?: AdviceType; // Optional advice type
+  kind?: KnowledgeKind; // tip or story
   applicableWhen?: {
     flow?: string[];
+    /** Which offer types this advice applies to (empty = all offers) */
+    offerTypes?: OfferType[];
+    /** Specific locations within offers (e.g., timeline phases, pdf sections) */
+    placements?: AdvicePlacements;
     conditions?: Record<string, string[]>;
     ruleGroups?: any[]; // RuleGroup[] from rules.types
     minMatchScore?: number;

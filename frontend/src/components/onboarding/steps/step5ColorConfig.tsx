@@ -23,12 +23,12 @@ export default function Step5ColorConfig() {
 
   const handleNext = () => {
     setColorConfig(selectedTheme);
-    markStepComplete(5);
-    setCurrentStep(6);
+    markStepComplete(4); // Now step 4 (was step 5)
+    setCurrentStep(5); // Go to Step 5: Complete
   };
 
   const handleBack = () => {
-    setCurrentStep(4);
+    setCurrentStep(3); // Back to Step 3: Knowledge Base
   };
 
   return (

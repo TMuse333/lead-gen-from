@@ -1,4 +1,4 @@
-// app/api/chat/smart/route.ts
+// app/api/chat/smart/route.ts - UNIFIED OFFER SYSTEM
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { normalizeToRealEstateSchemaPrompt } from '@/lib/openai/normalizers/normalizeToRealEstateSchema';
@@ -8,19 +8,34 @@ import { createBaseTrackingObject, updateTrackingWithResponse } from '@/lib/toke
 import { trackUsageAsync } from '@/lib/tokenUsage/trackUsage';
 import type { ChatIntentClassificationUsage, ChatReplyGenerationUsage } from '@/types/tokenUsage.types';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
-
+import {
+  getOffer,
+  getQuestion,
+  getNextQuestion,
+  getQuestionCount,
+  type OfferType,
+  type Intent,
+} from '@/lib/offers/unified';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
 interface ChatRequest {
+  // Button click
   buttonId?: string;
   buttonValue?: string;
   buttonLabel?: string;
+  // Free text
   freeText?: string;
-  currentFlow: string;
-  currentNodeId: string;
+  // Unified offer system (new)
+  selectedOffer?: OfferType;
+  currentIntent?: Intent;
+  currentQuestionId?: string;
+  // Legacy support
+  currentFlow?: string;
+  currentNodeId?: string;
+  // Common
   userInput: Record<string, string>;
   messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
   flowConfig?: any;
@@ -28,9 +43,9 @@ interface ChatRequest {
 }
 
 // ————————————————————————
-// Shared JSON LLM helper (safe + consistent)
+// Shared JSON LLM helper
 // ————————————————————————
-async function callJsonLlm<T = any>(prompt: string, model = 'gpt-4o-mini'): Promise<T> {
+async function callJsonLlm<T = unknown>(prompt: string, model = 'gpt-4o-mini'): Promise<T> {
   const completion = await openai.chat.completions.create({
     model,
     messages: [{ role: 'user', content: prompt }],
@@ -51,7 +66,7 @@ async function callJsonLlm<T = any>(prompt: string, model = 'gpt-4o-mini'): Prom
 }
 
 // ————————————————————————
-// Intent classification (replaces old classifyUserIntent)
+// Intent classification
 // ————————————————————————
 interface IntentAnalysis {
   primary:
@@ -108,7 +123,7 @@ async function analyzeUserIntent(params: {
 
     const content = completion.choices[0].message.content?.trim();
     if (!content) throw new Error('Empty response from LLM');
-    
+
     const result = JSON.parse(content) as IntentAnalysis;
 
     // Track usage
@@ -172,7 +187,7 @@ export async function POST(req: NextRequest) {
     try {
       const session = await auth();
       userId = session?.user?.id;
-    } catch (error) {
+    } catch {
       // Not authenticated, continue
     }
 
@@ -201,25 +216,98 @@ export async function POST(req: NextRequest) {
       buttonId,
       buttonValue,
       freeText,
+      selectedOffer,
+      currentIntent,
+      currentQuestionId,
+      userInput,
+      messages,
+      questionConfig,
+      // Legacy
       currentFlow,
       currentNodeId,
-      userInput,
       flowConfig,
-      questionConfig,
-      messages,
     } = body;
 
-    const flow = flowConfig;
-    const currentQuestion = questionConfig;
+    // ——————————————————
+    // Resolve current question - unified or legacy
+    // ——————————————————
+    let currentQuestion: { id: string; text: string; mappingKey: string; buttons?: any[] } | null = null;
+    let nextQuestion: { id: string; text: string; mappingKey: string; buttons?: any[] } | null = null;
+    let totalQuestions = 6;
+    let currentIndex = 0;
+    let offerLabel = 'Real Estate Assistant';
 
-    if (!flow || !currentQuestion || !currentQuestion.mappingKey) {
-      return NextResponse.json({ error: 'Invalid config' }, { status: 400 });
+    if (selectedOffer && currentIntent && currentQuestionId) {
+      // Use unified offer system
+      const offer = getOffer(selectedOffer);
+      if (offer) {
+        offerLabel = offer.label;
+        totalQuestions = getQuestionCount(selectedOffer, currentIntent);
+
+        const question = getQuestion(selectedOffer, currentIntent, currentQuestionId);
+        if (question) {
+          currentQuestion = {
+            id: question.id,
+            text: question.text,
+            mappingKey: question.mappingKey,
+            buttons: question.buttons?.map(b => ({
+              id: b.id,
+              label: b.label,
+              value: b.value,
+            })),
+          };
+
+          // Find current index
+          const questions = offer.questions[currentIntent] || [];
+          currentIndex = questions.findIndex(q => q.id === currentQuestionId);
+        }
+
+        const next = getNextQuestion(selectedOffer, currentIntent, currentQuestionId);
+        if (next) {
+          nextQuestion = {
+            id: next.id,
+            text: next.text,
+            mappingKey: next.mappingKey,
+            buttons: next.buttons?.map(b => ({
+              id: b.id,
+              label: b.label,
+              value: b.value,
+            })),
+          };
+        }
+      }
+    } else if (questionConfig && flowConfig) {
+      // Legacy flow system
+      currentQuestion = {
+        id: questionConfig.id,
+        text: questionConfig.question,
+        mappingKey: questionConfig.mappingKey,
+        buttons: questionConfig.buttons,
+      };
+
+      const questions = flowConfig.questions || [];
+      totalQuestions = questions.length;
+      currentIndex = questions.findIndex((q: any) => q.id === (currentNodeId || currentQuestionId));
+      const nextQ = questions[currentIndex + 1];
+
+      if (nextQ) {
+        nextQuestion = {
+          id: nextQ.id,
+          text: nextQ.question,
+          mappingKey: nextQ.mappingKey,
+          buttons: nextQ.buttons,
+        };
+      }
+
+      offerLabel = flowConfig.name || 'Real Estate Assistant';
     }
 
-    const currentIndex = flow.questions.findIndex((q: any) => q.id === currentNodeId);
-    const nextQuestion = flow.questions[currentIndex + 1];
+    if (!currentQuestion || !currentQuestion.mappingKey) {
+      return NextResponse.json({ error: 'Invalid question config' }, { status: 400 });
+    }
+
     const isLastQuestion = !nextQuestion;
-    const progress = Math.round(((currentIndex + 1) / flow.questions.length) * 100);
+    const progress = Math.round(((currentIndex + 1) / totalQuestions) * 100);
 
     const isButtonClick = !!buttonId && !!buttonValue;
     const isFreeText = !!freeText && !isButtonClick;
@@ -244,8 +332,8 @@ export async function POST(req: NextRequest) {
 
       const intent = await analyzeUserIntent({
         userMessage: freeText!,
-        currentQuestion: currentQuestion.question,
-        flowName: flow.name,
+        currentQuestion: currentQuestion.text,
+        flowName: offerLabel,
         previousContext,
         userId,
         conversationId: (body as any)?.conversationId,
@@ -253,7 +341,7 @@ export async function POST(req: NextRequest) {
 
       if (intent.primary !== 'direct_answer') {
         const helpPrompt = `User said: "${freeText}"
-They were asked: "${currentQuestion.question}"
+They were asked: "${currentQuestion.text}"
 But they gave a ${intent.primary} response.
 
 Rephrase the question warmly and clearly.
@@ -267,11 +355,16 @@ Keep it short and kind.`;
           max_tokens: 180,
         });
 
-        const reply = completion.choices[0].message.content?.trim() || `Got it! Just to clarify: ${currentQuestion.question}`;
+        const reply = completion.choices[0].message.content?.trim() || `Got it! Just to clarify: ${currentQuestion.text}`;
 
         return NextResponse.json({
           reply,
-          nextQuestion: { ...currentQuestion },
+          nextQuestion: {
+            id: currentQuestion.id,
+            question: currentQuestion.text,
+            buttons: currentQuestion.buttons || [],
+            mappingKey: currentQuestion.mappingKey,
+          },
           progress,
           isComplete: false,
         });
@@ -295,11 +388,12 @@ Keep it short and kind.`;
     // ——————————————————
     (async () => {
       try {
-        const prompt = normalizeToRealEstateSchemaPrompt(userInput, currentFlow as any);
-        const normalized = await callJsonLlm(prompt);
-
-        console.log('Profile normalized:', normalized);
-        // TODO: Save to DB, Redis, or emit via WebSocket
+        const intentForNormalization = currentIntent || currentFlow;
+        if (intentForNormalization) {
+          const prompt = normalizeToRealEstateSchemaPrompt(userInput, intentForNormalization as any);
+          const normalized = await callJsonLlm(prompt);
+          console.log('Profile normalized:', normalized);
+        }
       } catch (error) {
         console.error('Background normalization failed:', error);
       }
@@ -308,11 +402,11 @@ Keep it short and kind.`;
     // ——————————————————
     // 5. Generate warm reply
     // ——————————————————
-    const systemPrompt = `You are Chris's friendly AI assistant for ${flow.name}.
+    const systemPrompt = `You are a friendly AI assistant for ${offerLabel}.
 
 User just answered: "${answerValue}"
-They were asked: "${currentQuestion.question}"
-${nextQuestion ? `Next question will be: "${nextQuestion.question}"` : 'This was the final question.'}
+They were asked: "${currentQuestion.text}"
+${nextQuestion ? `Next question will be: "${nextQuestion.text}"` : 'This was the final question.'}
 
 Reply in 2–3 warm, natural sentences:
 - Acknowledge their answer positively
@@ -334,7 +428,7 @@ Be kind, human, and engaging.`;
     const replyEndTime = Date.now();
 
     const reply = completion.choices[0].message.content?.trim() || 'Thanks!';
-    
+
     // Track usage
     const baseTracking = createBaseTrackingObject({
       userId,
@@ -359,8 +453,8 @@ Be kind, human, and engaging.`;
       featureData: {
         conversationId: (body as any)?.conversationId,
         answerValue,
-        currentQuestion: currentQuestion.question,
-        nextQuestion: nextQuestion?.question,
+        currentQuestion: currentQuestion.text,
+        nextQuestion: nextQuestion?.text,
         isLastQuestion,
         replyLength: reply.length,
       },
@@ -374,9 +468,8 @@ Be kind, human, and engaging.`;
       nextQuestion: nextQuestion
         ? {
             id: nextQuestion.id,
-            question: nextQuestion.question,
+            question: nextQuestion.text,
             buttons: nextQuestion.buttons || [],
-            allowFreeText: nextQuestion.allowFreeText,
             mappingKey: nextQuestion.mappingKey,
           }
         : null,

@@ -54,6 +54,7 @@ export type {
   // ==================== GENERATOR ====================
   export {
     generateOffer,
+    generateFromUnifiedOffer,
   } from './core/generator';
   
   // ==================== VALIDATORS ====================

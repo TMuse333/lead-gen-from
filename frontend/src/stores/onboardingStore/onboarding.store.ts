@@ -8,7 +8,7 @@ import { DEFAULT_ADVICE_TYPE } from '@/types/advice.types';
 
 export type DataCollectionType = 'email' | 'phone' | 'propertyAddress' | 'custom';
 export type FlowIntention = 'buy' | 'sell' | 'browse';
-export type OfferType = 'pdf' | 'landingPage' | 'video' | 'home-estimate' | 'custom';
+export type OfferType = 'pdf' | 'landingPage' | 'video' | 'home-estimate' | 'custom' | 'real-estate-timeline';
 
 export interface OnboardingState {
   // Step 1: Business Info & Setup

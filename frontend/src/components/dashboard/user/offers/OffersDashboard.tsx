@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
+import {
   Gift, FileText, Layout, Video, Home, Sparkles,
   Plus, Settings, Play, AlertCircle, CheckCircle2,
-  ArrowRight, ExternalLink
+  ArrowRight, ExternalLink, Calendar
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useUserConfig } from '@/contexts/UserConfigContext';
@@ -96,6 +96,10 @@ export default function OffersDashboard() {
                 Examples include:
               </p>
               <ul className="space-y-2 text-slate-300">
+                <li className="flex items-start gap-2">
+                  <Calendar className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span><strong>Real Estate Timeline</strong> - Personalized step-by-step timeline (Recommended)</span>
+                </li>
                 <li className="flex items-start gap-2">
                   <FileText className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
                   <span><strong>PDF Guides</strong> - Downloadable resources personalized to their situation</span>
@@ -311,6 +315,8 @@ export default function OffersDashboard() {
 
 function getOfferIcon(type: OfferType) {
   switch (type) {
+    case 'real-estate-timeline':
+      return Calendar;
     case 'pdf':
       return FileText;
     case 'landingPage':

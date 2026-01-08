@@ -12,7 +12,7 @@ import {
   FileText,
   ClipboardList,
   FileCode,
-  Database,
+  Eye,
   Settings,
   Play,
   BarChart3,
@@ -20,6 +20,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  BookOpen,
 } from 'lucide-react';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { EditorTab } from '@/types/offers/offerCustomization.types';
@@ -34,12 +35,14 @@ import { OutputTab } from './tabs/OutputTab';
 import { SettingsTab } from './tabs/SettingsTab';
 import { TestTab } from './tabs/TestTab';
 import { AnalyticsTab } from './tabs/AnalyticsTab';
+import { KnowledgeTab } from './tabs/KnowledgeTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: FileText },
   { id: 'inputs', label: 'Input Requirements', icon: ClipboardList },
+  { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'prompt', label: 'Prompt', icon: FileCode },
-  { id: 'output', label: 'Output Schema', icon: Database },
+  { id: 'output', label: 'Output Preview', icon: Eye },
   { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'test', label: 'Test', icon: Play },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -319,8 +322,9 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
           />
         )}
         {activeTab === 'inputs' && <InputsTab definition={definition} />}
+        {activeTab === 'knowledge' && <KnowledgeTab offerType={offerType} />}
         {activeTab === 'prompt' && <PromptTab definition={definition} offerType={offerType} />}
-        {activeTab === 'output' && <OutputTab definition={definition} />}
+        {activeTab === 'output' && <OutputTab definition={definition} agentName={config?.businessName} />}
         {activeTab === 'settings' && (
           <SettingsTab
             definition={definition}

@@ -10,20 +10,24 @@ import { LlmOutput } from "@/types/componentSchema";
 import { GenerationDebugInfo } from "@/stores/chatStore";
 import { GenerationSummary } from "@/components/ux/resultsComponents/generationSummary";
 import { ErrorBoundary } from "@/components/errorBoundary";
-import { 
-  GenericOutputDisplay, 
-  GenericContentCard, 
+import {
+  GenericOutputDisplay,
+  GenericContentCard,
   GenericKeyValueList,
-  CompactDebugPanel 
+  CompactDebugPanel
 } from "@/components/ux/resultsComponents/genericOutput";
-import { 
-  isSimpleContent, 
-  isKeyValueData, 
-  isValidOutputComponent 
+import {
+  isSimpleContent,
+  isKeyValueData,
+  isValidOutputComponent
 } from "@/types/genericOutput.types";
+import { TimelineLandingPage } from "@/components/ux/resultsComponents/timeline";
+import type { TimelineOutput } from "@/lib/offers/definitions/timeline/timeline-types";
+import type { ColorTheme } from "@/lib/colors/defaultTheme";
 
 const STORAGE_KEY = "llmResultsCache";
 const DEBUG_STORAGE_KEY = "llmDebugCache";
+const COLOR_THEME_KEY = "colorThemeCache";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -31,6 +35,7 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [localDebugInfo, setLocalDebugInfo] = useState<GenerationDebugInfo | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [colorTheme, setColorTheme] = useState<ColorTheme | null>(null);
 
   const llmOutput = useChatStore(selectLlmOutput);
   const isComplete = useChatStore(selectIsComplete);
@@ -122,16 +127,34 @@ export default function ResultsPage() {
       return null;
     };
 
+    const loadColorThemeFromCache = (): ColorTheme | null => {
+      try {
+        const cached = localStorage.getItem(COLOR_THEME_KEY);
+        if (!cached) return null;
+        const parsed = JSON.parse(cached);
+        console.log("Cache hit: Loaded color theme from localStorage");
+        return parsed as ColorTheme;
+      } catch (err) {
+        console.warn("Failed to parse cached color theme:", err);
+      }
+      return null;
+    };
+
     const cached = loadFromCache();
     const cachedDebug = loadDebugFromCache();
-    
+    const cachedColorTheme = loadColorThemeFromCache();
+
     if (cached) {
       setLlmOutput(cached);
       setLoading(false);
     }
-    
+
     if (cachedDebug) {
       setLocalDebugInfo(cachedDebug);
+    }
+
+    if (cachedColorTheme) {
+      setColorTheme(cachedColorTheme);
     }
   }, [setLlmOutput]);
   
@@ -320,11 +343,26 @@ export default function ResultsPage() {
 
   console.log('✅ Available components:', availableComponents);
 
-  // Filter out debug data from main output
-  const { _debug, ...mainOutput } = data;
-  
+  // Filter out debug and stories data from main output
+  const { _debug, _stories, ...mainOutput } = data as typeof data & { _stories?: Record<string, any[]> };
+
+  // Extract stories by phase
+  const storiesByPhase = _stories || {};
+
+  // Check if this is timeline data
+  const isTimelineData = (data: any): data is TimelineOutput => {
+    return data && typeof data === 'object' &&
+           data.type === 'real-estate-timeline' &&
+           Array.isArray(data.phases);
+  };
+
+  // Check if the main output contains timeline data
+  const timelineEntry = Object.entries(mainOutput).find(([key, value]) =>
+    isTimelineData(value)
+  );
+
   // Convert main output to array of entries for flexible rendering
-  const outputEntries = Object.entries(mainOutput).filter(([key, value]) => 
+  const outputEntries = Object.entries(mainOutput).filter(([key, value]) =>
     isValidOutputComponent(value)
   );
 
@@ -352,8 +390,25 @@ export default function ResultsPage() {
             </ErrorBoundary>
           )}
 
-          {/* Generic LLM Output Display */}
-          {outputEntries.length > 0 && (
+          {/* Timeline Landing Page - Special Rendering */}
+          {timelineEntry && (
+            <ErrorBoundary
+              fallback={
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800">Error rendering timeline</p>
+                </div>
+              }
+            >
+              <TimelineLandingPage
+                data={timelineEntry[1] as TimelineOutput}
+                colorTheme={colorTheme || undefined}
+                storiesByPhase={storiesByPhase}
+              />
+            </ErrorBoundary>
+          )}
+
+          {/* Generic LLM Output Display - Only show if not timeline */}
+          {!timelineEntry && outputEntries.length > 0 && (
             <div className="space-y-6">
               {outputEntries.map(([key, value], index) => {
                 // Use type guards to determine the best component type
@@ -371,12 +426,12 @@ export default function ResultsPage() {
                   >
                     {isSimple ? (
                       <GenericContentCard
-                        title={(value as { title?: string; heading?: string }).title || 
-                               (value as { heading?: string }).heading || 
+                        title={(value as { title?: string; heading?: string }).title ||
+                               (value as { heading?: string }).heading ||
                                key.replace(/([A-Z])/g, ' $1').trim()}
-                        content={(value as { content?: string; text?: string; message?: string }).content || 
-                                 (value as { text?: string; message?: string }).text || 
-                                 (value as { message?: string }).message || 
+                        content={(value as { content?: string; text?: string; message?: string }).content ||
+                                 (value as { text?: string; message?: string }).text ||
+                                 (value as { message?: string }).message ||
                                  JSON.stringify(value, null, 2)}
                         type="info"
                         className="w-full"

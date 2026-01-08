@@ -1,24 +1,37 @@
-// components/chatWithTracker.tsx - TOGGLEABLE MOBILE VERSION
+// components/chatWithTracker.tsx - SIMPLIFIED VERSION
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  useChatStore, 
-  selectMessages, 
-  selectLoading, 
-  selectShowTracker, 
-  selectUserInput, 
+import {
+  useChatStore,
+  selectMessages,
+  selectLoading,
+  selectShowTracker,
+  selectUserInput,
   selectIsComplete,
   selectCurrentFlow,
-  selectProgress
+  selectCurrentIntent,
+  selectProgress,
+  selectEnabledOffers,
+  selectSelectedOffer,
+  selectShowContactModal
 } from '@/stores/chatStore';
 
 import { GameChat } from './chat/gameChat';
 import { Loader2 } from 'lucide-react';
-import { useConversationStore } from '@/stores/conversationConfig/conversation.store';
 import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
+import { getQuestionCount, getQuestion, type OfferType } from '@/lib/offers/unified';
+import { ContactCollectionModal, ContactRetriggerButton, type ContactData } from './modals/ContactCollectionModal';
+import { GenerationLoadingOverlay, GENERATION_STEPS } from './components/GenerationLoadingOverlay';
+
+// Analytics tracking for contact collection
+interface ContactAnalytics {
+  firstAttemptShown: boolean;
+  firstAttemptCompleted: boolean;
+  skippedCount: number;
+  retryCompleted: boolean;
+}
 
 interface ClientConfig {
   id: string;
@@ -51,7 +64,11 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   const userInput = useChatStore(selectUserInput);
   const isComplete = useChatStore(selectIsComplete);
   const currentFlow = useChatStore(selectCurrentFlow);
+  const currentIntent = useChatStore(selectCurrentIntent);
+  const selectedOffer = useChatStore(selectSelectedOffer);
   const progress = useChatStore(selectProgress);
+  const currentNodeId = useChatStore((s) => s.currentNodeId);
+  const enabledOffers = useChatStore(selectEnabledOffers);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const handleButtonClick = useChatStore((s) => s.handleButtonClick);
   const setLlmOutput = useChatStore((s) => s.setLlmOutput);
@@ -59,17 +76,30 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   const setDebugInfo = useChatStore((s) => s.setDebugInfo);
   const conversationId = useChatStore((s) => s.conversationId);
   const updateConversation = useChatStore((s) => s.updateConversation);
-
-  // Config store
-  const configHydrated = useConversationStore((s) => s.hydrated);
-  const getFlow = useConversationStore((s) => s.getFlow);
-  const loadClientFlows = useConversationStore((s) => s.loadClientFlows);
+  const updateInitialMessage = useChatStore((s) => s.updateInitialMessage);
+  // Modal state from store - triggered when reaching a question with triggersContactModal flag
+  const storeShowContactModal = useChatStore(selectShowContactModal);
+  const setStoreShowContactModal = useChatStore((s) => s.setShowContactModal);
 
   // Local state
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); // NEW: State for chat open/close
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [hasSkippedContact, setHasSkippedContact] = useState(false);
+  const [contactMessageSent, setContactMessageSent] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState<string>('config');
+  const [generationPercent, setGenerationPercent] = useState<number>(0);
+  const [generationMessage, setGenerationMessage] = useState<string>('');
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const submissionCalledRef = useRef(false);
   const clientConfigLoadedRef = useRef(false);
+  const contactAnalyticsRef = useRef<ContactAnalytics>({
+    firstAttemptShown: false,
+    firstAttemptCompleted: false,
+    skippedCount: 0,
+    retryCompleted: false,
+  });
   
   // Handlers for chat toggle
   const toggleChat = () => setIsChatOpen(prev => !prev);
@@ -80,39 +110,43 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
     console.log('🔄 isComplete changed to:', isComplete);
   }, [isComplete]);
 
-  // Load client config flows and colors if provided
+  // Load client config and colors if provided
   useEffect(() => {
-    if (clientConfig && !clientConfigLoadedRef.current && configHydrated) {
-      console.log('🔄 Loading client configuration flows...', {
+    if (clientConfig && !clientConfigLoadedRef.current) {
+      console.log('🔄 Loading client configuration...', {
         businessName: clientConfig.businessName,
-        flows: Object.keys(clientConfig.conversationFlows),
+        selectedOffers: clientConfig.selectedOffers,
       });
-      
-      // Store client identifier for API calls
+
+      // Store client identifier and config for API calls and UI
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('clientId', clientConfig.businessName);
+        sessionStorage.setItem('businessName', clientConfig.businessName);
         sessionStorage.setItem('clientQdrantCollection', clientConfig.qdrantCollectionName);
+        sessionStorage.setItem('selectedOffers', JSON.stringify(clientConfig.selectedOffers || []));
+
+        // Update the initial message with the loaded config
+        updateInitialMessage();
       }
-      
-      // Load client's flows into conversation store
-      loadClientFlows(clientConfig.conversationFlows);
-      
+
       // Inject color theme CSS variables
       const theme = getTheme(clientConfig.colorConfig);
       injectColorTheme(theme);
-      
+
+      // Store color theme for results page
+      if (typeof window !== 'undefined' && clientConfig.colorConfig) {
+        localStorage.setItem('colorThemeCache', JSON.stringify(clientConfig.colorConfig));
+      }
+
       clientConfigLoadedRef.current = true;
-      console.log('✅ Client flows and colors loaded');
+      console.log('✅ Client config and colors loaded');
     }
-  }, [clientConfig, configHydrated, loadClientFlows]);
+  }, [clientConfig, updateInitialMessage]);
 
-  // Initialize: Wait for hydration + run migration once
+  // Initialize on mount
   useEffect(() => {
-    if (!configHydrated) return;
-
-    // If client config is provided, skip default migration
-    if (clientConfig) {
-      setIsInitialized(true);
+    // If client config is provided, wait for it to load
+    if (clientConfig && !clientConfigLoadedRef.current) {
       return;
     }
 
@@ -122,202 +156,385 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
       injectColorTheme(DEFAULT_THEME);
     }
 
-    // Check if migration already ran
-    const migrated = localStorage.getItem('flows-migrated');
-    
-    if (!migrated) {
-      console.log('🔄 Running conversation flows migration...');
-      try {
-        localStorage.setItem('flows-migrated', 'true');
-        console.log('✅ Migration complete!');
-      } catch (error) {
-        console.error('❌ Migration failed:', error);
-      }
-    }
-
     setIsInitialized(true);
-  }, [configHydrated, clientConfig]);
+  }, [clientConfig]);
 
-  // Calculate dynamic steps from current flow
-  const currentFlowData = currentFlow ? getFlow(currentFlow) : null;
-  const totalSteps = currentFlowData?.questions.length || 6;
+  // Calculate dynamic steps from unified offer system
+  const totalSteps = (enabledOffers?.length > 0 && currentIntent)
+    ? getQuestionCount(enabledOffers, currentIntent)
+    : 6;
   const completedSteps = Object.keys(userInput).length;
   const currentStep = completedSteps < totalSteps ? completedSteps : totalSteps - 1;
 
-  // Submit to API when chat is complete
+  // Add a bot message asking for contact info
+  const addContactRequestMessage = useCallback(() => {
+    if (contactMessageSent) return;
+
+    const { addMessage } = useChatStore.getState();
+    addMessage({
+      role: 'assistant',
+      content: "Great job answering all the questions! 🎉 Before I generate your personalized results, I just need a few quick details so we can connect you with the right expert.",
+      timestamp: new Date(),
+    });
+    setContactMessageSent(true);
+  }, [contactMessageSent]);
+
+  // Watch for store's showContactModal flag (triggered when reaching a question with triggersContactModal)
+  // This is the NEW flow - modal shows BEFORE isComplete, when the email question is reached
   useEffect(() => {
-    console.log('🔍 Submission useEffect triggered:');
+    if (storeShowContactModal && !showContactModal && !hasSkippedContact) {
+      console.log('📧 Store triggered contact modal - showing modal');
+      // Add the bot message first
+      addContactRequestMessage();
+      // Small delay to let message render, then show modal
+      setTimeout(() => {
+        setShowContactModal(true);
+        // Track analytics - first attempt
+        contactAnalyticsRef.current.firstAttemptShown = true;
+      }, 500);
+    }
+  }, [storeShowContactModal, showContactModal, hasSkippedContact, addContactRequestMessage]);
+
+  // Show contact modal when chat is complete
+  // Use intent (new system) with flow as fallback (legacy)
+  const effectiveIntent = currentIntent || currentFlow;
+
+  useEffect(() => {
+    console.log('🔍 Completion useEffect triggered:');
     console.log('   - isComplete:', isComplete);
+    console.log('   - currentIntent:', currentIntent);
     console.log('   - currentFlow:', currentFlow);
+    console.log('   - effectiveIntent:', effectiveIntent);
+    console.log('   - selectedOffer:', selectedOffer);
     console.log('   - userInput length:', Object.keys(userInput).length);
     console.log('   - submissionCalled:', submissionCalledRef.current);
-    
+    console.log('   - isGenerating:', isGenerating);
+    console.log('   - showContactModal:', showContactModal);
+    console.log('   - hasSkippedContact:', hasSkippedContact);
+
+    // Early exit conditions - prevent race conditions
     if (!isComplete) {
       console.log('❌ Not complete yet - skipping');
       return;
     }
-    
+
     if (submissionCalledRef.current) {
       console.log('❌ Already submitted - skipping');
       return;
     }
-    
-    if (!currentFlow || !userInput || Object.keys(userInput).length === 0) {
-      console.log('❌ Missing flow or userInput - skipping');
+
+    if (isGenerating) {
+      console.log('❌ Already generating - skipping');
       return;
     }
 
-    console.log('✅ ALL CHECKS PASSED - Calling API now!');
+    if (showContactModal) {
+      console.log('❌ Contact modal already showing - skipping');
+      return;
+    }
+
+    if (hasSkippedContact) {
+      console.log('ℹ️ User skipped contact - showing retrigger button instead');
+      return;
+    }
+
+    // Check for intent OR flow (support both new and legacy systems)
+    if (!effectiveIntent || !userInput || Object.keys(userInput).length === 0) {
+      console.log('❌ Missing intent/flow or userInput - skipping');
+      console.log('   effectiveIntent:', effectiveIntent);
+      console.log('   userInput keys:', Object.keys(userInput));
+      return;
+    }
+
+    // Check if all required contact info is already collected (name + email)
+    if (userInput.contactName && userInput.contactEmail) {
+      console.log('✅ Contact info already collected, starting generation directly');
+      submissionCalledRef.current = true;
+      startGeneration({
+        name: userInput.contactName,
+        email: userInput.contactEmail,
+        phone: userInput.contactPhone || '',
+      });
+    } else {
+      console.log('📋 Adding bot message and showing contact collection modal');
+      // Add the bot message first
+      addContactRequestMessage();
+      // Small delay to let message render, then show modal
+      setTimeout(() => {
+        setShowContactModal(true);
+        // Track analytics - first attempt
+        contactAnalyticsRef.current.firstAttemptShown = true;
+      }, 800);
+    }
+  }, [isComplete, currentIntent, currentFlow, effectiveIntent, selectedOffer, userInput, isGenerating, showContactModal, hasSkippedContact, addContactRequestMessage]);
+
+  // Handle contact submission from modal
+  const handleContactSubmit = useCallback((contact: ContactData) => {
+    console.log('📋 Contact submitted:', contact);
+    setShowContactModal(false);
+    setStoreShowContactModal(false); // Reset store flag
     submissionCalledRef.current = true;
-    closeChat(); // Close chat on successful submission
 
-    const submitFastResults = async () => {
-      try {
-        console.log('🚀 Fast-tracking results via /api/generation/generate-offer...', { 
-          currentFlow, 
-          userInput 
-        });
-        
-        // Include client identifier if available (for public bots)
-        const clientId = typeof window !== 'undefined' 
-          ? sessionStorage.getItem('clientId') 
-          : null;
-        
-        const requestBody: any = {
-          flow: currentFlow,
-          userInput,
-          conversationId: conversationId || undefined,
-        };
-        
-        if (clientId) {
-          requestBody.clientId = clientId;
-        }
-        
-        const { data } = await axios.post("/api/generation/generate-offer", requestBody, {
-          params: clientId ? { client: clientId } : {},
-        });
-        
-        console.log('✅ Results generated!', data);
-        
-        // Check if response has an error
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        // Validate that data has at least some components (flexible for different flows)
-        const componentKeys = Object.keys(data).filter(key => 
-          key !== '_debug' && 
-          data[key] !== null && 
-          data[key] !== undefined && 
-          typeof data[key] === 'object'
-        );
-        
-        if (componentKeys.length === 0) {
-          console.error('❌ Invalid response structure - no components found:', data);
-          throw new Error('API returned invalid data. No components found.');
-        }
-        
-        console.log('✅ Valid response with components:', componentKeys);
-        
-        // Separate debug info from actual data
-        const { _debug, ...llmOutput } = data;
-        
-        // Store to localStorage FIRST (more reliable than Zustand for cross-page navigation)
-        try {
-          localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
-          console.log('✅ Results cached to localStorage');
-        } catch (cacheErr) {
-          console.error('⚠️ Error caching to localStorage:', cacheErr);
-          throw new Error('Failed to cache results. Please try again.');
-        }
-        
-        // Store debug info to localStorage
-        if (_debug) {
-          try {
-            localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
-            console.log('📊 Debug info stored in localStorage:', _debug);
-          } catch (debugErr) {
-            console.error('⚠️ Error storing debug info:', debugErr);
-            // Non-critical, continue
-          }
-        }
-        
-        // Store LLM output in Zustand (for immediate access if on same page)
-        try {
-          setLlmOutput(llmOutput);
-          console.log('✅ LLM output stored in Zustand');
-        } catch (storeErr) {
-          console.error('⚠️ Error storing in Zustand (non-critical):', storeErr);
-          // Non-critical since we have localStorage
-        }
-        
-        // Store debug info in Zustand (if it exists)
-        if (_debug) {
-          try {
-            setDebugInfo(_debug);
-            console.log('📊 Debug info stored in Zustand');
-          } catch (debugErr) {
-            console.error('⚠️ Error storing debug info in Zustand:', debugErr);
-            // Non-critical, continue
-          }
-        }
+    // Track analytics
+    if (!contactAnalyticsRef.current.firstAttemptCompleted && contactAnalyticsRef.current.skippedCount === 0) {
+      contactAnalyticsRef.current.firstAttemptCompleted = true;
+      console.log('📊 Analytics: User completed contact on first attempt');
+    } else if (contactAnalyticsRef.current.skippedCount > 0) {
+      contactAnalyticsRef.current.retryCompleted = true;
+      console.log('📊 Analytics: User completed contact on retry (after skipping)');
+    }
 
-        // Update conversation status to completed
-        if (conversationId) {
-          try {
-            await updateConversation({
-              status: 'completed',
-              progress: 100,
-            });
-            console.log('✅ Conversation marked as completed');
-          } catch (convErr) {
-            console.error('⚠️ Error updating conversation status:', convErr);
-            // Non-critical, continue
-          }
-        }
-        
-        // Reset chat for next user
-        resetChat();
-        
-        // Longer delay to ensure localStorage is written and state is set
-        // This is critical for slower devices/networks
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Navigate to results page
-        // Using window.location for more reliable navigation across different browsers
-        window.location.href = '/results';
-      } catch (err: any) {
-        console.error('❌ Fast track failed:', err);
-        console.error('Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status,
-          userInput,
-          currentFlow,
-          stack: err.stack,
-        });
-        
-        // Log to console with full context for debugging
-        const errorDetails = {
-          timestamp: new Date().toISOString(),
-          error: err.message,
-          response: err.response?.data,
-          status: err.response?.status,
-          userInput,
-          currentFlow,
-          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
-        };
-        console.error('📋 Full error context:', JSON.stringify(errorDetails, null, 2));
-        
-        // Show user-friendly error message
-        const errorMessage = err.response?.data?.error || err.message || 'Unknown error occurred';
-        alert(`Error generating results: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
-        submissionCalledRef.current = false; // allow retry
+    // Log analytics summary
+    console.log('📊 Contact Analytics:', {
+      firstAttemptShown: contactAnalyticsRef.current.firstAttemptShown,
+      firstAttemptCompleted: contactAnalyticsRef.current.firstAttemptCompleted,
+      skippedCount: contactAnalyticsRef.current.skippedCount,
+      retryCompleted: contactAnalyticsRef.current.retryCompleted,
+      conversionType: contactAnalyticsRef.current.firstAttemptCompleted ? 'first_try' : 'retry',
+    });
+
+    // Add contact info to userInput using addAnswer for each field
+    const { addAnswer, setComplete } = useChatStore.getState();
+    addAnswer('contactName', contact.name);
+    addAnswer('contactEmail', contact.email);
+    if (contact.phone) {
+      addAnswer('contactPhone', contact.phone);
+    }
+    // Also keep 'email' for backwards compatibility with generation
+    addAnswer('email', contact.email);
+
+    // Mark as complete since contact was the final step
+    setComplete(true);
+
+    startGeneration(contact);
+  }, [setStoreShowContactModal]);
+
+  // Handle skip from contact modal
+  const handleContactSkip = useCallback(() => {
+    console.log('⏭️ User skipped contact collection');
+    setShowContactModal(false);
+    setStoreShowContactModal(false); // Reset store flag
+    setHasSkippedContact(true);
+
+    // Track skip analytics
+    contactAnalyticsRef.current.skippedCount += 1;
+    console.log('📊 Analytics: User skipped contact collection', {
+      skipCount: contactAnalyticsRef.current.skippedCount,
+    });
+
+    // Add a message letting user know they can complete it later
+    const { addMessage } = useChatStore.getState();
+    addMessage({
+      role: 'assistant',
+      content: "No worries! When you're ready to get your personalized results, just click the button below. 👇",
+      timestamp: new Date(),
+    });
+  }, [setStoreShowContactModal]);
+
+  // Handle re-trigger of contact modal
+  const handleContactRetrigger = useCallback(() => {
+    console.log('🔄 User clicked retrigger button');
+    setHasSkippedContact(false);
+    setShowContactModal(true);
+  }, []);
+
+  // Start generation with SSE
+  const startGeneration = useCallback(async (contact: ContactData) => {
+    setIsGenerating(true);
+    setGenerationStep('config');
+    setGenerationPercent(0);
+    setGenerationMessage('');
+    setGenerationError(null);
+
+    try {
+      // Read fresh values from store to avoid stale closure issues
+      const storeState = useChatStore.getState();
+      const freshIntent = storeState.currentIntent || storeState.currentFlow;
+      const freshOffer = storeState.selectedOffer || storeState.enabledOffers?.[0];
+      const freshUserInput = storeState.userInput;
+      const freshConversationId = storeState.conversationId;
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📤 [CLIENT] PREPARING GENERATION REQUEST');
+      console.log('   selectedOffer (from store):', storeState.selectedOffer || '❌ NULL');
+      console.log('   enabledOffers (from store):', storeState.enabledOffers);
+      console.log('   freshOffer (will be sent):', freshOffer || '❌ NULL');
+      console.log('   intent:', freshIntent);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      if (!freshIntent) {
+        throw new Error('No intent/flow selected. Please complete the conversation first.');
       }
-    };
 
-    submitFastResults();
-  }, [isComplete, currentFlow, userInput, setLlmOutput, resetChat, router, setDebugInfo]);
+      if (!freshOffer) {
+        console.error('🔴 [CLIENT] OFFER IS NULL! Cannot proceed.');
+        throw new Error('No offer selected. The chatbot did not set selectedOffer in the store.');
+      }
+
+      const clientId = typeof window !== 'undefined'
+        ? sessionStorage.getItem('clientId')
+        : null;
+
+      console.log('🔑 [CLIENT] clientId from sessionStorage:', clientId || '❌ NOT SET');
+
+      const requestBody: any = {
+        intent: freshIntent,
+        offer: freshOffer,
+        flow: freshIntent, // backwards compatibility
+        userInput: {
+          ...freshUserInput,
+          contactName: contact.name,
+          contactEmail: contact.email,
+          contactPhone: contact.phone,
+          email: contact.email,
+        },
+        conversationId: freshConversationId || undefined,
+      };
+
+      if (clientId) {
+        requestBody.clientId = clientId;
+        requestBody.clientIdentifier = clientId;
+      }
+
+      console.log('📤 [CLIENT] Request body:', { offer: requestBody.offer, intent: requestBody.intent, userInputKeys: Object.keys(requestBody.userInput) });
+
+      // Use fetch for SSE
+      const response = await fetch('/api/offers/generate-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          console.log('✅ SSE stream ended');
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete events
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            const eventType = line.slice(7);
+            continue;
+          }
+
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              console.log('📥 SSE Event:', data);
+
+              // Handle progress events
+              if (data.step) {
+                setGenerationStep(data.step);
+              }
+              if (data.percent !== undefined) {
+                setGenerationPercent(data.percent);
+              }
+              if (data.message) {
+                setGenerationMessage(data.message);
+              }
+
+              // Handle error events
+              if (data.error) {
+                throw new Error(data.error);
+              }
+
+              // Handle complete event (final data)
+              if (data._debug !== undefined || (!data.step && !data.error && Object.keys(data).length > 0)) {
+                console.log('✅ Received final data:', Object.keys(data));
+
+                const { _debug, ...llmOutput } = data;
+
+                // Store results
+                localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
+                if (_debug) {
+                  localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
+                }
+
+                setLlmOutput(llmOutput);
+                if (_debug) setDebugInfo(_debug);
+
+                // Update conversation status
+                if (freshConversationId) {
+                  try {
+                    await updateConversation({ status: 'completed', progress: 100 });
+                  } catch (e) {
+                    console.warn('Failed to update conversation status:', e);
+                  }
+                }
+
+                // Brief pause on complete step before redirect
+                setGenerationStep('complete');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Reset and redirect
+                resetChat();
+                window.location.href = '/results';
+                return;
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse SSE data:', line, parseError);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('❌ Generation failed:', err);
+      setGenerationError(err.message || 'Unknown error occurred');
+      setIsGenerating(false);
+      submissionCalledRef.current = false;
+    }
+    // Dependencies are minimal since we read fresh values from store directly
+  }, [setLlmOutput, setDebugInfo, updateConversation, resetChat]);
+
+  // Handle retry from error overlay
+  const handleRetry = useCallback(() => {
+    setGenerationError(null);
+    setIsGenerating(true);
+    setGenerationStep('config');
+    submissionCalledRef.current = false;
+
+    // Read fresh values from store to avoid stale closure issues
+    const freshUserInput = useChatStore.getState().userInput;
+
+    // Check if we have contact info to retry with
+    if (freshUserInput.contactEmail && freshUserInput.contactName) {
+      startGeneration({
+        name: freshUserInput.contactName,
+        email: freshUserInput.contactEmail,
+        phone: freshUserInput.contactPhone || '',
+      });
+    } else {
+      setShowContactModal(true);
+      setIsGenerating(false);
+    }
+  }, [startGeneration]);
+
+  // Handle go back from error overlay
+  const handleGoBack = useCallback(() => {
+    setGenerationError(null);
+    setIsGenerating(false);
+    submissionCalledRef.current = false;
+  }, []);
 
   // Loading state while Zustand hydrates
   if (!isInitialized) {
@@ -331,35 +548,201 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
     );
   }
 
+  const businessName = clientConfig?.businessName || 'AI Assistant';
+
   return (
-    <div 
-    id='chatbot-container'
-    // Desktop: standard flow. Mobile: fixed/full-screen when open, or just a button.
-    className={`
-      md:relative md:min-h-screen md:py-8 md:px-4 md:text-black
-      ${isChatOpen ? 'fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-0 text-black' : 'relative'}
-    `}
-    >
-      <div className="flex gap-6 w-full items-center justify-center md:max-w-7xl mx-auto h-full">
-        {/* Game Chat */}
-        <div className="flex-1 justify-center items-center h-full">
-          <GameChat
-            messages={messages}
-            loading={loading}
-            onSend={sendMessage}
-            onButtonClick={handleButtonClick}
-            totalSteps={totalSteps}
-            currentStep={currentStep}
-            completedSteps={completedSteps}
-            userInput={userInput}
-            currentFlow={currentFlow || undefined}
-            progress={progress}
-            isChatOpen={isChatOpen} // NEW: Pass state to GameChat
-            toggleChat={toggleChat} // NEW: Pass handler to GameChat
-            closeChat={closeChat} // NEW: Pass handler to GameChat
-          />
+    <>
+      {/* Full-Screen Container */}
+      <div
+        id='chatbot-container'
+        className="fixed inset-0 flex flex-col overflow-hidden"
+        style={{ backgroundColor: 'var(--color-background)' }}
+      >
+        {/* Simple Top Bar */}
+        <div
+          className="flex items-center justify-between px-6 py-3 border-b"
+          style={{
+            backgroundColor: 'rgba(var(--color-background-rgb), 0.95)',
+            borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
+          }}
+        >
+          {/* Left: Business Name */}
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold"
+              style={{
+                background: 'linear-gradient(135deg, var(--color-gradient-from), var(--color-gradient-to))',
+                color: 'var(--color-text-on-gradient)',
+              }}
+            >
+              {businessName.charAt(0).toUpperCase()}
+            </div>
+            <span className="font-semibold text-lg" style={{ color: 'var(--color-text-on-background)' }}>{businessName}</span>
+          </div>
+
+          {/* Right: Progress */}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2">
+              <div
+                className="w-32 h-2 rounded-full overflow-hidden"
+                style={{ backgroundColor: 'rgba(var(--color-primary-rgb), 0.2)' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progress}%`,
+                    background: 'linear-gradient(90deg, var(--color-gradient-from), var(--color-gradient-to))',
+                  }}
+                />
+              </div>
+              <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
+                {progress}%
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.parent.postMessage({ type: 'close-iframe' }, '*');
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              style={{ color: 'var(--color-text)' }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Chat Area */}
+          <div className="flex-1 overflow-hidden">
+            <GameChat
+              messages={messages}
+              loading={loading}
+              onSend={sendMessage}
+              onButtonClick={handleButtonClick}
+              totalSteps={totalSteps}
+              currentStep={currentStep}
+              completedSteps={completedSteps}
+              userInput={userInput}
+              currentFlow={currentFlow || undefined}
+              progress={progress}
+              currentNodeId={currentNodeId}
+              isChatOpen={true}
+              toggleChat={toggleChat}
+              closeChat={closeChat}
+              businessName={businessName}
+            />
+          </div>
+
+          {/* Side Panel - Progress Tracker (Desktop Only) */}
+          <div
+            className="hidden lg:flex w-80 flex-col border-l"
+            style={{
+              backgroundColor: 'rgba(var(--color-background-rgb), 0.5)',
+              borderColor: 'rgba(var(--color-primary-rgb), 0.2)',
+            }}
+          >
+            {/* Progress Header */}
+            <div className="p-4 border-b" style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.2)' }}>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-on-background)' }}>Your Progress</h3>
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex-1 h-3 rounded-full overflow-hidden"
+                  style={{ backgroundColor: 'rgba(var(--color-primary-rgb), 0.2)' }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progress}%`,
+                      background: 'linear-gradient(90deg, var(--color-gradient-from), var(--color-gradient-to))',
+                    }}
+                  />
+                </div>
+                <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
+                  {progress}%
+                </span>
+              </div>
+            </div>
+
+            {/* Collected Info */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <h4 className="text-sm font-medium mb-3 uppercase tracking-wide" style={{ color: 'var(--color-text-on-background-dim)' }}>
+                Information Collected
+              </h4>
+              {Object.keys(userInput).length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--color-text-on-background-dim)' }}>Answer questions to see your progress...</p>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(userInput).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="p-3 rounded-lg"
+                      style={{ backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)' }}
+                    >
+                      <div className="text-xs capitalize mb-1" style={{ color: 'var(--color-text-on-background-dim)' }}>
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </div>
+                      <div className="text-sm truncate" style={{ color: 'var(--color-text-on-background)' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Current Insight */}
+            {useChatStore.getState().currentInsight && (
+              <div
+                className="p-4 border-t"
+                style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.2)' }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
+                  />
+                  <span className="text-xs font-medium uppercase" style={{ color: 'var(--color-text-on-background-dim)' }}>AI Insight</span>
+                </div>
+                <p className="text-sm" style={{ color: 'var(--color-text-on-background)' }}>
+                  {useChatStore.getState().currentInsight}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Contact Collection Modal - Mandatory for all offers */}
+      <ContactCollectionModal
+        isOpen={showContactModal}
+        onSubmit={handleContactSubmit}
+        onSkip={handleContactSkip}
+        businessName={businessName}
+        requiredFields={{ name: true, email: true, phone: false }}
+        allowSkip={true}
+      />
+
+      {/* Re-trigger button shown after user skips contact collection */}
+      {hasSkippedContact && !isGenerating && !showContactModal && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+          <ContactRetriggerButton onClick={handleContactRetrigger} />
+        </div>
+      )}
+
+      {/* Generation Loading Overlay with Progress */}
+      <GenerationLoadingOverlay
+        isVisible={isGenerating || !!generationError}
+        currentStep={generationStep}
+        steps={GENERATION_STEPS}
+        error={generationError}
+        onRetry={handleRetry}
+        onGoBack={handleGoBack}
+        percent={generationPercent}
+        message={generationMessage}
+      />
+    </>
   );
 }

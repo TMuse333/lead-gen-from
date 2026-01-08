@@ -1,0 +1,290 @@
+# NextAuth Issues and Fixes
+
+## Overview
+
+This document outlines the authentication issues encountered and the fixes applied to resolve them.
+
+## Current Setup
+
+- **Next.js**: `15.4.6`
+- **NextAuth**: `5.0.0-beta.25` (beta version)
+- **MongoDB Adapter**: `@auth/mongodb-adapter@^3.11.0`
+
+## Issues Encountered
+
+### 1. Invalid URL Pattern Error
+
+**Error Message:**
+```
+TypeError: Invalid URL
+input: '=https://build.focusflowsoftware.com'
+code: 'ERR_INVALID_URL'
+```
+
+**Root Cause:**
+- Environment variable `NEXTAUTH_URL` or `NEXT_PUBLIC_APP_URL` was set to the production URL in `.env`
+- When running locally, NextAuth tried to use the production URL instead of `localhost:3000`
+- The `=` prefix suggests the env var might have been malformed (e.g., `NEXTAUTH_URL==https://...`)
+
+**Impact:**
+- Auth session endpoints returned 500 errors
+- Magic links pointed to wrong domain
+- CSRF token validation failed
+
+### 2. Missing CSRF Token Error
+
+**Error Message:**
+```
+[auth][error] MissingCSRF: CSRF token was missing during an action signin
+```
+
+**Root Cause:**
+- NextAuth v5 requires CSRF tokens for form submissions
+- The `signIn()` function from `next-auth/react` wasn't properly including the CSRF token
+- URL mismatch between development and production caused token validation to fail
+
+**Impact:**
+- Users couldn't sign in via email
+- Form submissions were rejected
+
+### 3. Environment Variable Configuration Issues
+
+**Problem:**
+- Setting production URLs in `.env` broke local development
+- No clear separation between development and production environments
+
+**Impact:**
+- Had to manually change `.env` values when switching between local and production
+- Risk of deploying with wrong configuration
+
+## Fixes Applied
+
+### 1. Environment-Aware URL Configuration
+
+**File**: `frontend/src/lib/auth/authConfig.ts`
+
+**Solution:**
+```typescript
+// Get the base URL - use localhost in development, otherwise use env vars
+const getBaseUrl = () => {
+  // In development, always use localhost
+  if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+    return 'http://localhost:3000';
+  }
+  
+  // In production, use environment variables
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL;
+  }
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  
+  // Fallback
+  return 'https://build.focusflowsoftware.com';
+};
+```
+
+**Benefits:**
+- Automatically uses `localhost:3000` in development
+- Uses production URLs in production
+- No need to change `.env` when switching environments
+
+### 2. CSRF Token Handling
+
+**File**: `frontend/src/components/auth/signIn/signIn.tsx`
+
+**Solution:**
+- Fetch CSRF token on component mount
+- Include CSRF token in form submission
+- Use direct API call instead of `signIn()` function
+
+```typescript
+// Fetch CSRF token on mount
+useEffect(() => {
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch("/api/auth/csrf")
+      const data = await response.json()
+      setCsrfToken(data.csrfToken)
+    } catch (err) {
+      console.error("Failed to fetch CSRF token:", err)
+    }
+  }
+  fetchCsrfToken()
+}, [])
+
+// Direct API call with CSRF token
+const response = await fetch("/api/auth/signin/email", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+  },
+  body: new URLSearchParams({
+    email: email,
+    csrfToken: csrfToken,
+    callbackUrl: "/dashboard",
+    json: "true",
+  }),
+})
+```
+
+**Benefits:**
+- Explicit CSRF token handling
+- More reliable form submissions
+- Better error handling
+
+### 3. Cookie Configuration
+
+**File**: `frontend/src/lib/auth/authConfig.ts`
+
+**Solution:**
+Added explicit cookie configuration for better CSRF handling:
+
+```typescript
+cookies: {
+  csrfToken: {
+    name: useSecureCookies ? '__Host-next-auth.csrf-token' : 'next-auth.csrf-token',
+    options: {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: useSecureCookies,
+    },
+  },
+  sessionToken: {
+    name: useSecureCookies ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+    options: {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: useSecureCookies,
+    },
+  },
+},
+```
+
+## Recommended Updates
+
+### Next.js Update
+
+**Current**: `15.4.6`  
+**Latest 15.x**: `15.5.7`  
+**Latest**: `16.0.7` (major version - breaking changes)
+
+**Recommendation**: Update to `15.5.7` (latest 15.x) for security patches without breaking changes.
+
+```bash
+npm install next@15.5.7
+```
+
+### NextAuth Update
+
+**Current**: `5.0.0-beta.25`  
+**Latest Beta**: `5.0.0-beta.30`
+
+**Recommendation**: Update to latest beta for bug fixes and improvements.
+
+```bash
+npm install next-auth@beta
+```
+
+**Note**: NextAuth v5 is still in beta. Consider waiting for stable release or test thoroughly after updating.
+
+## Environment Variables
+
+### Required Variables
+
+```env
+# Authentication
+AUTH_SECRET=your-secret-key-here  # Generate with: openssl rand -base64 32
+
+# URLs (for production - not needed in development)
+NEXTAUTH_URL=https://your-production-domain.com
+NEXT_PUBLIC_APP_URL=https://your-production-domain.com
+
+# Email (Resend)
+RESEND_API_KEY=your-resend-api-key
+
+# MongoDB
+MONGODB_URI=your-mongodb-connection-string
+```
+
+### Important Notes
+
+1. **AUTH_SECRET**: Must be set in both development and production
+2. **NEXTAUTH_URL**: Only needed in production (code handles localhost automatically)
+3. **Never commit `.env` files** to version control
+4. **Use `.env.local`** for local development overrides
+
+## Testing Checklist
+
+After applying fixes, verify:
+
+- [ ] Sign in page loads without errors
+- [ ] Email submission works
+- [ ] Magic link email is received
+- [ ] Magic link redirects correctly
+- [ ] Session is created after clicking magic link
+- [ ] User can access protected routes
+- [ ] Logout works correctly
+- [ ] Works in both development and production
+
+## Common Issues and Solutions
+
+### Issue: "Invalid URL" error
+
+**Solution**: 
+- Check `.env` file for malformed URLs (no leading `=`)
+- Ensure `NODE_ENV` is set correctly
+- Restart dev server after changing `.env`
+
+### Issue: CSRF token missing
+
+**Solution**:
+- Clear browser cookies
+- Ensure CSRF token is fetched before form submission
+- Check that `/api/auth/csrf` endpoint is accessible
+
+### Issue: Magic links point to wrong domain
+
+**Solution**:
+- Verify `NODE_ENV` is set correctly
+- Check `getBaseUrl()` function logic
+- Ensure production URLs are set in production environment only
+
+## Migration Path
+
+If updating to newer versions:
+
+1. **Backup current code** (especially auth config)
+2. **Update dependencies**:
+   ```bash
+   npm install next@15.5.7 next-auth@beta
+   ```
+3. **Test locally** thoroughly
+4. **Check NextAuth v5 changelog** for breaking changes
+5. **Update code** if needed based on changelog
+6. **Test in staging** before production
+
+## Files Modified
+
+1. `frontend/src/lib/auth/authConfig.ts` - URL handling and cookie config
+2. `frontend/src/components/auth/signIn/signIn.tsx` - CSRF token handling
+3. `frontend/src/app/api/auth/[...nextauth]/route.ts` - API route handler
+
+## Related Documentation
+
+- [NextAuth.js v5 Documentation](https://authjs.dev/)
+- [Next.js 15 Documentation](https://nextjs.org/docs)
+- [NextAuth v5 Migration Guide](https://authjs.dev/getting-started/migrating-to-v5)
+
+## Summary
+
+The main issues were:
+1. **Environment configuration** - Fixed by environment-aware URL handling
+2. **CSRF token handling** - Fixed by explicit token fetching and inclusion
+3. **Cookie configuration** - Added explicit cookie settings for better security
+
+All fixes maintain backward compatibility and improve reliability across development and production environments.
+

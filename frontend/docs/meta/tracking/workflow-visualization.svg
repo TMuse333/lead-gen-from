@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" style="background: #0f172a;">
+  <!-- Title -->
+  <text x="600" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">
+    Information Theory-Driven Development
+  </text>
+  <text x="600" y="65" font-family="Arial, sans-serif" font-size="14" fill="#94a3b8" text-anchor="middle">
+    Track patterns • Document learnings • Build smarter
+  </text>
+
+  <!-- Left Terminal: Development -->
+  <g id="terminal-dev">
+    <!-- Border -->
+    <rect x="50" y="100" width="450" height="500" rx="12" fill="none" stroke="#10b981" stroke-width="3"/>
+
+    <!-- Header -->
+    <rect x="50" y="100" width="450" height="40" rx="12" fill="#065f46"/>
+    <text x="275" y="127" font-family="monospace" font-size="16" fill="#10b981" text-anchor="middle" font-weight="bold">
+      Claude Code - Development
+    </text>
+
+    <!-- Content Background -->
+    <rect x="50" y="140" width="450" height="460" fill="#1e293b"/>
+
+    <!-- File Explorer -->
+    <text x="70" y="170" font-family="monospace" font-size="13" fill="#64748b">📁 File Explorer</text>
+    <text x="90" y="195" font-family="monospace" font-size="12" fill="#94a3b8">└─ components/</text>
+    <text x="110" y="215" font-family="monospace" font-size="12" fill="#94a3b8">└─ modals/</text>
+    <text x="90" y="235" font-family="monospace" font-size="12" fill="#94a3b8">└─ lib/</text>
+    <text x="90" y="255" font-family="monospace" font-size="12" fill="#94a3b8">└─ stores/</text>
+
+    <!-- Code Section -->
+    <text x="70" y="290" font-family="monospace" font-size="13" fill="#64748b">💻 Session Activity</text>
+    <rect x="70" y="300" width="410" height="120" fill="#0f172a" rx="4"/>
+    <text x="80" y="320" font-family="monospace" font-size="11" fill="#22d3ee">// Building feature...</text>
+    <text x="80" y="340" font-family="monospace" font-size="11" fill="#a78bfa">export function CompletionModal() {</text>
+    <text x="80" y="360" font-family="monospace" font-size="11" fill="#f472b6">  useEffect(() => {</text>
+    <text x="80" y="380" font-family="monospace" font-size="11" fill="#94a3b8">    confetti(...);</text>
+    <text x="80" y="400" font-family="monospace" font-size="11" fill="#f472b6">  }, [isOpen]);</text>
+
+    <!-- Checkpoint Notification -->
+    <rect x="90" y="440" width="360" height="60" rx="8" fill="#164e63" stroke="#06b6d4" stroke-width="2"/>
+    <text x="110" y="462" font-family="Arial, sans-serif" font-size="13" fill="#22d3ee" font-weight="bold">
+      💡 Tracker Checkpoint
+    </text>
+    <text x="110" y="480" font-family="Arial, sans-serif" font-size="11" fill="#a5f3fc">
+      Mobile layout optimization complete
+    </text>
+
+    <!-- Status -->
+    <text x="70" y="570" font-family="monospace" font-size="12" fill="#10b981">✓ Building feature...</text>
+    <text x="70" y="590" font-family="monospace" font-size="11" fill="#64748b">3 files modified</text>
+  </g>
+
+  <!-- Right Terminal: Tracker -->
+  <g id="terminal-tracker">
+    <!-- Border -->
+    <rect x="700" y="100" width="450" height="500" rx="12" fill="none" stroke="#3b82f6" stroke-width="3"/>
+
+    <!-- Header -->
+    <rect x="700" y="100" width="450" height="40" rx="12" fill="#1e3a8a"/>
+    <text x="925" y="127" font-family="monospace" font-size="16" fill="#3b82f6" text-anchor="middle" font-weight="bold">
+      Claude Code - Tracker
+    </text>
+
+    <!-- Content Background -->
+    <rect x="700" y="140" width="450" height="460" fill="#1e293b"/>
+
+    <!-- Analysis Header -->
+    <text x="720" y="170" font-family="monospace" font-size="13" fill="#64748b">📊 Session Analysis</text>
+
+    <!-- Pattern Detection -->
+    <rect x="720" y="185" width="410" height="80" fill="#1e3a8a" rx="6"/>
+    <text x="735" y="207" font-family="Arial, sans-serif" font-size="13" fill="#60a5fa" font-weight="bold">
+      🎯 Pattern Detected
+    </text>
+    <text x="735" y="227" font-family="monospace" font-size="11" fill="#93c5fd">
+      Mobile Compact Layout Pattern
+    </text>
+    <text x="735" y="245" font-family="monospace" font-size="10" fill="#64748b">
+      Horizontal dots &gt; Vertical panels
+    </text>
+
+    <!-- What Worked -->
+    <rect x="720" y="280" width="410" height="80" fill="#065f46" rx="6"/>
+    <text x="735" y="302" font-family="Arial, sans-serif" font-size="12" fill="#10b981" font-weight="bold">
+      ✅ What Worked
+    </text>
+    <text x="735" y="320" font-family="monospace" font-size="10" fill="#86efac">
+      • Sticky compact bar (10% screen)
+    </text>
+    <text x="735" y="338" font-family="monospace" font-size="10" fill="#86efac">
+      • Horizontal phase indicators
+    </text>
+    <text x="735" y="356" font-family="monospace" font-size="10" fill="#86efac">
+      • Reduced mobile clutter
+    </text>
+
+    <!-- What Didn't Work -->
+    <rect x="720" y="375" width="410" height="60" fill="#7f1d1d" rx="6"/>
+    <text x="735" y="397" font-family="Arial, sans-serif" font-size="12" fill="#f87171" font-weight="bold">
+      ❌ What Didn't
+    </text>
+    <text x="735" y="415" font-family="monospace" font-size="10" fill="#fca5a5">
+      • Collapsible panels (75% screen)
+    </text>
+    <text x="735" y="430" font-family="monospace" font-size="10" fill="#fca5a5">
+      • Vertical expansion on mobile
+    </text>
+
+    <!-- Creating Docs -->
+    <text x="720" y="465" font-family="monospace" font-size="11" fill="#64748b">📝 Creating:</text>
+    <text x="740" y="485" font-family="monospace" font-size="10" fill="#94a3b8">patterns/mobile-compact-layouts.md</text>
+    <text x="740" y="505" font-family="monospace" font-size="10" fill="#94a3b8">sessions/2026-01-05-mobile-opt.md</text>
+
+    <!-- Status -->
+    <text x="720" y="570" font-family="monospace" font-size="12" fill="#3b82f6">⚡ Analyzing changes...</text>
+  </g>
+
+  <!-- Arrows connecting terminals -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#06b6d4"/>
+    </marker>
+  </defs>
+
+  <!-- Arrow 1: Checkpoint trigger -->
+  <path d="M 520 300 L 680 250" stroke="#06b6d4" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="580" y="265" font-family="Arial, sans-serif" font-size="11" fill="#06b6d4" font-weight="bold">Checkpoint</text>
+
+  <!-- Arrow 2: Analysis -->
+  <path d="M 520 400 L 680 420" stroke="#06b6d4" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="570" y="415" font-family="Arial, sans-serif" font-size="11" fill="#06b6d4" font-weight="bold">File Changes</text>
+
+  <!-- Timeline at bottom -->
+  <g id="timeline">
+    <rect x="100" y="650" width="1000" height="100" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+
+    <!-- Timeline Steps -->
+    <circle cx="150" cy="690" r="8" fill="#10b981"/>
+    <text x="150" y="725" font-family="Arial, sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Development</text>
+
+    <line x1="158" y1="690" x2="242" y2="690" stroke="#475569" stroke-width="2"/>
+
+    <circle cx="250" cy="690" r="8" fill="#64748b"/>
+    <text x="250" y="710" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Code</text>
+    <text x="250" y="723" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">commits</text>
+
+    <line x1="258" y1="690" x2="342" y2="690" stroke="#475569" stroke-width="2"/>
+
+    <circle cx="350" cy="690" r="8" fill="#64748b"/>
+    <text x="350" y="710" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">File</text>
+    <text x="350" y="723" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">changes</text>
+
+    <line x1="358" y1="690" x2="442" y2="690" stroke="#475569" stroke-width="2"/>
+
+    <circle cx="450" cy="690" r="8" fill="#06b6d4"/>
+    <text x="450" y="725" font-family="Arial, sans-serif" font-size="11" fill="#06b6d4" text-anchor="middle">Checkpoints</text>
+
+    <line x1="458" y1="690" x2="642" y2="690" stroke="#06b6d4" stroke-width="2" stroke-dasharray="5,5"/>
+
+    <circle cx="650" cy="690" r="8" fill="#3b82f6"/>
+    <text x="650" y="710" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Pattern</text>
+    <text x="650" y="723" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">recognition</text>
+
+    <line x1="658" y1="690" x2="742" y2="690" stroke="#475569" stroke-width="2"/>
+
+    <circle cx="750" cy="690" r="8" fill="#64748b"/>
+    <text x="750" y="725" font-family="Arial, sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Documentation</text>
+
+    <line x1="758" y1="690" x2="842" y2="690" stroke="#475569" stroke-width="2"/>
+
+    <circle cx="850" cy="690" r="8" fill="#64748b"/>
+    <text x="850" y="710" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Pattern</text>
+    <text x="850" y="723" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Extraction</text>
+
+    <line x1="858" y1="690" x2="942" y2="690" stroke="#475569" stroke-width="2"/>
+
+    <circle cx="950" cy="690" r="8" fill="#64748b"/>
+    <text x="950" y="710" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Docs</text>
+    <text x="950" y="723" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">updates</text>
+  </g>
+
+  <!-- Diamond logo at bottom right -->
+  <polygon points="1170,770 1180,760 1170,750 1160,760" fill="#475569" opacity="0.5"/>
+</svg>

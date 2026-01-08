@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FileText, Layout, Video, Home, Sparkles, ArrowRight, X } from 'lucide-react';
+import { FileText, Layout, Video, Home, Sparkles, ArrowRight, X, Calendar } from 'lucide-react';
 import { getAllOfferDefinitions } from '@/lib/offers';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import { useUserConfig } from '@/contexts/UserConfigContext';
 
 const OFFER_ICONS: Record<OfferType, typeof FileText> = {
+  'real-estate-timeline': Calendar,
   'pdf': FileText,
   'landingPage': Layout,
   'video': Video,

@@ -1,25 +1,30 @@
-// components/tracker/index.tsx – Fully Neural Cyan Themed
+// components/tracker/index.tsx - UNIFIED OFFER SYSTEM
 'use client';
 
-import { useChatStore, selectUserInput, selectProgress, selectCurrentFlow, ChatState } from '@/stores/chatStore';
+import { useChatStore, selectUserInput, selectProgress, ChatState } from '@/stores/chatStore';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { AnimatedParticles } from './animatedParticles';
-import { Header } from './header';
-import { FlowBadge } from './flowBadge';
-import { ProgressBar } from './progressBar';
+import { OfferHeader } from './OfferHeader';
+import { OfferBadge } from './OfferBadge';
+import { OfferProgress } from './OfferProgress';
 import { AnsweredQuestions } from './answeredQuestions';
 import { CurrentInsight } from './currentInsight';
 import { DbActivity } from './dbActivity';
-import { CompletionModal } from './completionModal';
+// CompletionModal removed - contact collection now handled in chatWithTracker.tsx
+import { getTrackingConfig, type OfferType, type Intent } from '@/lib/offers/unified';
 
+// Selectors
 const selectCurrentInsight = (state: ChatState) => state.currentInsight || '';
 const selectDbActivity = (state: ChatState) => state.dbActivity || '';
+const selectSelectedOffer = (state: ChatState) => state.selectedOffer;
+const selectCurrentIntent = (state: ChatState) => state.currentIntent;
 
 export default function AnalysisTracker() {
   const userInput = useChatStore(selectUserInput);
   const progress = useChatStore(selectProgress);
-  const currentFlow = useChatStore(selectCurrentFlow);
+  const selectedOffer = useChatStore(selectSelectedOffer);
+  const currentIntent = useChatStore(selectCurrentIntent);
   const currentInsightFromStore = useChatStore(selectCurrentInsight);
   const dbActivityFromStore = useChatStore(selectDbActivity);
 
@@ -29,7 +34,11 @@ export default function AnalysisTracker() {
   const answersArray = Object.entries(userInput);
   const isComplete = progress >= 100;
 
-  // Glow intensity based on progress (0 → 1)
+  // Get offer-specific tracking config
+  const tracking = selectedOffer ? getTrackingConfig(selectedOffer) : null;
+  const color = tracking?.color || '#3b82f6'; // Default blue
+
+  // Glow intensity based on progress (0 -> 1)
   const glowIntensity = Math.min(progress / 100, 1);
 
   useEffect(() => {
@@ -40,10 +49,20 @@ export default function AnalysisTracker() {
     if (dbActivityFromStore) setDbActivity(dbActivityFromStore);
   }, [dbActivityFromStore]);
 
-  const formatKey = (key: string): string =>
-    key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+  const formatKey = (key: string): string => {
+    // Use tracking field label if available
+    if (tracking?.fields[key]?.label) {
+      return tracking.fields[key].label;
+    }
+    return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+  };
 
   const formatValue = (value: string): string => {
+    // Use tracking field format function if available
+    const fieldKey = Object.keys(userInput).find(k => userInput[k] === value);
+    if (fieldKey && tracking?.fields[fieldKey]?.format) {
+      return tracking.fields[fieldKey].format!(value);
+    }
     if (value.includes('-') && !value.includes('@')) {
       return value.replace(/-/g, ' - ').replace(' - plus', '+');
     }
@@ -58,45 +77,66 @@ export default function AnalysisTracker() {
         transition={{ duration: 0.7 }}
         className="relative rounded-3xl p-7 overflow-hidden backdrop-blur-xl border"
         style={{
-          background: 'rgba(15, 23, 42, 0.75)', // slate-900/75
-          borderColor: 'rgba(34, 211, 238, 0.3)', // cyan-400/30
+          background: 'rgba(var(--color-background-rgb), 0.85)',
+          borderColor: `${color}4d`, // 30% opacity
           boxShadow: `
             0 8px 32px rgba(0, 0, 0, 0.4),
-            0 0 ${30 + glowIntensity * 60}px rgba(6, 182, 212, ${0.15 + glowIntensity * 0.4}),
-            inset 0 1px 0 rgba(34, 211, 238, 0.1)
+            0 0 ${30 + glowIntensity * 60}px ${color}${Math.round((0.15 + glowIntensity * 0.4) * 255).toString(16).padStart(2, '0')},
+            inset 0 1px 0 ${color}1a
           `,
         }}
       >
-        {/* Subtle inner glow ring */}
-        <div 
+        {/* Subtle inner glow ring - uses offer color */}
+        <div
           className="absolute inset-0 rounded-3xl pointer-events-none opacity-40"
           style={{
-            background: `radial-gradient(circle at 50% 0%, rgba(34, 211, 238, ${glowIntensity * 0.3}) 0%, transparent 70%)`,
+            background: `radial-gradient(circle at 50% 0%, ${color}${Math.round(glowIntensity * 0.3 * 255).toString(16).padStart(2, '0')} 0%, transparent 70%)`,
           }}
         />
 
         <AnimatedParticles progress={progress} />
 
-        <Header progress={progress} isComplete={isComplete} />
-        <FlowBadge currentFlow={currentFlow!} />
-        <ProgressBar progress={progress} />
-
-        <AnsweredQuestions 
-          userInput={userInput} 
-          formatKey={formatKey} 
-          formatValue={formatValue} 
+        {/* Offer-aware header */}
+        <OfferHeader
+          selectedOffer={selectedOffer}
+          progress={progress}
+          isComplete={isComplete}
         />
 
+        {/* Offer badge with intent */}
+        <OfferBadge
+          selectedOffer={selectedOffer}
+          currentIntent={currentIntent}
+        />
+
+        {/* Offer-specific progress display */}
+        {selectedOffer && currentIntent && (
+          <OfferProgress
+            selectedOffer={selectedOffer}
+            currentIntent={currentIntent}
+            userInput={userInput}
+            progress={progress}
+          />
+        )}
+
+        {/* Answered questions list */}
+        <AnsweredQuestions
+          userInput={userInput}
+          formatKey={formatKey}
+          formatValue={formatValue}
+        />
+
+        {/* Current insight */}
         <CurrentInsight currentInsight={currentInsight} />
-        <DbActivity 
+
+        {/* Database activity */}
+        <DbActivity
           dbActivity={dbActivity}
           matchScore={Math.round(progress)}
           itemsFound={answersArray.length}
           progress={progress}
         />
       </motion.div>
-
-      {isComplete && <CompletionModal />}
     </>
   );
 }

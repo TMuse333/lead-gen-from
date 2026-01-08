@@ -132,6 +132,7 @@ export interface OfferTestResponse {
 export type EditorTab =
   | 'overview'
   | 'inputs'
+  | 'knowledge'
   | 'prompt'
   | 'output'
   | 'settings'

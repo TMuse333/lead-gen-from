@@ -4,54 +4,47 @@ import { qdrant } from '../../../client';
 import { ADVICE_COLLECTION } from './collection';
 import { AgentAdviceScenario } from '@/types';
 import { calculateMatchScore } from '../../../engines/rules';
-import { getAdviceTypeFromTags, DEFAULT_ADVICE_TYPE } from '@/types/advice.types';
+import { getAdviceTypeFromTags, type AdvicePlacements } from '@/types/advice.types';
+import type { OfferType } from '@/lib/offers/unified';
+
+/**
+ * Options for querying advice
+ */
+export interface QueryAdviceOptions {
+  limit?: number;
+  collectionName?: string;
+  /** Filter by offer type (e.g., 'real-estate-timeline') */
+  offerType?: OfferType;
+  /** Filter by specific location within offer (e.g., 'financial-prep' phase) */
+  location?: string;
+}
 
 export async function queryRelevantAdvice(
   agentId: string,
   embedding: number[],
   flow: string,
   userInput: Record<string, string>,
-  limit: number = 5,
-  collectionName?: string // Optional: if not provided, uses default ADVICE_COLLECTION
+  limitOrOptions: number | QueryAdviceOptions = 5,
+  collectionName?: string
 ): Promise<AgentAdviceScenario[]> {
   try {
-    const collection = collectionName || ADVICE_COLLECTION;
-    
-    console.log(`\n🔍 [queryRelevantAdvice] Starting Qdrant search...`);
-    console.log(`   Collection: ${collection}`);
-    console.log(`   Agent ID: ${agentId}`);
-    console.log(`   Flow: ${flow}`);
-    console.log(`   Limit: ${limit}`);
-    console.log(`   Embedding dimensions: ${embedding.length}`);
+    // Handle both legacy (limit as number) and new (options object) signatures
+    const options: QueryAdviceOptions = typeof limitOrOptions === 'number'
+      ? { limit: limitOrOptions, collectionName }
+      : limitOrOptions;
+
+    const limit = options.limit ?? 5;
+    const collection = options.collectionName || collectionName || ADVICE_COLLECTION;
 
     const searchResult = await qdrant.search(collection, {
       vector: embedding,
       limit: limit * 3, // Get 3x candidates for filtering
       with_payload: true,
-      // Optional: uncomment when you want hard agent filter
-      // filter: {
-      //   must: [{ key: 'agentId', match: { value: agentId } }],
-      // },
     });
-
-    console.log(`   ✅ Qdrant raw search returned ${searchResult.length} candidates`);
 
     if (searchResult.length === 0) {
-      console.log('   ⚠️ No results from Qdrant at all!');
-      console.log('   Possible issues:');
-      console.log('   - Collection is empty');
-      console.log('   - Embedding dimensions mismatch');
-      console.log('   - Collection name incorrect');
       return [];
     }
-
-    // Log raw results before filtering
-    console.log('   Raw results (before filtering):');
-    searchResult.forEach((result, i) => {
-      const payload = result.payload as any;
-      console.log(`   ${i + 1}. Score: ${result.score?.toFixed(3)} | Title: ${payload?.title || 'NO TITLE'}`);
-      console.log(`      Flow: ${payload?.flow || 'none'} | Conditions: ${JSON.stringify(payload?.conditions || {})}`);
-    });
 
     // Apply filters
     const filtered = searchResult
@@ -60,17 +53,32 @@ export async function queryRelevantAdvice(
 
         // Flow check
         const flows: string[] = p?.flow || [];
-        console.log(`   Checking flow for "${p?.title}": ${flows.join(', ')} (looking for: ${flow})`);
-        
         if (flows.length > 0 && !flows.includes(flow)) {
-          console.log(`      ❌ Flow mismatch - skipping`);
           return false;
+        }
+
+        // Offer type check (NEW)
+        if (options.offerType) {
+          const offerTypes: OfferType[] = p?.offerTypes || [];
+          // If advice specifies offer types and current offer isn't included, skip
+          if (offerTypes.length > 0 && !offerTypes.includes(options.offerType)) {
+            return false;
+          }
+        }
+
+        // Location/placement check (NEW)
+        if (options.location && options.offerType) {
+          const placements: AdvicePlacements = p?.placements || {};
+          const offerPlacements = placements[options.offerType];
+          // If advice specifies placements for this offer and location isn't included, skip
+          if (offerPlacements && offerPlacements.length > 0 && !offerPlacements.includes(options.location)) {
+            return false;
+          }
         }
 
         // Priority 1: Check ruleGroups if present (complex rules)
         const ruleGroups = p?.ruleGroups;
         if (ruleGroups && Array.isArray(ruleGroups) && ruleGroups.length > 0) {
-          console.log(`      📋 Evaluating rule groups (${ruleGroups.length} group(s))...`);
           const score = calculateMatchScore(
             {
               applicableWhen: {
@@ -81,48 +89,40 @@ export async function queryRelevantAdvice(
             userInput,
             flow as 'sell' | 'buy' | 'browse'
           );
-          const matched = score > 0;
-          console.log(`      ${matched ? '✅' : '❌'} Rule groups match: ${matched} (score: ${score.toFixed(2)})`);
-          return matched;
+          return score > 0;
         }
 
         // Priority 2: Check simple conditions (OR logic) if no ruleGroups
         const conditions: Record<string, string[]> = p?.conditions || {};
         if (Object.keys(conditions).length === 0) {
-          console.log(`      ✅ No conditions or rules - match (universal)`);
-          return true;
+          return true; // Universal - no conditions
         }
 
-        const matched = Object.entries(conditions).some(([key, values]) => {
+        return Object.entries(conditions).some(([key, values]) => {
           const userVal = userInput[key];
-          const conditionMet = userVal && values.includes(userVal);
-          console.log(`      Condition "${key}": user=${userVal}, required=${values.join('|')} → ${conditionMet ? '✅' : '❌'}`);
-          return conditionMet;
+          return userVal && values.includes(userVal);
         });
-
-        console.log(`      ${matched ? '✅' : '❌'} Overall conditions match: ${matched}`);
-        return matched;
       })
       .slice(0, limit);
-
-    console.log(`   ✅ After filtering: ${filtered.length} items match`);
 
     const results: AgentAdviceScenario[] = filtered.map((r) => {
       const payload = r.payload as any;
       const tags = (payload?.tags as string[]) || [];
       const type = payload?.type || getAdviceTypeFromTags(tags);
-      
+
       return {
         id: r.id as string,
         agentId: payload?.agentId,
         title: payload?.title,
         tags,
         advice: payload?.advice,
-        type, // Include type in result
+        type,
         applicableWhen: {
           flow: payload?.flow,
+          offerTypes: payload?.offerTypes,
+          placements: payload?.placements,
           conditions: payload?.conditions,
-          ruleGroups: payload?.ruleGroups, // Include ruleGroups if present
+          ruleGroups: payload?.ruleGroups,
         },
         createdAt: new Date(payload?.createdAt),
         updatedAt: payload?.updatedAt
@@ -132,16 +132,31 @@ export async function queryRelevantAdvice(
       };
     });
 
-    console.log(`   Final results:`);
-    results.forEach((r, i) => {
-      console.log(`   ${i + 1}. ${r.title}`);
-    });
-
     return results;
   } catch (error) {
-    console.error('❌ [queryRelevantAdvice] Error:', error);
+    console.error('Error querying advice:', error);
     return [];
   }
+}
+
+/**
+ * Query advice for a specific location within an offer
+ * Convenience wrapper for phase-specific or section-specific advice retrieval
+ */
+export async function queryAdviceForLocation(
+  agentId: string,
+  embedding: number[],
+  flow: string,
+  userInput: Record<string, string>,
+  offerType: OfferType,
+  location: string,
+  options?: Omit<QueryAdviceOptions, 'offerType' | 'location'>
+): Promise<AgentAdviceScenario[]> {
+  return queryRelevantAdvice(agentId, embedding, flow, userInput, {
+    ...options,
+    offerType,
+    location,
+  });
 }
 
 export async function getAgentAdvice(
@@ -162,18 +177,18 @@ export async function getAgentAdvice(
       const payload = point.payload as any;
       const tags = (payload?.tags as string[]) || [];
       const type = payload?.type || getAdviceTypeFromTags(tags);
-      
+
       return {
         id: point.id as string,
         agentId: payload?.agentId,
         title: payload?.title,
         tags,
         advice: payload?.advice,
-        type, // Include type in result
+        type,
         applicableWhen: {
           flow: payload?.flow,
           conditions: payload?.conditions,
-          ruleGroups: payload?.ruleGroups, // Include ruleGroups if present
+          ruleGroups: payload?.ruleGroups,
         },
         createdAt: new Date(payload?.createdAt),
         updatedAt: payload?.updatedAt

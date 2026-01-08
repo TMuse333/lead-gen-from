@@ -18,3 +18,11 @@ export const selectLlmOutputPartial = (state: ChatState): Partial<LlmOutput> | n
 
 // Debug info selector
 export const selectDebugInfo = (state: ChatState) => state.debugInfo;
+
+// Intent system selectors
+export const selectEnabledOffers = (state: ChatState) => state.enabledOffers;
+export const selectCurrentIntent = (state: ChatState) => state.currentIntent;
+export const selectSelectedOffer = (state: ChatState) => state.selectedOffer;
+
+// Modal selectors
+export const selectShowContactModal = (state: ChatState) => state.showContactModal;

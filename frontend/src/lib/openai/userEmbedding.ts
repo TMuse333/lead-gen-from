@@ -16,9 +16,7 @@ export async function generateUserEmbedding(
 ): Promise<number[]> {
   // Create a natural language summary of the user's situation
   const textToEmbed = buildUserSummary(flow, userInput);
-  
-  console.log('🔍 Generating embedding for:', textToEmbed);
-  
+
   // Generate embedding using OpenAI
   const response = await openai.embeddings.create({
     model: 'text-embedding-ada-002',

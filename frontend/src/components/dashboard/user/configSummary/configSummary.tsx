@@ -1,7 +1,7 @@
 'use client';
 
 import { useUserConfig } from '@/contexts/UserConfigContext';
-import { Building2, Briefcase, Mail, Phone, MapPin, Target, Gift, MessageSquare, BookOpen, Database, CheckCircle2, Clock, Calendar, ExternalLink, Eye } from 'lucide-react';
+import { Building2, Briefcase, Mail, Phone, MapPin, Gift, Database, CheckCircle2, Clock, Calendar, ExternalLink, Eye } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 
@@ -9,9 +9,7 @@ export default function ConfigSummary() {
   const { config, loading, error } = useUserConfig();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     business: true,
-    flows: true,
     offers: true,
-    knowledge: true,
   });
 
   const toggleSection = (section: string) => {
@@ -45,13 +43,6 @@ export default function ConfigSummary() {
       </div>
     );
   }
-
-  const flowCount = Object.keys(config.conversationFlows || {}).length;
-  const totalQuestions = Object.values(config.conversationFlows || {}).reduce(
-    (sum: number, flow: any) => sum + (flow.questions?.length || 0),
-    0
-  );
-  const knowledgeCount = config.knowledgeBaseItems?.length || 0;
 
   const botUrl = `/bot/${config.businessName}`;
 
@@ -99,41 +90,14 @@ export default function ConfigSummary() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-8 w-8 text-cyan-400" />
-              <div>
-                <p className="text-2xl font-bold text-cyan-50">{flowCount}</p>
-                <p className="text-sm text-slate-400">Conversation Flows</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <Target className="h-8 w-8 text-blue-400" />
-              <div>
-                <p className="text-2xl font-bold text-cyan-50">{totalQuestions}</p>
-                <p className="text-sm text-slate-400">Total Questions</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+        {/* Stats Card */}
+        <div className="mb-8">
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 inline-block">
             <div className="flex items-center gap-3">
               <Gift className="h-8 w-8 text-purple-400" />
               <div>
                 <p className="text-2xl font-bold text-cyan-50">{config.selectedOffers?.length || 0}</p>
                 <p className="text-sm text-slate-400">Active Offers</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <BookOpen className="h-8 w-8 text-green-400" />
-              <div>
-                <p className="text-2xl font-bold text-cyan-50">{knowledgeCount}</p>
-                <p className="text-sm text-slate-400">Knowledge Items</p>
               </div>
             </div>
           </div>
@@ -197,11 +161,6 @@ export default function ConfigSummary() {
                       {item}
                     </span>
                   ))}
-                  {config.customDataCollection && (
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">
-                      Custom: {config.customDataCollection}
-                    </span>
-                  )}
                 </div>
               </div>
               <div>
@@ -217,61 +176,6 @@ export default function ConfigSummary() {
                   })}</span>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Conversation Flows */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg mb-6 overflow-hidden">
-          <button
-            onClick={() => toggleSection('flows')}
-            className="w-full flex items-center justify-between p-6 hover:bg-slate-700/30 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-cyan-400" />
-              <h2 className="text-xl font-semibold text-cyan-50">Conversation Flows</h2>
-              <span className="text-sm text-slate-400">({flowCount} flows, {totalQuestions} questions)</span>
-            </div>
-            <span className="text-slate-400">{expandedSections.flows ? '−' : '+'}</span>
-          </button>
-          {expandedSections.flows && (
-            <div className="px-6 pb-6 space-y-4">
-              {Object.entries(config.conversationFlows || {}).map(([flowType, flow]: [string, any]) => (
-                <div key={flowType} className="bg-slate-900/50 border border-slate-600 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-cyan-50 capitalize">{flowType}</h3>
-                    <span className="text-sm text-slate-400">{flow.questions?.length || 0} questions</span>
-                  </div>
-                  {flow.questions && flow.questions.length > 0 && (
-                    <div className="space-y-2">
-                      {flow.questions.map((question: any, idx: number) => (
-                        <div key={question.id || idx} className="bg-slate-800/50 rounded p-3">
-                          <div className="flex items-start gap-3">
-                            <span className="text-cyan-400 font-mono text-sm mt-1">{idx + 1}.</span>
-                            <div className="flex-1">
-                              <p className="text-slate-200">{question.question}</p>
-                              <div className="flex items-center gap-4 mt-2 text-sm">
-                                <span className={`px-2 py-1 rounded ${
-                                  question.allowFreeText 
-                                    ? 'bg-green-500/20 text-green-300' 
-                                    : 'bg-blue-500/20 text-blue-300'
-                                }`}>
-                                  {question.allowFreeText ? 'Free Text' : 'Button-Based'}
-                                </span>
-                                {question.buttons && question.buttons.length > 0 && (
-                                  <span className="text-slate-400">
-                                    {question.buttons.length} button{question.buttons.length !== 1 ? 's' : ''}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
           )}
         </div>
@@ -316,66 +220,6 @@ export default function ConfigSummary() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Knowledge Base */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg mb-6 overflow-hidden">
-          <button
-            onClick={() => toggleSection('knowledge')}
-            className="w-full flex items-center justify-between p-6 hover:bg-slate-700/30 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <BookOpen className="h-6 w-6 text-green-400" />
-              <h2 className="text-xl font-semibold text-cyan-50">Knowledge Base</h2>
-              <span className="text-sm text-slate-400">({knowledgeCount} items)</span>
-            </div>
-            <span className="text-slate-400">{expandedSections.knowledge ? '−' : '+'}</span>
-          </button>
-          {expandedSections.knowledge && (
-            <div className="px-6 pb-6">
-              {knowledgeCount === 0 ? (
-                <p className="text-slate-400 text-center py-8">No knowledge base items yet</p>
-              ) : (
-                <div className="space-y-4">
-                  {config.knowledgeBaseItems?.map((item: any) => (
-                    <div key={item.id} className="bg-slate-900/50 border border-slate-600 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-cyan-50">{item.title}</h3>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          item.source === 'manual' ? 'bg-blue-500/20 text-blue-300' :
-                          item.source === 'questions' ? 'bg-green-500/20 text-green-300' :
-                          'bg-purple-500/20 text-purple-300'
-                        }`}>
-                          {item.source}
-                        </span>
-                      </div>
-                      <p className="text-slate-300 text-sm mb-3 line-clamp-3">{item.advice}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {item.tags && item.tags.length > 0 && (
-                          <>
-                            {item.tags.map((tag: string) => (
-                              <span key={tag} className="px-2 py-1 bg-slate-700/50 text-slate-300 rounded text-xs">
-                                {tag}
-                              </span>
-                            ))}
-                          </>
-                        )}
-                        {item.flows && item.flows.length > 0 && (
-                          <>
-                            {item.flows.map((flow: string) => (
-                              <span key={flow} className="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded text-xs">
-                                {flow}
-                              </span>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>

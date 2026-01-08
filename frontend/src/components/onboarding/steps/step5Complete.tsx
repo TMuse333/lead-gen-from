@@ -78,8 +78,8 @@ export default function Step5Complete() {
       setCompletionData(data.data);
       setStatus('success');
       
-      // Mark step as complete (now step 6)
-      useOnboardingStore.getState().markStepComplete(6);
+      // Mark step as complete (now step 5)
+      useOnboardingStore.getState().markStepComplete(5);
     } catch (err) {
       console.error('Completion error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -93,7 +93,7 @@ export default function Step5Complete() {
   };
 
   const handleBack = () => {
-    setCurrentStep(5); // Go back to color config
+    setCurrentStep(4); // Go back to Step 4: Color Config
   };
 
   // Count stats

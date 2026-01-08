@@ -4,25 +4,12 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import ConversationEditor from '../conversationEditor/conversationEditor';
-import AgentAdviceDashboard from '../adviceDashboard/agentAdviceDashboard';
-import WelcomeOverview from '../overview/overview';
-import ConfigSummary from '../configSummary/configSummary';
-import AgentAdviceSpeechUploader from '../agentSpeechUploader/agentSpeechUploader';
-import ColorConfig from '../colorConfig/colorConfig';
-import UserAnalytics from '../analytics/userAnalytics';
 import LeadsDashboard from '../leads/leadsDashboard';
-import RulesExplanation from '../rules/rulesExplanation';
-import RecommendedRules from '../rules/recommendedRules';
-import ViewAllRules from '../rules/viewAllRules';
 import OffersDashboard from '../offers/OffersDashboard';
 import ConversationsDashboard from '../conversations/ConversationsDashboard';
-import dynamic from 'next/dynamic';
-
-const TokenUsageDashboard = dynamic(
-  () => import('../tokenUsage/tokenUsageDashboard'),
-  { ssr: false }
-);
+import SettingsDashboard from '../settings/SettingsDashboard';
+import KnowledgeBaseDashboard from '../knowledgeBase/KnowledgeBaseDashboard';
+import OverviewDashboard from '../overviewDashboard/OverviewDashboard';
 
 // Define user dashboard sections (matching DashboardSidebar)
 interface DashboardSection {
@@ -33,6 +20,14 @@ interface DashboardSection {
 }
 
 const USER_SECTIONS: DashboardSection[] = [
+  // Overview (merged: Getting Started + Analytics)
+  {
+    id: 'overview',
+    label: 'Overview',
+    component: OverviewDashboard,
+    description: 'Getting started guides and performance analytics'
+  },
+  // Core Features
   {
     id: 'offers',
     label: 'Offers',
@@ -51,71 +46,19 @@ const USER_SECTIONS: DashboardSection[] = [
     component: ConversationsDashboard,
     description: 'View all your chatbot interactions and generated offers'
   },
+  // Configuration
   {
-    id: 'analytics',
-    label: 'Analytics',
-    component: UserAnalytics,
-    description: 'Track your bot\'s performance and user engagement'
+    id: 'settings',
+    label: 'Settings',
+    component: SettingsDashboard,
+    description: 'Bot configuration, colors, and usage tracking'
   },
+  // Knowledge Base (merged into single section with tabs)
   {
-    id: 'config',
-    label: 'My Setup',
-    component: ConfigSummary,
-    description: 'Complete overview of your bot configuration'
-  },
-  {
-    id: 'conversations',
-    label: 'Conversation Flows',
-    component: ConversationEditor,
-    description: 'Edit questions, buttons, and flow logic'
-  },
-  {
-    id: 'colors',
-    label: 'Colors',
-    component: ColorConfig,
-    description: 'Customize your bot\'s color theme'
-  },
-  {
-    id: 'advice',
-    label: 'Agent Advice',
-    component: AgentAdviceDashboard,
-    description: 'Manage personalized advice content'
-  },
-  {
-    id: 'Speech upload',
-    label: 'Speech Uploader',
-    component: AgentAdviceSpeechUploader,
-    description: 'Upload your knowledge via script'
-  },
-  {
-    id: 'rules-explanation',
-    label: 'Client Situations Explained',
-    component: RulesExplanation,
-    description: 'Learn how client situations help target advice to different client circumstances'
-  },
-  {
-    id: 'recommended-rules',
-    label: 'Recommended Client Situations',
-    component: RecommendedRules,
-    description: 'AI-generated client situation recommendations based on your flow'
-  },
-  {
-    id: 'view-all-rules',
-    label: 'View All Client Situations',
-    component: ViewAllRules,
-    description: 'View all client situations currently attached to advice in Qdrant'
-  },
-  {
-    id: 'Overview',
-    label: 'Getting Started',
-    component: WelcomeOverview,
-    description: 'Learn how to upload quality data to your bot'
-  },
-  {
-    id: 'token-usage',
-    label: 'Token Usage',
-    component: TokenUsageDashboard,
-    description: 'Track LLM API usage and costs across all features'
+    id: 'knowledge-base',
+    label: 'Knowledge Base',
+    component: KnowledgeBaseDashboard,
+    description: 'Manage advice content, uploads, and client situations'
   }
 ];
 
@@ -123,8 +66,8 @@ export default function UserDashboard() {
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get('section');
   
-  // Determine active section (default to 'config' if not specified)
-  const activeSection = sectionParam || 'config';
+  // Determine active section (default to 'overview' if not specified)
+  const activeSection = sectionParam || 'overview';
   
   // Log section changes
   useEffect(() => {

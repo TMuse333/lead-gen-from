@@ -4,6 +4,8 @@ import { qdrant } from '../../../client';
 import { ADVICE_COLLECTION } from './collection';
 import { AgentAdviceScenario } from '@/types';
 import type { RuleGroup } from '@/types/rules.types';
+import type { AdvicePlacements } from '@/types/advice.types';
+import type { OfferType } from '@/lib/offers/unified';
 
 interface StoreAdviceParams {
   agentId: string;
@@ -13,6 +15,10 @@ interface StoreAdviceParams {
   metadata: {
     tags?: string[];
     flow?: string[];
+    /** Which offer types this advice applies to (empty = all offers) */
+    offerTypes?: OfferType[];
+    /** Specific locations within offers (e.g., timeline phases, pdf sections) */
+    placements?: AdvicePlacements;
     conditions?: Record<string, string[]>; // Simple conditions (OR logic)
     ruleGroups?: RuleGroup[]; // Complex rules (AND/OR logic) - optional
   };
@@ -40,6 +46,8 @@ export async function storeAgentAdvice({
             advice,
             tags: metadata.tags || [],
             flow: metadata.flow || [],
+            offerTypes: metadata.offerTypes || [], // NEW: offer type filtering
+            placements: metadata.placements || {}, // NEW: location-specific targeting
             conditions: metadata.conditions || {},
             ruleGroups: metadata.ruleGroups || undefined, // Optional: only include if provided
             createdAt: new Date().toISOString(),
@@ -65,6 +73,8 @@ export async function updateAdvice(
     advice?: string;
     tags?: string[];
     flow?: string[];
+    offerTypes?: OfferType[];
+    placements?: AdvicePlacements;
     conditions?: Record<string, string[]>;
     ruleGroups?: RuleGroup[];
     embedding?: number[];

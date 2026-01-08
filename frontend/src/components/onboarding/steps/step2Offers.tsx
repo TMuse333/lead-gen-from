@@ -2,32 +2,38 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Layout, Video, Plus, X, ArrowRight, ArrowLeft, AlertCircle, ShoppingCart, Home, Eye } from "lucide-react";
+import { FileText, Layout, Video, Plus, X, ArrowRight, ArrowLeft, AlertCircle, ShoppingCart, Home, Eye, Calendar } from "lucide-react";
 import { useOnboardingStore, OfferType, FlowIntention } from "@/stores/onboardingStore/onboarding.store";
 import { getOfferRequirements, FIELD_LABELS } from "@/lib/offers/offerRequirements";
 
 const OFFER_OPTIONS: { value: OfferType; label: string; icon: React.ReactNode; description: string }[] = [
-  { 
-    value: 'home-estimate', 
-    label: 'Home Estimate', 
+  {
+    value: 'real-estate-timeline',
+    label: 'Real Estate Timeline',
+    icon: <Calendar className="h-6 w-6" />,
+    description: 'Personalized step-by-step timeline (Recommended)'
+  },
+  {
+    value: 'home-estimate',
+    label: 'Home Estimate',
     icon: <span className="text-2xl">🏠</span>,
     description: 'Property valuation estimate'
   },
-  { 
-    value: 'pdf', 
-    label: 'PDF Guide', 
+  {
+    value: 'pdf',
+    label: 'PDF Guide',
     icon: <FileText className="h-6 w-6" />,
     description: 'Downloadable resource'
   },
-  { 
-    value: 'landingPage', 
-    label: 'Landing Page', 
+  {
+    value: 'landingPage',
+    label: 'Landing Page',
     icon: <Layout className="h-6 w-6" />,
     description: 'Personalized results page'
   },
-  { 
-    value: 'video', 
-    label: 'Video', 
+  {
+    value: 'video',
+    label: 'Video',
     icon: <Video className="h-6 w-6" />,
     description: 'Video content or tutorial'
   },
@@ -97,7 +103,7 @@ export default function Step2Offers() {
 
   const handleNext = () => {
     markStepComplete(2);
-    setCurrentStep(3); // Navigate to Step 3: Conversation Flow Setup
+    setCurrentStep(3); // Navigate to Step 3: Knowledge Base (conversation flow removed - offers dictate questions)
   };
 
   const canProceed = selectedOffers.length > 0 || customOffer.trim() !== '';

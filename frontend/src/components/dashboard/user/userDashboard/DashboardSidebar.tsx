@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, Home,
-Mic, FileText, Eye, ExternalLink, Palette, BarChart3, Menu, X, Users, Target, Sparkles, DollarSign, Gift, Code } from 'lucide-react';
+Eye, ExternalLink, Menu, X, Users, Gift, Code } from 'lucide-react';
 import logo from '../../../../../public/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,6 +25,17 @@ interface SectionGroup {
 
 const SECTION_GROUPS: SectionGroup[] = [
   {
+    title: 'Overview',
+    sections: [
+      {
+        id: 'overview',
+        label: 'Overview',
+        icon: Home,
+        description: 'Getting started guides and performance analytics'
+      }
+    ]
+  },
+  {
     title: 'Core Features',
     sections: [
       {
@@ -44,12 +55,6 @@ const SECTION_GROUPS: SectionGroup[] = [
         label: 'My Conversations',
         icon: MessageSquare,
         description: 'View all your chatbot interactions and generated offers'
-      },
-      {
-        id: 'analytics',
-        label: 'Analytics',
-        icon: BarChart3,
-        description: 'Track your bot\'s performance and user engagement'
       }
     ]
   },
@@ -57,22 +62,10 @@ const SECTION_GROUPS: SectionGroup[] = [
     title: 'Configuration',
     sections: [
       {
-        id: 'config',
-        label: 'My Setup',
-        icon: FileText,
-        description: 'Complete overview of your bot configuration'
-      },
-      {
-        id: 'conversations',
-        label: 'Conversation Flows',
-        icon: MessageSquare,
-        description: 'Edit questions, buttons, and flow logic'
-      },
-      {
-        id: 'colors',
-        label: 'Colors',
-        icon: Palette,
-        description: 'Customize your bot\'s color theme'
+        id: 'settings',
+        label: 'Settings',
+        icon: Settings,
+        description: 'Bot configuration, colors, and usage tracking'
       }
     ]
   },
@@ -80,57 +73,16 @@ const SECTION_GROUPS: SectionGroup[] = [
     title: 'Knowledge Base',
     sections: [
       {
-        id: 'advice',
-        label: 'Agent Advice',
+        id: 'knowledge-base',
+        label: 'Knowledge Base',
         icon: BookOpen,
-        description: 'Manage personalized advice content'
-      },
-      {
-        id: 'Speech upload',
-        label: 'Speech Uploader',
-        icon: Mic,
-        description: 'Upload your knowledge via script'
-      },
-      {
-        id: 'rules-explanation',
-        label: 'Client Situations Explained',
-        icon: Target,
-        description: 'Learn how client situations help target advice to different client circumstances'
-      },
-      {
-        id: 'recommended-rules',
-        label: 'Recommended Client Situations',
-        icon: Sparkles,
-        description: 'AI-generated client situation recommendations based on your flow'
-      },
-      {
-        id: 'view-all-rules',
-        label: 'View All Client Situations',
-        icon: Target,
-        description: 'View all client situations currently attached to advice in Qdrant'
-      }
-    ]
-  },
-  {
-    title: 'Resources',
-    sections: [
-      {
-        id: 'Overview',
-        label: 'Getting Started',
-        icon: Home,
-        description: 'Learn how to upload quality data to your bot'
+        description: 'Manage advice content, uploads, and client situations'
       }
     ]
   },
   {
     title: 'Advanced',
     sections: [
-      {
-        id: 'token-usage',
-        label: 'Token Usage',
-        icon: DollarSign,
-        description: 'Track LLM API usage and costs across all features'
-      },
       {
         id: 'llm-routes',
         label: 'LLM Routes',
@@ -176,12 +128,12 @@ export function DashboardSidebar() {
     // Check if we're on main dashboard
     if (pathname === '/dashboard') {
       const section = searchParams.get('section');
-      console.log('🟡 [DashboardSidebar] On main dashboard, section param:', section || 'config (default)');
-      return section || 'config'; // Default to config
+      console.log('🟡 [DashboardSidebar] On main dashboard, section param:', section || 'overview (default)');
+      return section || 'overview'; // Default to overview
     }
-    
-    console.log('🟡 [DashboardSidebar] Unknown pathname, defaulting to config:', pathname);
-    return 'config';
+
+    console.log('🟡 [DashboardSidebar] Unknown pathname, defaulting to overview:', pathname);
+    return 'overview';
   };
   
   const activeSection = getActiveSection();

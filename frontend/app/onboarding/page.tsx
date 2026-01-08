@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Step1BusinessSetup from "@/components/onboarding/steps/step1BusinessSetup";
 import Step2Offers from "@/components/onboarding/steps/step2Offers";
-import Step3ConversationFlow from "@/components/onboarding/steps/step3ConversationFlow";
-import Step4KnowledgeBase from "@/components/onboarding/steps/step4KnowledgeBase";
-import Step5ColorConfig from "@/components/onboarding/steps/step5ColorConfig";
-import Step6Complete from "@/components/onboarding/steps/step5Complete";
+// Step3ConversationFlow removed - offers now dictate questions via intent system
+import Step3KnowledgeBase from "@/components/onboarding/steps/step4KnowledgeBase";
+import Step4ColorConfig from "@/components/onboarding/steps/step5ColorConfig";
+import Step5Complete from "@/components/onboarding/steps/step5Complete";
 import { useOnboardingStore } from "@/stores/onboardingStore/onboarding.store";
 import ResumeModal from "@/components/onboarding/ResumeModal";
 import { detectIncompleteOnboarding, getOnboardingProgressSummary } from "@/lib/onboarding/detectIncomplete";
+
+// Total steps reduced from 6 to 5 (removed conversation flow configuration)
+const TOTAL_STEPS = 5;
 
 export default function OnboardingPage() {
   const { data: session, status } = useSession();
@@ -32,7 +35,7 @@ export default function OnboardingPage() {
       const stepParam = urlParams.get('step');
       if (stepParam) {
         const stepNum = parseInt(stepParam, 10);
-        if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= 6) {
+        if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= TOTAL_STEPS) {
           console.log('🟢 [OnboardingPage] Setting step from URL param:', stepNum);
           setCurrentStep(stepNum);
         }
@@ -157,28 +160,27 @@ export default function OnboardingPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-cyan-200">
-                Step {currentStep} of 6
+                Step {currentStep} of {TOTAL_STEPS}
               </span>
               <span className="text-sm text-cyan-200/70">
-                {Math.round((currentStep / 6) * 100)}% Complete
+                {Math.round((currentStep / TOTAL_STEPS) * 100)}% Complete
               </span>
             </div>
             <div className="w-full bg-slate-700/50 rounded-full h-2">
               <div
                 className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentStep / 6) * 100}%` }}
+                style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
               />
             </div>
           </div>
 
-          {/* Step Content */}
+          {/* Step Content - Simplified flow (no conversation configuration) */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-8 shadow-2xl">
             {currentStep === 1 && <Step1BusinessSetup />}
             {currentStep === 2 && <Step2Offers />}
-            {currentStep === 3 && <Step3ConversationFlow />}
-            {currentStep === 4 && <Step4KnowledgeBase />}
-            {currentStep === 5 && <Step5ColorConfig />}
-            {currentStep === 6 && <Step6Complete />}
+            {currentStep === 3 && <Step3KnowledgeBase />}
+            {currentStep === 4 && <Step4ColorConfig />}
+            {currentStep === 5 && <Step5Complete />}
           </div>
         </div>
       </div>

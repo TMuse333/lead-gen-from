@@ -2,67 +2,64 @@
 
 import { ComponentSchema, KnowledgeSet } from '@/types/schemas';
 import { generateUserEmbedding } from '../openai/userEmbedding';
-import { queryRelevantAdvice } from '../qdrant';
+import { queryRelevantAdvice, queryAdviceForLocation, type QueryAdviceOptions } from '../qdrant';
 import { getAllActionSteps } from '../qdrant/collections/rules/actionSteps/admin';
 import { calculateMatchScore } from '../qdrant/engines/rules';
 import { PersonalizedAdviceResult, QdrantRetrievalMetadata } from '@/types/qdrant.types';
+import type { OfferType, Intent, KnowledgeRequirements, PhaseKnowledgeRequirement } from '@/lib/offers/unified';
+import type { AgentAdviceScenario } from '@/types';
+
+/**
+ * Options for personalized advice retrieval
+ */
+export interface PersonalizationOptions {
+  /** Which offer type is being generated */
+  offerType?: OfferType;
+  /** Specific location within the offer (e.g., phase ID for timeline) */
+  location?: string;
+  /** Maximum advice items to return */
+  limit?: number;
+}
 
 export async function getPersonalizedAdvice(
   agentId: string,
   flow: string,
   userInput: Record<string, string>,
-  knowledgeSets: KnowledgeSet[] = []
+  knowledgeSets: KnowledgeSet[] = [],
+  options?: PersonalizationOptions
 ): Promise<PersonalizedAdviceResult> {
-  console.log('\n🔍 [getPersonalizedAdvice] Starting retrieval...');
-  console.log('   Agent ID:', agentId);
-  console.log('   Flow:', flow);
-  console.log('   User Input:', userInput);
-  console.log('   Knowledge Sets:', knowledgeSets);
-
   const allAdvice: string[] = [];
   const metadata: QdrantRetrievalMetadata[] = [];
-  
+
   if (knowledgeSets.length === 0) {
-    console.log('⚠️ [getPersonalizedAdvice] No knowledge sets provided!');
     return { advice: [], metadata: [] };
   }
 
   for (const knowledgeSet of knowledgeSets) {
-    console.log(`\n📦 [${knowledgeSet.name}] Processing collection (${knowledgeSet.type})...`);
-    
     if (knowledgeSet.type === 'vector') {
-      console.log('   🔮 Using vector search...');
-      
       try {
         // Generate embedding
-        console.log('   Generating embedding...');
         const embedding = await generateUserEmbedding(flow, userInput);
-        console.log(`   ✅ Embedding generated: ${embedding.length} dimensions`);
-        console.log(`   First 5 values: [${embedding.slice(0, 5).join(', ')}...]`);
-        
-        // Query Qdrant - use collection name from knowledgeSet if provided
-        const collectionName = knowledgeSet.name; // knowledgeSet.name should be the Qdrant collection name
-        console.log('   Querying Qdrant...');
-        console.log(`   Using collection: ${collectionName}`);
-        const adviceItems = await queryRelevantAdvice(agentId, embedding, flow, userInput, 5, collectionName);
-        console.log(`   ✅ Qdrant returned ${adviceItems.length} items`);
-        
-        if (adviceItems.length === 0) {
-          console.log('   ⚠️ No advice items returned from Qdrant!');
-          console.log('   Possible reasons:');
-          console.log('   - Collection is empty');
-          console.log('   - No items match the flow/conditions');
-          console.log('   - Agent ID filter is too strict');
-        } else {
-          adviceItems.forEach((item, i) => {
-            console.log(`   ${i + 1}. ${item.title}`);
-            console.log(`      - Tags: ${item.tags?.join(', ') || 'none'}`);
-            console.log(`      - Flow: ${item.applicableWhen?.flow?.join(', ') || 'any'}`);
-          });
-        }
-        
+
+        // Build query options with offer context
+        const queryOptions: QueryAdviceOptions = {
+          limit: options?.limit ?? 5,
+          collectionName: knowledgeSet.name,
+          offerType: options?.offerType,
+          location: options?.location,
+        };
+
+        // Query Qdrant with offer-aware filtering
+        const adviceItems = await queryRelevantAdvice(
+          agentId,
+          embedding,
+          flow,
+          userInput,
+          queryOptions
+        );
+
         allAdvice.push(...adviceItems.map(item => `${item.title}: ${item.advice}`));
-        
+
         metadata.push({
           collection: knowledgeSet.name,
           type: 'vector',
@@ -70,55 +67,32 @@ export async function getPersonalizedAdvice(
           items: adviceItems.map(item => ({
             id: item.id,
             title: item.title,
-            advice: item.advice, 
+            advice: item.advice,
             tags: item.tags,
+            placements: item.applicableWhen?.placements,
           }))
         });
       } catch (error) {
-        console.error(`   ❌ Error in vector search for ${knowledgeSet.name}:`, error);
+        console.error(`Error in vector search for ${knowledgeSet.name}:`, error);
       }
-      
+
     } else if (knowledgeSet.type === 'rule') {
-      console.log('   📏 Using rule-based search...');
-      
       try {
         // Get all action steps
-        console.log('   Fetching all action steps...');
         const actionSteps = await getAllActionSteps(agentId);
-        console.log(`   ✅ Retrieved ${actionSteps.length} total action steps from DB`);
-        
-        if (actionSteps.length === 0) {
-          console.log('   ⚠️ No action steps in database for agent:', agentId);
-        } else {
-          console.log('   Calculating match scores...');
-          
+
+        if (actionSteps.length > 0) {
           const matches = actionSteps
             .map(step => {
               const score = calculateMatchScore(step, userInput, flow as "buy" | "sell" | 'browse');
-              console.log(`      - ${step.title}: score ${score.toFixed(2)}`);
               return { step, score };
             })
-            .filter(({ score }) => {
-              const matched = score > 0;
-              if (!matched) {
-                console.log(`      ❌ Filtered out (score: ${score.toFixed(2)})`);
-              }
-              return matched;
-            })
+            .filter(({ score }) => score > 0)
             .sort((a, b) => b.score - a.score)
-            .slice(0, 5);
-          
-          console.log(`   ✅ Matched ${matches.length} action steps after filtering`);
-          
-          if (matches.length === 0) {
-            console.log('   ⚠️ No action steps matched the rules!');
-            console.log('   Flow:', flow);
-            console.log('   User input keys:', Object.keys(userInput));
-            console.log('   Check if action steps have matching flow and rule conditions');
-          }
-          
+            .slice(0, options?.limit ?? 5);
+
           allAdvice.push(...matches.map(({ step }) => `${step.title}: ${step.description}`));
-          
+
           metadata.push({
             collection: knowledgeSet.name,
             type: 'rule',
@@ -133,16 +107,265 @@ export async function getPersonalizedAdvice(
           });
         }
       } catch (error) {
-        console.error(`   ❌ Error in rule-based search for ${knowledgeSet.name}:`, error);
+        console.error(`Error in rule-based search for ${knowledgeSet.name}:`, error);
       }
     }
   }
-  
-  console.log('\n✅ [getPersonalizedAdvice] Retrieval complete');
-  console.log(`   Total advice items: ${allAdvice.length}`);
-  console.log(`   Collections processed: ${metadata.length}`);
-  
+
   return { advice: allAdvice, metadata };
+}
+
+/**
+ * Get advice specifically for a location within an offer (e.g., timeline phase)
+ * This is useful for phase-by-phase personalization
+ */
+export async function getAdviceForLocation(
+  agentId: string,
+  flow: string,
+  userInput: Record<string, string>,
+  offerType: OfferType,
+  location: string,
+  collectionName: string,
+  limit: number = 3
+): Promise<AgentAdviceScenario[]> {
+  try {
+    const embedding = await generateUserEmbedding(flow, userInput);
+
+    return await queryAdviceForLocation(
+      agentId,
+      embedding,
+      flow,
+      userInput,
+      offerType,
+      location,
+      { limit, collectionName }
+    );
+  } catch (error) {
+    console.error(`Error getting advice for location ${location}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Get advice grouped by location for an entire offer
+ * Useful for timeline generation where we want advice per phase
+ */
+export async function getAdviceByLocations(
+  agentId: string,
+  flow: string,
+  userInput: Record<string, string>,
+  offerType: OfferType,
+  locations: string[],
+  collectionName: string,
+  limitPerLocation: number = 2
+): Promise<Record<string, AgentAdviceScenario[]>> {
+  const adviceByLocation: Record<string, AgentAdviceScenario[]> = {};
+
+  // Query in parallel for all locations
+  const results = await Promise.all(
+    locations.map(async (location) => ({
+      location,
+      advice: await getAdviceForLocation(
+        agentId,
+        flow,
+        userInput,
+        offerType,
+        location,
+        collectionName,
+        limitPerLocation
+      ),
+    }))
+  );
+
+  for (const { location, advice } of results) {
+    adviceByLocation[location] = advice;
+  }
+
+  return adviceByLocation;
+}
+
+/**
+ * Result of phase-specific knowledge retrieval
+ */
+export interface PhaseAdviceResult {
+  /** Advice items grouped by phase ID */
+  byPhase: Map<string, AgentAdviceScenario[]>;
+  /** Total advice items retrieved */
+  totalItems: number;
+  /** Phases that have no advice (may need agent to upload) */
+  missingPhases: string[];
+  /** Metadata for debugging/analytics */
+  metadata: {
+    queriedPhases: number;
+    successfulQueries: number;
+    avgItemsPerPhase: number;
+  };
+}
+
+/**
+ * Get phase-specific advice using the offer's knowledge requirements
+ *
+ * This is the strategic knowledge retrieval function that:
+ * 1. Uses offer-defined requirements to know what each phase needs
+ * 2. Queries per-phase with appropriate limits based on priority
+ * 3. Returns organized advice for prompt injection
+ *
+ * @param agentId - The agent's ID for Qdrant queries
+ * @param intent - The user's intent (buy/sell/browse)
+ * @param userInput - Collected user inputs
+ * @param knowledgeRequirements - From the offer's knowledgeRequirements field
+ * @param offerType - The offer type for filtering
+ * @param collectionName - Qdrant collection name
+ */
+export async function getPhaseSpecificAdvice(
+  agentId: string,
+  intent: Intent,
+  userInput: Record<string, string>,
+  knowledgeRequirements: KnowledgeRequirements,
+  offerType: OfferType,
+  collectionName: string = 'agent_advice'
+): Promise<PhaseAdviceResult> {
+  const phaseRequirements = knowledgeRequirements[intent];
+
+  if (!phaseRequirements) {
+    console.warn(`[PhaseAdvice] No knowledge requirements for intent: ${intent}`);
+    return {
+      byPhase: new Map(),
+      totalItems: 0,
+      missingPhases: [],
+      metadata: { queriedPhases: 0, successfulQueries: 0, avgItemsPerPhase: 0 },
+    };
+  }
+
+  const byPhase = new Map<string, AgentAdviceScenario[]>();
+  const missingPhases: string[] = [];
+  let totalItems = 0;
+  let successfulQueries = 0;
+
+  // Generate embedding once for all queries
+  let embedding: number[];
+  try {
+    embedding = await generateUserEmbedding(intent, userInput);
+  } catch (error) {
+    console.error('[PhaseAdvice] Failed to generate embedding:', error);
+    return {
+      byPhase: new Map(),
+      totalItems: 0,
+      missingPhases: Object.keys(phaseRequirements),
+      metadata: { queriedPhases: 0, successfulQueries: 0, avgItemsPerPhase: 0 },
+    };
+  }
+
+  // Query each phase in parallel
+  const phaseEntries = Object.entries(phaseRequirements);
+  const queryPromises = phaseEntries.map(async ([phaseId, requirement]) => {
+    const limit = getLimitForPriority(requirement.priority, requirement.minItems);
+
+    try {
+      const advice = await queryAdviceForLocation(
+        agentId,
+        embedding,
+        intent,
+        userInput,
+        offerType,
+        phaseId,
+        {
+          limit,
+          collectionName,
+        }
+      );
+
+      return { phaseId, advice, success: true };
+    } catch (error) {
+      console.error(`[PhaseAdvice] Query failed for phase ${phaseId}:`, error);
+      return { phaseId, advice: [], success: false };
+    }
+  });
+
+  const results = await Promise.all(queryPromises);
+
+  // Process results
+  for (const { phaseId, advice, success } of results) {
+    byPhase.set(phaseId, advice);
+    totalItems += advice.length;
+
+    if (success) {
+      successfulQueries++;
+    }
+
+    // Track phases with insufficient advice
+    const requirement = phaseRequirements[phaseId];
+    if (advice.length < (requirement?.minItems ?? 1)) {
+      missingPhases.push(phaseId);
+    }
+  }
+
+  return {
+    byPhase,
+    totalItems,
+    missingPhases,
+    metadata: {
+      queriedPhases: phaseEntries.length,
+      successfulQueries,
+      avgItemsPerPhase: phaseEntries.length > 0 ? totalItems / phaseEntries.length : 0,
+    },
+  };
+}
+
+/**
+ * Get query limit based on priority level
+ */
+function getLimitForPriority(
+  priority: PhaseKnowledgeRequirement['priority'],
+  minItems?: number
+): number {
+  // Use minItems if specified, otherwise base on priority
+  if (minItems && minItems > 0) {
+    return minItems;
+  }
+
+  switch (priority) {
+    case 'critical':
+      return 3;
+    case 'high':
+      return 2;
+    case 'medium':
+      return 2;
+    case 'low':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+/**
+ * Format phase-specific advice for prompt injection
+ *
+ * This creates a formatted string that can be inserted into the LLM prompt,
+ * organized by phase with clear labeling.
+ */
+export function formatPhaseAdviceForPrompt(
+  phaseAdvice: PhaseAdviceResult,
+  phaseNames?: Record<string, string> // Optional mapping of phaseId -> display name
+): string {
+  if (phaseAdvice.totalItems === 0) {
+    return 'No phase-specific knowledge available.';
+  }
+
+  const sections: string[] = [];
+
+  for (const [phaseId, advice] of phaseAdvice.byPhase) {
+    if (advice.length === 0) continue;
+
+    const phaseName = phaseNames?.[phaseId] || phaseId;
+    const adviceText = advice
+      .map((item, i) => `  ${i + 1}. [${item.tags.join(', ')}] ${item.advice}`)
+      .join('\n');
+
+    sections.push(`**${phaseName}:**\n${adviceText}`);
+  }
+
+  return sections.join('\n\n');
 }
 
 export async function getComponentAdvice(
@@ -154,14 +377,14 @@ export async function getComponentAdvice(
   if (!schema.personalization?.retrieveFrom) {
     return [];
   }
-  
+
   const { advice } = await getPersonalizedAdvice(
-    agentId, 
-    flow, 
+    agentId,
+    flow,
     userInput,
     schema.personalization.retrieveFrom
   );
-  
+
   return advice;
 }
 
@@ -169,6 +392,6 @@ export function formatAdviceForPrompt(advice: string[]): string {
   if (advice.length === 0) {
     return 'None provided';
   }
-  
+
   return advice.map((item, index) => `${index + 1}. ${item}`).join('\n');
 }

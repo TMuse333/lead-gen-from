@@ -3,7 +3,7 @@
 
 import { qdrant } from '../../../client';
 import type { RuleGroup } from '@/types/rules.types';
-import type { AdviceType } from '@/types/advice.types';
+import type { AdviceType, AdvicePlacements, KnowledgeKind } from '@/types/advice.types';
 
 interface StoreAdviceParams {
   collectionName: string;
@@ -16,6 +16,8 @@ interface StoreAdviceParams {
     conditions?: Record<string, string[]>; // Simple conditions (OR logic)
     ruleGroups?: RuleGroup[]; // Complex rules (AND/OR logic) - optional
     type?: AdviceType; // Optional advice type
+    kind?: KnowledgeKind; // 'tip' or 'story'
+    placements?: AdvicePlacements; // Offer-specific placements
   };
 }
 
@@ -43,6 +45,8 @@ export async function storeUserAdvice({
             conditions: metadata.conditions || {},
             ruleGroups: metadata.ruleGroups || undefined, // Optional: only include if provided
             type: metadata.type || undefined, // Optional: advice type
+            kind: metadata.kind || 'tip', // Default to 'tip' if not specified
+            placements: metadata.placements || {}, // Offer-specific placements
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             usageCount: 0,

@@ -123,13 +123,12 @@ export default function Step4KnowledgeBase() {
   };
 
   const handleBack = () => {
-    setCurrentStep(3);
+    setCurrentStep(2); // Back to Step 2: Offers
   };
 
   const handleNext = () => {
-    markStepComplete(4);
-    setCurrentStep(5);
-    alert('Knowledge base configured! Next step coming soon...');
+    markStepComplete(3); // Now step 3 (was step 4)
+    setCurrentStep(4); // Go to Step 4: Color Config
   };
 
   const canProceed = knowledgeBaseItems.length > 0;

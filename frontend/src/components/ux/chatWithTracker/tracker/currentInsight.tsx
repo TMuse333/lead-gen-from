@@ -13,10 +13,14 @@ export function CurrentInsight({ currentInsight }: CurrentInsightProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-4 p-3 bg-slate-700 rounded-lg border-l-4 border-[#00bfff] shadow-sm"
+      className="mb-4 p-3 rounded-lg border-l-4 shadow-sm"
+      style={{
+        backgroundColor: 'rgba(var(--color-surface-rgb), 0.7)',
+        borderLeftColor: 'var(--color-primary)',
+      }}
     >
-      <p className="text-sm text-white font-medium flex items-center gap-2">
-        <Zap className="h-4 w-4 text-[#00bfff]" />
+      <p className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--color-text-on-surface)' }}>
+        <Zap className="h-4 w-4" style={{ color: 'var(--color-primary)' }} />
         {displayText}
       </p>
     </motion.div>

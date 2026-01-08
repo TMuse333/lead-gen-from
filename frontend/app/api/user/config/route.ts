@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
 
     const userId = session.user.id;
     const body = await request.json();
-    const { selectedOffers } = body;
+    const { selectedOffers, conversationFlows } = body;
 
     // 2. Get user's client configuration
     const collection = await getClientConfigsCollection();
@@ -99,15 +99,27 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 3. Update selectedOffers if provided
+    // 3. Build update object
+    const updateFields: any = {
+      updatedAt: new Date(),
+    };
+
+    // Update selectedOffers if provided
     if (selectedOffers && Array.isArray(selectedOffers)) {
+      updateFields.selectedOffers = selectedOffers;
+    }
+
+    // Update conversationFlows if provided
+    if (conversationFlows && typeof conversationFlows === 'object') {
+      updateFields.conversationFlows = conversationFlows;
+    }
+
+    // 4. Apply updates
+    if (Object.keys(updateFields).length > 1) { // More than just updatedAt
       await collection.updateOne(
         { userId },
         {
-          $set: {
-            selectedOffers,
-            updatedAt: new Date(),
-          },
+          $set: updateFields,
         }
       );
     }

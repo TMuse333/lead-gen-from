@@ -2,6 +2,9 @@
 import type { ConversationStore, ConversationFlow } from './conversation.store';
 import type { ConversationQuestion, ButtonOption } from '@/types/conversation.types';
 
+// Debounce timer for saving to MongoDB
+let saveTimeout: NodeJS.Timeout | null = null;
+
 // This is the clean, modern way — just like your chat.actions.ts
 export const createActions = (
   set: (updater: Partial<ConversationStore> | ((state: ConversationStore) => Partial<ConversationStore>)) => void,
@@ -20,7 +23,8 @@ export const createActions = (
     return id;
   },
 
-  updateFlow: (flowId: string, updates: Partial<ConversationFlow>) =>
+  updateFlow: (flowId: string, updates: Partial<ConversationFlow>) => {
+    // Update local store first (optimistic update)
     set((s) => {
       const flow = s.flows[flowId];
       if (!flow) return s;
@@ -38,7 +42,57 @@ export const createActions = (
           },
         },
       };
-    }),
+    });
+
+    // Debounce MongoDB save (wait 1 second after last update)
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+
+    saveTimeout = setTimeout(async () => {
+      try {
+        const updatedFlows = get().flows;
+        
+        // Serialize flows (convert Date objects to ISO strings for MongoDB)
+        const serializedFlows = Object.fromEntries(
+          Object.entries(updatedFlows).map(([key, flow]) => [
+            key,
+            {
+              ...flow,
+              metadata: {
+                ...flow.metadata,
+                createdAt: flow.metadata.createdAt instanceof Date 
+                  ? flow.metadata.createdAt.toISOString() 
+                  : flow.metadata.createdAt,
+                updatedAt: flow.metadata.updatedAt instanceof Date 
+                  ? flow.metadata.updatedAt.toISOString() 
+                  : flow.metadata.updatedAt,
+              },
+            },
+          ])
+        );
+        
+        const response = await fetch('/api/user/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationFlows: serializedFlows,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error('❌ Failed to save conversation flows to MongoDB');
+          throw new Error('Failed to save conversation flows');
+        }
+
+        console.log('✅ Conversation flows saved to MongoDB');
+      } catch (error) {
+        console.error('❌ Error saving conversation flows:', error);
+        // Note: We don't revert the local update - user sees their changes
+        // but they may need to refresh to see the persisted version
+      }
+    }, 1000); // Wait 1 second after last update
+  },
 
     getQuestion: (flowId: string, questionId: string) => {
         const flow = get().flows[flowId];

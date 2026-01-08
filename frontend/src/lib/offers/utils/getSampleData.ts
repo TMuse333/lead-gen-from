@@ -94,6 +94,33 @@ export function getSampleDataForOffer(offerType: OfferType): SampleData {
         context: baseContext,
       };
 
+    case 'real-estate-timeline':
+      return {
+        userInput: {
+          flow: 'buy',
+          timeline: '6 months',
+          location: 'Austin, TX',
+          budget: '$450,000',
+          propertyAddress: '456 Oak Avenue, Austin, TX',
+          isFirstTime: 'true',
+          currentStage: 'just starting',
+          email: 'john.doe@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+        },
+        context: {
+          ...baseContext,
+          flow: 'buy',
+          qdrantAdvice: [
+            'In the Austin market, pre-approval is crucial due to high competition',
+            'First-time buyers should budget for 3-5% closing costs',
+            'Consider neighborhoods like Hyde Park or Mueller for good value',
+            'The spring market (March-May) is most competitive in Austin',
+            'Get a local inspector familiar with Austin-specific issues (foundation, drainage)',
+          ],
+        },
+      };
+
     default:
       return {
         userInput: baseSample,
@@ -122,6 +149,19 @@ export function getFieldLabel(fieldName: string): string {
     customField1: 'Custom Field 1',
     customField2: 'Custom Field 2',
     customField3: 'Custom Field 3',
+    // Timeline-specific fields
+    flow: 'Flow Type (Buy/Sell/Browse)',
+    timeline: 'Timeline',
+    location: 'Location',
+    budget: 'Budget',
+    isFirstTime: 'First Time Buyer',
+    currentStage: 'Current Stage',
+    preApproved: 'Pre-Approved',
+    hasAgent: 'Has Agent',
+    propertyAge: 'Property Age',
+    renovations: 'Renovations',
+    sellingReason: 'Selling Reason',
+    buyingReason: 'Buying Reason',
   };
 
   return labels[fieldName] || fieldName;

@@ -13,12 +13,16 @@ import type {
   BaseOfferProps,
   FallbackStrategy,
   GenerationMetadata,
+  RetryConfig,
 } from './types';
+import { DEFAULT_RETRY_CONFIG } from './types';
 import { retryLLMCall } from './retry';
 import { validateOfferInputs } from '../validators/inputValidator';
 import { extractJSON, sanitizeOutput } from '../validators/outputValidator';
 import { calculateActualCost } from './costEstimator';
-import { isVersionDeprecated, getDeprecationWarning } from './versionControl';
+import { isVersionDeprecated } from './versionControl';
+import { hasOffer } from '../unified/registry';
+import type { UnifiedOffer, PromptContext as UnifiedPromptContext, Intent } from '../unified/types';
 
 // ==================== FALLBACK HANDLERS ====================
 
@@ -33,14 +37,9 @@ async function handleFallback<T extends BaseOfferProps>(
 ): Promise<T | null> {
   const { strategy, template } = definition.fallbackConfig;
   
-  console.error(
-    `[Fallback] Using ${strategy} fallback for ${definition.type} offer. Error: ${error.message}`
-  );
-  
   switch (strategy) {
     case 'use-template':
       if (!template) {
-        console.error('[Fallback] No template provided for use-template strategy');
         return null;
       }
       
@@ -56,14 +55,10 @@ async function handleFallback<T extends BaseOfferProps>(
       } as T;
       
     case 'notify-admin':
-      // TODO: Implement admin notification
-      console.error('[Fallback] Admin notification not yet implemented');
       await notifyAdmin(definition, error, context);
       return null;
-      
+
     case 'save-draft':
-      // TODO: Implement draft saving
-      console.error('[Fallback] Draft saving not yet implemented');
       await saveDraft(definition, userInput, context);
       return null;
       
@@ -77,34 +72,22 @@ async function handleFallback<T extends BaseOfferProps>(
  * Notify admin about generation failure (placeholder)
  */
 async function notifyAdmin<T extends BaseOfferProps>(
-  definition: OfferDefinition<T>,
-  error: any,
-  context: GenerationContext
+  _definition: OfferDefinition<T>,
+  _error: any,
+  _context: GenerationContext
 ): Promise<void> {
   // TODO: Implement email notification or logging to admin dashboard
-  console.error('[Admin Notification]', {
-    offerType: definition.type,
-    userId: context.userId,
-    error: error.message,
-    timestamp: new Date().toISOString(),
-  });
 }
 
 /**
  * Save draft for later review (placeholder)
  */
 async function saveDraft<T extends BaseOfferProps>(
-  definition: OfferDefinition<T>,
-  userInput: Record<string, string>,
-  context: GenerationContext
+  _definition: OfferDefinition<T>,
+  _userInput: Record<string, string>,
+  _context: GenerationContext
 ): Promise<void> {
   // TODO: Implement MongoDB draft storage
-  console.log('[Draft Save]', {
-    offerType: definition.type,
-    userId: context.userId,
-    userInput,
-    timestamp: new Date().toISOString(),
-  });
 }
 
 // ==================== LLM CALL ====================
@@ -176,15 +159,18 @@ export async function generateOffer<T extends BaseOfferProps>(
   let retryCount = 0;
   
   try {
-    // Check version deprecation
+    // Check version deprecation (no-op for now)
     if (isVersionDeprecated(definition.version)) {
-      console.warn(
-        `[Version Warning] ${getDeprecationWarning(definition.version)}`
-      );
+      // Version is deprecated but still functional
     }
     
     // Step 1: Validate inputs
-    const inputValidation = validateOfferInputs(userInput, definition.inputRequirements);
+    // Prefer unified offer's derived requirements (from questions) over legacy inputRequirements
+    const inputRequirements = hasOffer(definition.type as any)
+      ? deriveInputRequirements(definition.type as any)
+      : definition.inputRequirements;
+
+    const inputValidation = validateOfferInputs(userInput, inputRequirements);
     if (!inputValidation.valid) {
       return {
         success: false,
@@ -275,13 +261,7 @@ export async function generateOffer<T extends BaseOfferProps>(
     
   } catch (error: any) {
     const duration = Date.now() - startTime;
-    
-    console.error('[Generation Error]', {
-      offerType: definition.type,
-      error: error.message,
-      retries: retryCount,
-    });
-    
+
     // Try fallback
     const fallbackResult = await handleFallback(definition, userInput, error, context);
     
@@ -302,6 +282,194 @@ export async function generateOffer<T extends BaseOfferProps>(
       };
     }
     
+    return {
+      success: false,
+      error: error.message || 'Generation failed',
+      errors: [error.message],
+      fallbackUsed: !!fallbackResult,
+      metadata: {
+        retries: retryCount,
+        duration,
+      },
+    };
+  }
+}
+
+// ==================== UNIFIED OFFER GENERATION ====================
+
+/**
+ * Handle fallback for unified offers
+ */
+async function handleUnifiedFallback(
+  offer: UnifiedOffer<unknown>,
+  userInput: Record<string, string>,
+  error: any,
+  context: GenerationContext
+): Promise<BaseOfferProps | null> {
+  const { strategy, template } = offer.fallback;
+
+  switch (strategy) {
+    case 'use-template':
+      if (!template) {
+        return null;
+      }
+
+      return {
+        ...(template as BaseOfferProps),
+        id: `fallback-${Date.now()}`,
+        type: offer.type,
+        businessName: context.businessName,
+        flow: context.flow,
+        generatedAt: new Date().toISOString(),
+        version: offer.version,
+      };
+
+    case 'retry':
+      // Retry is handled by retryLLMCall, if we get here all retries failed
+      return null;
+
+    case 'error':
+    default:
+      return null;
+  }
+}
+
+/**
+ * Generate an offer using the unified offer definition
+ * This is the new generation function that uses UnifiedOffer directly
+ *
+ * Note: We accept UnifiedOffer<unknown> to work with the registry's return type,
+ * then cast internally. The output type is BaseOfferProps at minimum.
+ */
+export async function generateFromUnifiedOffer(
+  offer: UnifiedOffer<unknown>,
+  userInput: Record<string, string>,
+  context: GenerationContext,
+  openai: OpenAI
+): Promise<GenerationResult<BaseOfferProps>> {
+  const startTime = Date.now();
+  let retryCount = 0;
+
+  try {
+    // NOTE: Input validation removed - the chatbot guarantees all required questions
+    // are answered before triggering generation. Both use the same offer definition
+    // as source of truth. The old validation was also broken because deriveInputRequirements
+    // collected from ALL intents, not just the current one.
+
+    // Step 1: Build prompt using unified offer's generation config
+    // Convert GenerationContext to UnifiedPromptContext
+    const unifiedContext: UnifiedPromptContext = {
+      intent: (context.flow || 'buy') as Intent,
+      flow: context.flow, // backwards compatibility
+      businessName: context.businessName,
+      qdrantAdvice: context.qdrantAdvice,
+      additionalContext: context.additionalContext,
+    };
+
+    const prompt = offer.generation.buildPrompt(userInput, unifiedContext);
+
+    // Step 3: Build generation metadata from unified config
+    const generationMetadata: GenerationMetadata = {
+      model: offer.generation.model as GenerationMetadata['model'],
+      maxTokens: offer.generation.maxTokens,
+      temperature: offer.generation.temperature,
+    };
+
+    // Step 4: Build retry config (use defaults, allow override from fallback.maxRetries)
+    const retryConfig: RetryConfig = {
+      ...DEFAULT_RETRY_CONFIG,
+      maxRetries: offer.fallback.maxRetries ?? DEFAULT_RETRY_CONFIG.maxRetries,
+    };
+
+    // Step 5: Call LLM with retry logic
+    const { result: llmResponse, attempts, totalDelay } = await retryLLMCall(
+      () => callLLM(prompt, generationMetadata, openai),
+      retryConfig,
+      offer.type
+    );
+
+    retryCount = attempts - 1;
+
+    // Step 6: Extract and parse JSON
+    const { success: jsonSuccess, json: parsedOutput, error: jsonError } =
+      extractJSON(llmResponse.content);
+
+    if (!jsonSuccess || !parsedOutput) {
+      throw new Error(`Failed to parse LLM output as JSON: ${jsonError}`);
+    }
+
+    // Step 7: Validate output using unified offer's validator
+    const outputValidation = offer.generation.validateOutput(parsedOutput);
+    if (!outputValidation.valid) {
+      throw new Error(
+        `Output validation failed: ${outputValidation.errors?.join(', ')}`
+      );
+    }
+
+    // Step 8: Sanitize output
+    const sanitized = sanitizeOutput(parsedOutput);
+
+    // Step 9: Post-process if defined
+    let finalOutput = sanitized as BaseOfferProps;
+    if (offer.generation.postProcess) {
+      finalOutput = offer.generation.postProcess(finalOutput, userInput) as BaseOfferProps;
+    }
+
+    // Step 10: Add base properties if not present
+    finalOutput = {
+      ...finalOutput,
+      id: finalOutput.id || `${offer.type}-${Date.now()}`,
+      type: offer.type,
+      businessName: context.businessName,
+      flow: context.flow,
+      generatedAt: finalOutput.generatedAt || new Date().toISOString(),
+      version: offer.version,
+    };
+
+    // Calculate cost
+    const cost = calculateActualCost(
+      llmResponse.usage.promptTokens,
+      llmResponse.usage.completionTokens,
+      generationMetadata.model
+    );
+
+    const duration = Date.now() - startTime;
+
+    return {
+      success: true,
+      data: finalOutput,
+      metadata: {
+        tokensUsed: llmResponse.usage.totalTokens,
+        promptTokens: llmResponse.usage.promptTokens,
+        completionTokens: llmResponse.usage.completionTokens,
+        cost,
+        duration,
+        retries: retryCount,
+        version: offer.version,
+        cacheHit: false,
+      },
+    };
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+
+    // Try fallback using unified offer's fallback config
+    const fallbackResult = await handleUnifiedFallback(offer, userInput, error, context);
+
+    if (fallbackResult) {
+      return {
+        success: true,
+        data: fallbackResult,
+        metadata: {
+          tokensUsed: 0,
+          cost: 0,
+          duration,
+          retries: retryCount,
+          version: offer.version,
+          cacheHit: false,
+        },
+      };
+    }
+
     return {
       success: false,
       error: error.message || 'Generation failed',

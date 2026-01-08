@@ -13,12 +13,13 @@ import { LANDING_PAGE_OFFER_DEFINITION } from '../definitions/landingPageOffer';
 import { VIDEO_OFFER_DEFINITION } from '../definitions/videoOffer';
 import { HOME_ESTIMATE_OFFER_DEFINITION } from '../definitions/homeEstimateOffer';
 import { CUSTOM_OFFER_DEFINITION } from '../definitions/customOffer';
+import { REAL_ESTATE_TIMELINE_DEFINITION } from '../definitions/realEstateTimeline';
 
 // ==================== REGISTRY ====================
 
 /**
  * Global offer registry
- * NOW COMPLETE with all 5 offer definitions!
+ * NOW COMPLETE with all 6 offer definitions!
  */
 export const OFFER_DEFINITIONS: OfferRegistry = {
   'pdf': PDF_OFFER_DEFINITION,
@@ -26,6 +27,7 @@ export const OFFER_DEFINITIONS: OfferRegistry = {
   'video': VIDEO_OFFER_DEFINITION,
   'home-estimate': HOME_ESTIMATE_OFFER_DEFINITION,
   'custom': CUSTOM_OFFER_DEFINITION,
+  'real-estate-timeline': REAL_ESTATE_TIMELINE_DEFINITION,
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -104,6 +106,7 @@ export function validateRegistry(): {
     'video',
     'home-estimate',
     'custom',
+    'real-estate-timeline',
   ];
   
   const available = getAvailableOfferTypes();
@@ -133,6 +136,7 @@ export function getRegistryStatus(): {
     'video',
     'home-estimate',
     'custom',
+    'real-estate-timeline',
   ];
   
   const types = allTypes.map((type) => {

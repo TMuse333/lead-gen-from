@@ -105,28 +105,13 @@ export async function withRetry<T>(
       // First attempt has no delay
       if (attempt > 0) {
         const delay = calculateBackoff(attempt - 1, backoffMs, exponentialBackoff);
-        
-        console.log(
-          `[Retry] Attempt ${attempt}/${maxRetries} for ${context?.operationName || 'operation'}. ` +
-          `Waiting ${delay}ms before retry...`
-        );
-        
         await sleep(delay);
         totalDelay += delay;
-        
-        // Call retry callback if provided
         context?.onRetry?.(attempt, lastError);
       }
-      
+
       // Execute the function
       const result = await fn();
-      
-      // Log success if we had retries
-      if (attempt > 0) {
-        console.log(
-          `[Retry] Success on attempt ${attempt}/${maxRetries} for ${context?.operationName || 'operation'}`
-        );
-      }
       
       return {
         result,
@@ -136,17 +121,10 @@ export async function withRetry<T>(
       
     } catch (error) {
       lastError = error;
-      const errorDetails = getErrorDetails(error);
-      
+
       // Check if error is retryable
       const shouldRetry = isRetryableError(error, retryableErrors);
-      
-      console.error(
-        `[Retry] Attempt ${attempt + 1}/${maxRetries + 1} failed for ${context?.operationName || 'operation'}. ` +
-        `Error: ${errorDetails.message}. ` +
-        `Retryable: ${shouldRetry}`
-      );
-      
+
       // If not retryable or out of retries, throw
       if (!shouldRetry || attempt === maxRetries) {
         throw error;
@@ -192,12 +170,6 @@ export async function retryLLMCall<T>(
 }> {
   return withRetry(fn, config, {
     operationName: `LLM call for ${offerType} offer`,
-    onRetry: (attempt, error) => {
-      console.warn(
-        `[LLM Retry] Retrying ${offerType} offer generation. ` +
-        `Attempt: ${attempt}. Error: ${error.message}`
-      );
-    },
   });
 }
 

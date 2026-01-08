@@ -1,7 +1,7 @@
 // lib/offers/offerRequirements.ts
 // Defines what data fields each offer type requires from conversation flows
 
-export type OfferType = 'pdf' | 'landingPage' | 'video' | 'home-estimate' | 'custom';
+export type OfferType = 'pdf' | 'landingPage' | 'video' | 'home-estimate' | 'custom' | 'real-estate-timeline';
 
 export interface OfferRequirement {
   offerType: OfferType;
@@ -52,6 +52,13 @@ export const OFFER_REQUIREMENTS: Record<OfferType, OfferRequirement> = {
     description: 'User-defined offer',
     requiredFields: [], // Custom offers have flexible requirements
     icon: '✨',
+  },
+  'real-estate-timeline': {
+    offerType: 'real-estate-timeline',
+    label: 'Real Estate Timeline',
+    description: 'Personalized step-by-step timeline',
+    requiredFields: ['flow'], // Must know buy/sell/browse
+    icon: '📅',
   },
 };
 

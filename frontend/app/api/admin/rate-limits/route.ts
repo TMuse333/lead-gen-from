@@ -219,12 +219,12 @@ export async function POST(req: NextRequest) {
       }
 
       await collection.updateOne(
-        { feature },
+        { feature: feature as FeatureType },
         {
           $set: {
             ...defaultConfig,
             updatedAt: new Date(),
-            updatedBy: session.user.id,
+            updatedBy: session.user!.id,
           },
           $setOnInsert: {
             createdAt: new Date(),
@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
               $set: {
                 ...config,
                 updatedAt: new Date(),
-                updatedBy: session.user.id,
+                updatedBy: session.user!.id,
               },
               $setOnInsert: {
                 createdAt: new Date(),
