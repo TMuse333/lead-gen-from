@@ -70,7 +70,6 @@ export async function GET(
       generation,
     });
   } catch (error) {
-    console.error('Error fetching generation:', error);
     return NextResponse.json(
       { error: 'Failed to fetch generation', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

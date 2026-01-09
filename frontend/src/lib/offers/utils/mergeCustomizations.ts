@@ -3,7 +3,7 @@
  * Utilities for merging system offer definitions with user customizations
  */
 
-import type { OfferDefinition } from '@/lib/offers/core/types';
+import type { OfferDefinition, BaseOfferProps } from '@/lib/offers/core/types';
 import type {
   OfferCustomizationDocument,
   OfferCustomizations,
@@ -13,7 +13,7 @@ import type {
  * Merge system offer definition with user customizations
  * System defaults are preserved, user customizations override specific fields
  */
-export function mergeOfferDefinition<T>(
+export function mergeOfferDefinition<T extends BaseOfferProps = BaseOfferProps>(
   systemDef: OfferDefinition<T>,
   userCustomizations: OfferCustomizationDocument | null
 ): OfferDefinition<T> {
@@ -46,7 +46,7 @@ export function mergeOfferDefinition<T>(
     merged.fallbackConfig = {
       ...merged.fallbackConfig,
       ...custom.fallbackConfig,
-    };
+    } as typeof merged.fallbackConfig;
   }
 
   return merged;
@@ -93,7 +93,7 @@ function mergeInputRequirements(
  * Extract only the customizations (diff from system defaults)
  * This is what gets saved to database
  */
-export function extractCustomizations<T>(
+export function extractCustomizations<T extends BaseOfferProps = BaseOfferProps>(
   systemDef: OfferDefinition<T>,
   editedDef: Partial<OfferDefinition<T>>
 ): OfferCustomizations {

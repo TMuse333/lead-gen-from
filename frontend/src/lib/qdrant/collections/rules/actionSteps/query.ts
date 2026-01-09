@@ -2,6 +2,7 @@
 import type { ActionStepScenario, ActionStepMatch } from './types';
 import { COLLECTIONS, qdrant } from '@/lib/qdrant/client';
 import { calculateMatchScore } from '@/lib/qdrant/engines/rules';
+import { criticalError } from '@/lib/logger';
 import { getUserProfileState } from '@/stores/profileStore/userProfile.store';
 import type { UserProfile } from '@/types';
 
@@ -31,14 +32,10 @@ export async function queryActionSteps(
   maxSteps = 5
 ): Promise<ActionStepMatch[]> {
   try {
-    console.log('Querying action steps → agent:', agentId, '| flow:', flow);
-
     // Use the canonical profile from Zustand (normalized by chat-smart API)
     const { userProfile } = getUserProfileState();
 
     const canonicalProfile = userProfile || { intent: flow };
-
-    console.log('Using canonical profile from store:', canonicalProfile);
 
     const result = await qdrant.scroll(COLLECTIONS.ACTION_STEPS, {
       filter: { must: [{ key: 'agentId', match: { value: agentId } }] },
@@ -85,14 +82,9 @@ export async function queryActionSteps(
       })
       .slice(0, maxSteps);
 
-    console.log(`Matched ${matches.length} action steps`);
-    matches.forEach((m, i) =>
-      console.log(`   #${i + 1} "${m.step.title}" → score: ${m.matchScore.toFixed(2)}`)
-    );
-
     return matches;
   } catch (error) {
-    console.error('queryActionSteps failed:', error);
+    criticalError('QdrantActionSteps', error);
     throw error;
   }
 }

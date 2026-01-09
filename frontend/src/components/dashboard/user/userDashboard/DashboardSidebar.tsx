@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, Home,
 Eye, ExternalLink, Menu, X, Users, Gift, Code } from 'lucide-react';
@@ -97,7 +97,7 @@ const SECTION_GROUPS: SectionGroup[] = [
 // Flatten sections for easy lookup
 const USER_SECTIONS: DashboardSection[] = SECTION_GROUPS.flatMap(group => group.sections);
 
-export function DashboardSidebar() {
+function DashboardSidebarContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
@@ -114,37 +114,26 @@ export function DashboardSidebar() {
     // Check if we're on conversation detail route
     const conversationMatch = pathname.match(/\/dashboard\/conversations\/([^/]+)/);
     if (conversationMatch) {
-      console.log('🟡 [DashboardSidebar] Detected conversation detail route, active section: my-conversations');
       return 'my-conversations'; // Highlight "My Conversations" when viewing details
     }
-    
+
     // Check if we're on offer editor route
     const offerMatch = pathname.match(/\/dashboard\/offers\/([^/]+)/);
     if (offerMatch) {
-      console.log('🟡 [DashboardSidebar] Detected offer editor route, active section: offers');
       return 'offers'; // Highlight "Offers" when editing
     }
-    
+
     // Check if we're on main dashboard
     if (pathname === '/dashboard') {
       const section = searchParams.get('section');
-      console.log('🟡 [DashboardSidebar] On main dashboard, section param:', section || 'overview (default)');
       return section || 'overview'; // Default to overview
     }
 
-    console.log('🟡 [DashboardSidebar] Unknown pathname, defaulting to overview:', pathname);
     return 'overview';
   };
   
   const activeSection = getActiveSection();
-  
-  // Log sidebar state changes
-  useEffect(() => {
-    console.log('🟡 [DashboardSidebar] Pathname:', pathname);
-    console.log('🟡 [DashboardSidebar] Active section:', activeSection);
-    console.log('🟡 [DashboardSidebar] Search params:', searchParams.toString());
-  }, [pathname, activeSection, searchParams]);
-  
+
   const botUrl = config?.businessName ? `/bot/${config.businessName}` : null;
 
   return (
@@ -277,3 +266,10 @@ export function DashboardSidebar() {
   );
 }
 
+export function DashboardSidebar() {
+  return (
+    <Suspense fallback={<div className="w-64 bg-slate-800 h-screen" />}>
+      <DashboardSidebarContent />
+    </Suspense>
+  );
+}

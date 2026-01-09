@@ -74,21 +74,15 @@ export async function POST(request: NextRequest) {
     // Ensure type tag is in tags array
     const tagsWithType = ensureTypeTag(tags, adviceType);
 
-    console.log(`📝 Adding agent advice for user ${session.user.id}:`, title);
-    console.log(`📦 Using collection: ${collectionName}`);
-
     // Generate embedding for semantic search
     const textToEmbed = `${title}. ${advice}`;
-    console.log('⏳ Generating embedding...');
     const embedding = await getEmbedding(textToEmbed, {
       userId: session.user.id,
       adviceTitle: title,
       collectionName,
     });
-    console.log('✅ Embedding generated');
 
     // Store in Qdrant
-    console.log('⏳ Storing in Qdrant...');
     const adviceId = await storeUserAdvice({
       collectionName,
       title,
@@ -103,15 +97,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('✅ Stored in Qdrant with ID:', adviceId);
-
     return NextResponse.json({
       success: true,
       adviceId,
       message: 'Advice added successfully',
     });
   } catch (error) {
-    console.error('❌ Error adding agent advice:', error);
     return NextResponse.json(
       {
         success: false,

@@ -131,7 +131,6 @@ export async function POST(request: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('Error attaching rules:', error);
     return NextResponse.json(
       {
         error: 'Failed to attach rules',

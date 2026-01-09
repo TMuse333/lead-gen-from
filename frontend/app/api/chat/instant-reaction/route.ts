@@ -30,8 +30,6 @@ export async function POST(request: NextRequest) {
       questionText: string;
     };
 
-    console.log(`💬 Getting reaction for: ${questionId} = ${answer}`);
-
     // Create a search query based on the answer
     const searchQuery = `${questionText}: ${Array.isArray(answer) ? answer.join(', ') : answer}`;
     
@@ -94,8 +92,6 @@ Give a brief, encouraging reaction (1-2 sentences max).`,
     });
 
   } catch (error) {
-    console.error('❌ Error getting instant reaction:', error);
-    
     // Return a generic positive reaction on error
     return NextResponse.json({
       success: true,

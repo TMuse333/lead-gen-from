@@ -59,7 +59,6 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
       pdfParser.parseBuffer(buffer);
     });
   } catch (error) {
-    console.error('Error extracting text from PDF:', error);
     throw new Error('Failed to extract text from PDF');
   }
 }
@@ -72,7 +71,6 @@ export async function extractTextFromDOCX(buffer: Buffer): Promise<string> {
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
   } catch (error) {
-    console.error('Error extracting text from DOCX:', error);
     throw new Error('Failed to extract text from DOCX');
   }
 }

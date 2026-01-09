@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
       configs: formattedConfigs,
     });
   } catch (error) {
-    console.error('❌ Error fetching client configs:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch client configurations',

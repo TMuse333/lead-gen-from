@@ -134,7 +134,6 @@ export default function Step1BusinessSetup() {
             const value = e.target.value;
             setDisplayName(value);
             const sanitized = sanitizeBusinessName(value);
-            setSanitizedName(sanitized);
             // Store the sanitized version in the store
             setBusinessName(sanitized);
           }}

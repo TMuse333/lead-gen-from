@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function SignInPage() {
+function SignInContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -27,19 +28,14 @@ export default function SignInPage() {
           if (response.ok) {
             const data = await response.json();
             if (data.hasCompletedOnboarding) {
-              // User has completed onboarding, redirect to dashboard
               router.push('/dashboard');
             } else {
-              // User hasn't completed onboarding, redirect to onboarding
               router.push('/onboarding');
             }
           } else {
-            // If check fails, default to onboarding
             router.push('/onboarding');
           }
-        } catch (error) {
-          console.error('Error checking onboarding status:', error);
-          // Default to onboarding on error
+        } catch {
           router.push('/onboarding');
         } finally {
           setCheckingOnboarding(false);
@@ -53,29 +49,24 @@ export default function SignInPage() {
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    
+
     setIsLoading(true);
     try {
-      // Don't set callbackUrl - we'll handle redirect after checking onboarding status
-      const result = await signIn("email", { 
+      const result = await signIn("email", {
         email,
         redirect: false,
       });
-      
+
       if (result?.ok) {
         setEmailSent(true);
-        // The useEffect will handle the redirect after session is established
       } else {
-        console.error("Sign in error:", result?.error);
         setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Sign in error:", error);
+    } catch {
       setIsLoading(false);
     }
   };
 
-  // Show loading state while checking onboarding status
   if (checkingOnboarding) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a1525] via-[#0f1b2e] to-[#0a1525]">
@@ -96,7 +87,6 @@ export default function SignInPage() {
         className="w-full max-w-md"
       >
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-8 shadow-2xl">
-          {/* Logo/Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent mb-2">
               Get Your Own Bot
@@ -106,7 +96,6 @@ export default function SignInPage() {
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-500/20 border border-red-500/40 rounded-lg text-red-200 text-sm">
               {error === "Configuration" && "There was a problem with the server configuration."}
@@ -116,7 +105,6 @@ export default function SignInPage() {
             </div>
           )}
 
-          {/* Email Sent Success Message */}
           {emailSent ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -150,7 +138,7 @@ export default function SignInPage() {
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-cyan-500/30 text-white placeholder-cyan-200/40 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
                 />
               </div>
-              
+
               <motion.button
                 type="submit"
                 disabled={isLoading || !email}
@@ -173,7 +161,6 @@ export default function SignInPage() {
             </form>
           )}
 
-          {/* Footer */}
           <p className="mt-6 text-center text-sm text-cyan-200/60">
             By signing in, you agree to our Terms of Service and Privacy Policy
           </p>
@@ -183,4 +170,14 @@ export default function SignInPage() {
   );
 }
 
-
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a1525] via-[#0f1b2e] to-[#0a1525]">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
+  );
+}

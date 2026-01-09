@@ -25,23 +25,19 @@ export function CompletionModal() {
 
   // Auto-start animation when component mounts
   useEffect(() => {
-    console.log('🎬 CompletionModal: Component mounted, starting animation');
     setCalculationStep(1);
     let step = 1;
-    
+
     const interval = setInterval(() => {
       step++;
       setCalculationStep(step);
-      console.log(`📊 CompletionModal: Step ${step} of 7`);
-      
+
       if (step >= 7) {
-        console.log('🎉 CompletionModal: All steps complete!');
         clearInterval(interval);
       }
     }, 2000);
-    
+
     return () => {
-      console.log('🧹 CompletionModal: Cleaning up interval');
       clearInterval(interval);
     };
   }, []); // Only run once on mount

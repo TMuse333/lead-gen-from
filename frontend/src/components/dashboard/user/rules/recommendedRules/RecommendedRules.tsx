@@ -18,7 +18,7 @@ export default function RecommendedRules() {
 
   const { state, actions } = useRecommendedRules({
     flows,
-    onError: (error) => console.error('Error:', error),
+    onError: () => {},
   });
 
   if (!config || flows.length === 0) {

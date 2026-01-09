@@ -44,12 +44,10 @@ export default function Step5Complete() {
   const handleComplete = async () => {
     // Prevent double submission
     if (isSubmittingRef.current) {
-      console.log('⚠️ Upload already in progress, ignoring duplicate call');
       return;
     }
 
     if (status === 'loading' || status === 'success') {
-      console.log('⚠️ Already loading or completed, ignoring duplicate call');
       return;
     }
 
@@ -81,7 +79,6 @@ export default function Step5Complete() {
       // Mark step as complete (now step 5)
       useOnboardingStore.getState().markStepComplete(5);
     } catch (err) {
-      console.error('Completion error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       setStatus('error');
       isSubmittingRef.current = false; // Reset on error so user can retry
@@ -213,26 +210,12 @@ export default function Step5Complete() {
 
             <motion.button
               onClick={handleComplete}
-              disabled={status === 'loading' || status === 'success'}
-              whileHover={status !== 'loading' && status !== 'success' ? { scale: 1.02 } : {}}
-              whileTap={status !== 'loading' && status !== 'success' ? { scale: 0.98 } : {}}
-              className={`flex items-center gap-2 px-8 py-3 rounded-full font-semibold shadow-lg transition-all ${
-                status === 'loading' || status === 'success'
-                  ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-cyan-400/50'
-              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 px-8 py-3 rounded-full font-semibold shadow-lg transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-cyan-400/50"
             >
-              {status === 'loading' ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-5 w-5" />
-                  Upload Configuration
-                </>
-              )}
+              <Upload className="h-5 w-5" />
+              Upload Configuration
             </motion.button>
           </div>
         </motion.div>

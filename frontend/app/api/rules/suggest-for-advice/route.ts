@@ -190,7 +190,6 @@ Return ONLY valid JSON, no other text.`;
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      console.error('Failed to parse LLM response:', content);
       return NextResponse.json(
         { error: 'Invalid response from LLM' },
         { status: 500 }
@@ -295,7 +294,6 @@ Return ONLY valid JSON, no other text.`;
       fields: fieldsContext,
     });
   } catch (error) {
-    console.error('Error generating rule suggestions:', error);
     return NextResponse.json(
       {
         error: 'Failed to generate rule suggestions',

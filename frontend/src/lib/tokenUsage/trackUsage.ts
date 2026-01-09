@@ -33,11 +33,8 @@ export async function trackUsage(usage: LLMUsageTracking): Promise<void> {
     };
 
     await collection.insertOne(document as TokenUsageDocument);
-    
-    console.log(`📊 Token usage tracked: ${usage.feature} - ${usage.tokens.total} tokens - $${usage.cost.total.toFixed(6)}`);
   } catch (error) {
     // Don't throw - tracking failures shouldn't break the app
-    console.error('❌ Failed to track token usage:', error);
   }
 }
 
@@ -46,8 +43,8 @@ export async function trackUsage(usage: LLMUsageTracking): Promise<void> {
  * Use this when you don't want to wait for the database write
  */
 export function trackUsageAsync(usage: LLMUsageTracking): void {
-  trackUsage(usage).catch(error => {
-    console.error('❌ Async token usage tracking failed:', error);
+  trackUsage(usage).catch(() => {
+    // Silently fail - tracking shouldn't break the app
   });
 }
 

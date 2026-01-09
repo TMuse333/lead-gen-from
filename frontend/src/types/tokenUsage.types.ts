@@ -129,7 +129,7 @@ export interface ChatAnswerExtractionUsage extends BaseLLMUsage {
 export interface OfferGenerationUsage extends BaseLLMUsage {
   feature: 'offerGeneration';
   apiType: 'chat';
-  model: 'gpt-4o-mini';
+  model: 'gpt-4o-mini' | 'gpt-4o' | 'claude-3-5-sonnet';
   featureData: {
     generationId?: string;
     conversationId?: string;

@@ -87,8 +87,6 @@ Make sure:
 - Include at least one question with allowFreeText: true (usually email)
 - Questions should flow naturally from one to the next`;
 
-    console.log(`Generating ${flowType} flow for ${businessName}...`);
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -112,7 +110,6 @@ Make sure:
     try {
       parsed = JSON.parse(raw);
     } catch (parseErr) {
-      console.error("Failed to parse LLM JSON:", raw);
       return NextResponse.json(
         { error: "LLM did not return valid JSON", raw },
         { status: 500 }
@@ -145,7 +142,6 @@ Make sure:
 
     return NextResponse.json({ flow: parsed });
   } catch (error: any) {
-    console.error("Error generating flow:", error);
     return NextResponse.json(
       { error: error.message || "Failed to generate flow" },
       { status: 500 }

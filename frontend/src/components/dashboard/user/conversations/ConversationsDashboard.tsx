@@ -74,7 +74,6 @@ export default function ConversationsDashboard() {
         setError('Failed to load conversations');
       }
     } catch (err) {
-      console.error('Error fetching conversations:', err);
       setError(err instanceof Error ? err.message : 'Failed to load conversations');
     } finally {
       setLoading(false);

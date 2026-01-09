@@ -1,6 +1,7 @@
 // src/lib/qdrant/collections/vector/advice/advice.collection.ts
 
 import { qdrant } from '../../../client';
+import { criticalError } from '@/lib/logger';
 
 export const ADVICE_COLLECTION =
   process.env.QDRANT_COLLECTION_NAME || 'chris-crowell-lead-form';
@@ -22,10 +23,9 @@ export async function ensureAdviceCollection() {
           memmap_threshold: 20000,
         },
       });
-      console.log('Created vector collection:', ADVICE_COLLECTION);
     }
   } catch (error) {
-    console.error('Failed to ensure advice collection:', error);
+    criticalError('QdrantAdviceCollection', error);
     throw error;
   }
 }

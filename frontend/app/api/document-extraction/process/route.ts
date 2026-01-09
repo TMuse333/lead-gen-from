@@ -137,7 +137,6 @@ RULES:
           allItems.push(...parsed.items);
         }
       } catch (parseError) {
-        console.error('Failed to parse LLM response:', content);
         // Continue with other chunks
       }
     }
@@ -190,7 +189,6 @@ RULES:
       chunksProcessed: chunks.length,
     });
   } catch (error) {
-    console.error('Error processing document:', error);
     return NextResponse.json(
       {
         error: 'Failed to process document',

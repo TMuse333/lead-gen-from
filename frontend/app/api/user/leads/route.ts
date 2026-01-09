@@ -102,7 +102,6 @@ export async function GET(req: NextRequest) {
       skip,
     });
   } catch (error) {
-    console.error('Error fetching leads:', error);
     return NextResponse.json(
       { error: 'Failed to fetch leads', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

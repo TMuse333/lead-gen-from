@@ -168,7 +168,6 @@ export async function POST(request: NextRequest) {
       total: cleanedRecommendations.length,
     });
   } catch (error) {
-    console.error('Error cleaning rules:', error);
     return NextResponse.json(
       {
         error: 'Failed to clean rules',

@@ -67,7 +67,6 @@ export function TimelineLandingPage({
     try {
       await generateTimelinePDF(data);
     } catch (error) {
-      console.error('PDF generation failed:', error);
       setDownloadError('Failed to generate PDF. Please try again.');
     } finally {
       setIsDownloading(false);
@@ -88,7 +87,7 @@ export function TimelineLandingPage({
         alert('Link copied to clipboard!');
       }
     } catch (error) {
-      console.error('Share failed:', error);
+      // Share failed silently
     }
   };
 

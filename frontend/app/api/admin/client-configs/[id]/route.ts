@@ -49,7 +49,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('❌ Error fetching client config:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch client configuration',
@@ -94,8 +93,6 @@ export async function DELETE(
       );
     }
 
-    console.log(`🗑️ Deleting configuration: ${config.businessName} (ID: ${id})`);
-
     // 3. Delete Qdrant collection if it exists
     if (config.qdrantCollectionName) {
       try {
@@ -107,12 +104,8 @@ export async function DELETE(
 
         if (collectionExists) {
           await qdrant.deleteCollection(config.qdrantCollectionName);
-          console.log(`✅ Deleted Qdrant collection: ${config.qdrantCollectionName}`);
-        } else {
-          console.log(`⚠️ Qdrant collection not found: ${config.qdrantCollectionName}`);
         }
       } catch (error) {
-        console.error(`❌ Error deleting Qdrant collection:`, error);
         // Continue with MongoDB deletion even if Qdrant deletion fails
       }
     }
@@ -129,8 +122,6 @@ export async function DELETE(
       );
     }
 
-    console.log(`✅ Deleted configuration: ${config.businessName}`);
-
     return NextResponse.json({
       success: true,
       message: 'Configuration deleted successfully',
@@ -141,7 +132,6 @@ export async function DELETE(
       },
     });
   } catch (error) {
-    console.error('❌ Error deleting client config:', error);
     return NextResponse.json(
       {
         error: 'Failed to delete client configuration',

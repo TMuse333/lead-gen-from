@@ -151,9 +151,7 @@ export function getFieldLabel(fieldName: string): string {
     customField3: 'Custom Field 3',
     // Timeline-specific fields
     flow: 'Flow Type (Buy/Sell/Browse)',
-    timeline: 'Timeline',
     location: 'Location',
-    budget: 'Budget',
     isFirstTime: 'First Time Buyer',
     currentStage: 'Current Stage',
     preApproved: 'Pre-Approved',

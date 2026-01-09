@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, JSX } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCw, Loader2, AlertCircle, Filter, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
@@ -68,7 +68,6 @@ export default function ViewAllRules() {
         setError('Failed to load advice');
       }
     } catch (err: any) {
-      console.error(err);
       setError(err.response?.data?.error || 'Failed to load advice');
     } finally {
       setLoading(false);

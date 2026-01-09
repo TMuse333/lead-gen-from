@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ Error fetching user config:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch user configuration',
@@ -149,7 +148,6 @@ export async function PUT(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ Error updating user config:', error);
     return NextResponse.json(
       {
         error: 'Failed to update user configuration',

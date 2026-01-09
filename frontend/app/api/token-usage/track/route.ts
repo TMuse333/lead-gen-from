@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error tracking usage:', error);
     return NextResponse.json(
       { error: 'Failed to track usage' },
       { status: 500 }

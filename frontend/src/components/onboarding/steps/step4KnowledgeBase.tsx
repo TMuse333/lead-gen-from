@@ -65,7 +65,6 @@ export default function Step4KnowledgeBase() {
       setCurrentQuestionIndex(0);
       setQuestionAnswers({});
     } catch (error: any) {
-      console.error('Error generating questions:', error);
       alert('Failed to generate questions. Please try again.');
     } finally {
       setGeneratingQuestions(false);

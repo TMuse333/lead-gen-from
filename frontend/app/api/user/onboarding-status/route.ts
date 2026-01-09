@@ -29,7 +29,6 @@ export async function GET(req: NextRequest) {
       onboardingCompletedAt: config?.onboardingCompletedAt || null,
     });
   } catch (error) {
-    console.error('Error checking onboarding status:', error);
     return NextResponse.json(
       { error: 'Failed to check onboarding status', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

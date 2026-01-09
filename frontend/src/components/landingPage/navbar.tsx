@@ -40,7 +40,6 @@ export default function Navbar({ links }: NavbarProps) {
     try {
       await signOut({ callbackUrl: '/' });
     } catch (error) {
-      console.error('Error signing out:', error);
       setIsLoading(false);
     }
   };

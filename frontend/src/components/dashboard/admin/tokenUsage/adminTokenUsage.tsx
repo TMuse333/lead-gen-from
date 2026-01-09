@@ -62,7 +62,6 @@ export default function AdminTokenUsage() {
         setError('Failed to load stats');
       }
     } catch (err) {
-      console.error('Error fetching admin token usage stats:', err);
       setError(err instanceof Error ? err.message : 'Failed to load stats');
     } finally {
       setLoading(false);

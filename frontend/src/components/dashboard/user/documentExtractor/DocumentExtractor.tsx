@@ -76,7 +76,7 @@ export default function DocumentExtractor({
     isDragging,
     setIsDragging,
     onFileSelect: handleFileUpload,
-    onError: (err) => console.error(err),
+    onError: () => {},
   });
 
   return (

@@ -138,7 +138,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching analytics:', error);
     return NextResponse.json(
       { error: 'Failed to fetch analytics', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

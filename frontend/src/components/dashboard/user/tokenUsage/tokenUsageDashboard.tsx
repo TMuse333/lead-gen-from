@@ -73,7 +73,7 @@ export default function TokenUsageDashboard() {
         setRecentUsage(response.data.recentUsage || []);
       }
     } catch (error) {
-      console.error('Error fetching token usage stats:', error);
+      // Error fetching stats - UI will show no data state
     } finally {
       setLoading(false);
     }

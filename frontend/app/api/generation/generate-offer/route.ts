@@ -131,7 +131,6 @@ Generate the JSON now:`;
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  console.log("POST /api/generation/generate-offer – Request received");
 
   try {
     // Check rate limits
@@ -167,9 +166,7 @@ export async function POST(req: NextRequest) {
     let body: unknown;
     try {
       body = await req.json();
-      console.log("Parsed request body:", body);
     } catch (err) {
-      console.error("Failed to parse JSON body:", err);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
@@ -178,7 +175,6 @@ export async function POST(req: NextRequest) {
 
     // 2. Validate input shape
     if (!body || typeof body !== "object") {
-      console.error("Request body is not an object");
       return NextResponse.json(
         { error: "Request body must be a JSON object" },
         { status: 400 }
@@ -192,7 +188,6 @@ export async function POST(req: NextRequest) {
     };
 
     if (typeof flow !== "string" || !flow) {
-      console.error("Invalid 'flow':", flow);
       return NextResponse.json(
         { error: "'flow' is required and must be a non-empty string" },
         { status: 400 }
@@ -200,7 +195,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!userInput || typeof userInput !== "object" || userInput === null) {
-      console.error("Invalid 'userInput':", userInput);
       return NextResponse.json(
         { error: "'userInput' is required and must be a non-null object" },
         { status: 400 }
@@ -208,8 +202,6 @@ export async function POST(req: NextRequest) {
     }
 
     const typedUserInput = userInput as Record<string, string>;
-    console.log(`Valid input → flow: "${flow}"`);
-    console.log(`userInput keys: [${Object.keys(typedUserInput).join(", ")}]`);
 
     // 3. Get collection name (authenticated user OR public bot client)
     let userCollectionName: string | null = null;
@@ -221,22 +213,18 @@ export async function POST(req: NextRequest) {
     
     if (clientId) {
       // Public bot: fetch client config by business name
-      console.log(`📦 Public bot detected, client: ${clientId}`);
       try {
         const collection = await getClientConfigsCollection();
-        const config = await collection.findOne({ 
+        const config = await collection.findOne({
           businessName: clientId,
-          isActive: true 
+          isActive: true
         });
         if (config) {
           clientConfig = config;
           userCollectionName = config.qdrantCollectionName;
-          console.log(`✅ Client config found, collection: ${userCollectionName}`);
-        } else {
-          console.log(`❌ Client config not found for: ${clientId}`);
         }
       } catch (error) {
-        console.log('⚠️ Error fetching client config:', error);
+        // Error fetching client config - continue without it
       }
     } else {
       // Authenticated user: get from session
@@ -244,15 +232,13 @@ export async function POST(req: NextRequest) {
         const session = await auth();
         if (session?.user?.id) {
           userCollectionName = await getUserCollectionName(session.user.id);
-          console.log(`📦 User collection: ${userCollectionName || 'not found'}`);
         }
       } catch (error) {
-        console.log('⚠️ Could not get user collection (may be public route):', error);
+        // Could not get user collection (may be public route)
       }
     }
 
     // 4. Build generic prompt with Qdrant retrieval
-    console.log("Building generic prompt with Qdrant retrieval...");
     const { prompt, metadata } = await buildGenericPrompt(
       flow,
       typedUserInput,
@@ -260,26 +246,7 @@ export async function POST(req: NextRequest) {
       process.env.AGENT_ID || 'default-agent'
     );
 
-    console.log(`\n📊 Qdrant Retrieval Summary:`);
-    if (metadata.length > 0) {
-      metadata.forEach((meta) => {
-        console.log(`   📦 ${meta.collection} (${meta.type}): ${meta.count} items`);
-        meta.items.forEach((item, i) => {
-          if (meta.type === "rule") {
-            console.log(`      ${i + 1}. ${item.title} (score: ${item.score?.toFixed(2)})`);
-          } else {
-            console.log(`      ${i + 1}. ${item.title}`);
-          }
-        });
-      });
-    } else {
-      console.log("   ⚠️ No Qdrant collections found or no matches");
-    }
-
-    console.log(`Prompt built. Length: ${prompt.length} characters`);
-
     // 5. Call OpenAI with tracking
-    console.log("Calling OpenAI (gpt-4o-mini)...");
     
     const llmStartTime = Date.now();
     const completion = await openai.chat.completions.create({
@@ -291,10 +258,8 @@ export async function POST(req: NextRequest) {
     const llmEndTime = Date.now();
 
     const raw = completion.choices[0].message.content?.trim() ?? "";
-    console.log(`Raw LLM response received. Length: ${raw.length}`);
 
     if (!raw) {
-      console.error("LLM returned empty response");
       return NextResponse.json(
         { error: "LLM returned an empty response" },
         { status: 500 }
@@ -307,11 +272,7 @@ export async function POST(req: NextRequest) {
       // Remove markdown code blocks if present
       const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
       parsed = JSON.parse(cleaned);
-      console.log("JSON parsed successfully");
-      console.log("Output keys:", Object.keys(parsed).filter(k => k !== '_debug'));
     } catch (parseErr) {
-      console.error("Failed to parse LLM JSON:", parseErr);
-      console.error("Raw response:", raw.substring(0, 500));
       return NextResponse.json(
         {
           error: "LLM did not return valid JSON",
@@ -323,7 +284,6 @@ export async function POST(req: NextRequest) {
 
     // 7. Validate output shape
     if (!isValidLlmOutput(parsed)) {
-      console.error("LLM output does not match LlmOutput schema");
       return NextResponse.json(
         {
           error: "LLM output does not match expected schema",
@@ -374,20 +334,11 @@ export async function POST(req: NextRequest) {
     // 8. Calculate generation time
     const generationTime = Date.now() - startTime;
 
-    console.log("LLM output validated. Returning result with debug info.");
-    console.log(`Total generation time: ${(generationTime / 1000).toFixed(2)}s`);
-
     // 9. Save generation to database
     const conversationId = (body as any)?.conversationId;
-    console.log('📝 Generation save check:', { 
-      conversationId, 
-      isValid: conversationId && ObjectId.isValid(conversationId) 
-    });
-    
+
     if (conversationId && ObjectId.isValid(conversationId)) {
       try {
-        // userId is already available from the rate limit check above
-        console.log('👤 User ID from session:', userId || 'not authenticated');
 
         const generationsCollection = await getGenerationsCollection();
 
@@ -421,33 +372,10 @@ export async function POST(req: NextRequest) {
           componentCount,
         };
 
-        console.log('💾 Saving generation to MongoDB:', {
-          conversationId: conversationId,
-          userId: userId || 'none',
-          clientIdentifier: clientId || 'none',
-          generationTime: `${(generationTime / 1000).toFixed(2)}s`,
-          componentCount,
-          outputSize,
-        });
-
-        const result = await generationsCollection.insertOne(generation as GenerationDocument);
-        console.log('✅ Generation saved to database successfully!', {
-          generationId: result.insertedId.toString(),
-          conversationId: conversationId,
-        });
+        await generationsCollection.insertOne(generation as GenerationDocument);
       } catch (genError) {
-        console.error('❌ Error saving generation:', genError);
-        console.error('Error details:', {
-          message: genError instanceof Error ? genError.message : 'Unknown error',
-          stack: genError instanceof Error ? genError.stack : undefined,
-        });
         // Don't fail the request if generation save fails
       }
-    } else {
-      console.log('ℹ️ No valid conversationId provided, skipping generation save', {
-        conversationId,
-        reason: !conversationId ? 'missing' : 'invalid format',
-      });
     }
 
     // 10. Return with debug info
@@ -464,7 +392,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown server error";
-    console.error("Unexpected error in /api/generation/generate-offer:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

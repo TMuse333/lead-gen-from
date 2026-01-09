@@ -50,7 +50,6 @@ export default function AgentAdviceDashboard() {
         });
       }
     } catch (error: any) {
-      console.error('Error auto-populating:', error);
       setAutoPopulateResult({
         success: false,
         message: error.response?.data?.error || error.message || 'Failed to auto-populate knowledge base',

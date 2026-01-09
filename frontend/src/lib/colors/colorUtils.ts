@@ -82,6 +82,38 @@ export function getTheme(colorConfig: ColorTheme | null | undefined): ColorTheme
 }
 
 /**
+ * Derive a color palette from base colors for UI components
+ */
+export function deriveColorPalette(
+  colors: { textColor: string; baseBgColor: string; mainColor: string; bgLayout?: unknown },
+  _type?: string
+) {
+  return {
+    accentColor: colors.mainColor,
+    lightAccent: colors.mainColor,
+    darkAccent: colors.mainColor,
+    textColor: colors.textColor,
+  };
+}
+
+/**
+ * Generate an animated gradient background CSS value
+ */
+export function useAnimatedGradient(
+  bgLayout: { type?: string; colors?: string[]; direction?: string },
+  colors: { lightAccent?: string; darkAccent?: string }
+) {
+  if (bgLayout.type === 'gradient' && bgLayout.colors?.length) {
+    const direction = bgLayout.direction || 'to right';
+    return `linear-gradient(${direction}, ${bgLayout.colors.join(', ')})`;
+  }
+  if (colors.lightAccent && colors.darkAccent) {
+    return `linear-gradient(135deg, ${colors.lightAccent}, ${colors.darkAccent})`;
+  }
+  return 'transparent';
+}
+
+/**
  * Inject CSS variables into the document
  */
 export function injectColorTheme(theme: ColorTheme) {

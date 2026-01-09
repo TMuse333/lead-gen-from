@@ -71,7 +71,6 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         setError('Failed to load advice');
       }
     } catch (err: unknown) {
-      console.error(err);
       setError( 'Failed to load advice');
     } finally {
       setLoading(false);
@@ -90,7 +89,6 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         setRecommendedRules(res.data.recommendations || []);
       }
     } catch (err) {
-      console.error('Error fetching recommended rules:', err);
       setRecommendedRules([]);
     }
   };
@@ -113,7 +111,6 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         alert(res.data.error || 'Failed to generate rule suggestions');
       }
     } catch (err: any) {
-      console.error('Error suggesting rules:', err);
       alert(err.response?.data?.error || 'Failed to generate rule suggestions');
     } finally {
       setSuggestingRules(false);
@@ -154,7 +151,6 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         alert('Failed to update advice');
       }
     } catch (err) {
-      console.error('Error updating advice:', err);
       alert('Failed to update advice');
     } finally {
       setSaving(false);
@@ -189,7 +185,6 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         alert(res.data.error || 'Failed to attach rules');
       }
     } catch (err: any) {
-      console.error('Error attaching rules:', err);
       alert(err.response?.data?.error || 'Failed to attach rules');
     } finally {
       setSaving(false);
@@ -219,7 +214,6 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
         alert('Failed to delete advice');
       }
     } catch (err: unknown) {
-      console.error(err);
       alert( 'Failed to delete advice');
     } finally {
       setDeletingId(null);
@@ -402,9 +396,9 @@ export default function ViewAgentAdvice({ onSwitchToAdd }: ViewAgentAdviceProps)
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-purple-900/50 text-purple-300 border border-purple-700">
                           🔧 Complex Rules
                         </span>
-                      ) : item.applicableWhen?.conditions && Object.keys(item.applicableWhen.conditions).length > 0 ? (
+                      ) : item.applicableWhen?.flow && item.applicableWhen.flow.length > 0 ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-900/50 text-blue-300 border border-blue-700">
-                          🎯 Simple Conditions
+                          🎯 Flow-Based
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600">

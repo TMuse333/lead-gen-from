@@ -179,8 +179,6 @@ export async function POST(request: NextRequest) {
     }
 
     const collectionName = userConfig.qdrantCollectionName;
-    console.log(`🚀 Auto-populating knowledge base for user ${session.user.id}`);
-    console.log(`📦 Using collection: ${collectionName}`);
 
     const results = [];
     let successCount = 0;
@@ -208,15 +206,11 @@ export async function POST(request: NextRequest) {
 
         results.push({ title: item.title, success: true, id: adviceId });
         successCount++;
-        console.log(`✅ Added: ${item.title}`);
       } catch (error) {
-        console.error(`❌ Failed to add: ${item.title}`, error);
         results.push({ title: item.title, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
         errorCount++;
       }
     }
-
-    console.log(`✅ Auto-population complete: ${successCount} successful, ${errorCount} failed`);
 
     return NextResponse.json({
       success: true,
@@ -229,7 +223,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ Error auto-populating knowledge base:', error);
     return NextResponse.json(
       {
         success: false,

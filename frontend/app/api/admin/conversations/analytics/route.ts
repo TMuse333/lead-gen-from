@@ -121,7 +121,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching conversation analytics:', error);
     return NextResponse.json(
       { error: 'Failed to fetch analytics' },
       { status: 500 }

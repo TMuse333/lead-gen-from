@@ -83,13 +83,11 @@ export async function POST(request: NextRequest) {
             flow: flows,
             ruleGroups,
             type: adviceType,
-            source: 'document', // Mark as document source
           },
         });
 
         uploadedIds.push(adviceId);
       } catch (error) {
-        console.error('Error uploading item:', error);
         errors.push(`Failed to upload: ${item.title || 'unknown'}`);
       }
     }
@@ -102,7 +100,6 @@ export async function POST(request: NextRequest) {
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
-    console.error('Error uploading document items:', error);
     return NextResponse.json(
       {
         error: 'Failed to upload items',

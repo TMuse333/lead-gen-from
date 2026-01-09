@@ -43,7 +43,6 @@ export async function POST(req: NextRequest) {
       };
 
       const sendError = (error: string, details?: any) => {
-        console.error('🔴 [SSE] ERROR:', error, details || '');
         sendEvent('error', { error, ...details });
         controller.close();
       };
@@ -59,14 +58,6 @@ export async function POST(req: NextRequest) {
 
         const { flow, intent, offer, userInput, clientIdentifier, conversationId } = body;
         const effectiveIntent = intent || flow;
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📥 [SSE] REQUEST RECEIVED');
-        console.log('   offer (from request):', offer || '❌ NOT PROVIDED');
-        console.log('   intent:', effectiveIntent);
-        console.log('   clientIdentifier:', clientIdentifier || body?.clientId || 'none');
-        console.log('   userInput keys:', Object.keys(userInput || {}));
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // Validate required fields
         if (!effectiveIntent || typeof effectiveIntent !== 'string') {
@@ -99,12 +90,9 @@ export async function POST(req: NextRequest) {
         let businessName: string = '';
         const clientId = clientIdentifier || body?.clientId;
 
-        console.log('🔑 [SSE] Auth info:', { userId: userId || 'none', clientId: clientId || 'none' });
-
         // IMPORTANT: Prioritize clientId if provided - this allows authenticated users
         // to test their public bot configs from the dashboard
         if (clientId) {
-          console.log('📂 [SSE] Loading CLIENT config for:', clientId);
           try {
             const collection = await getClientConfigsCollection();
             const config = await collection.findOne({ businessName: clientId, isActive: true });
@@ -112,15 +100,11 @@ export async function POST(req: NextRequest) {
               configuredOffers = config.selectedOffers || [];
               userCollectionName = config.qdrantCollectionName;
               businessName = config.businessName;
-              console.log('✅ [SSE] Client config loaded:', { offers: configuredOffers, collection: userCollectionName });
-            } else {
-              console.log('❌ [SSE] No client config found for:', clientId);
             }
           } catch (e) {
-            console.log('⚠️ [SSE] Failed to load client config:', e);
+            // Failed to load client config
           }
         } else if (userId) {
-          console.log('📂 [SSE] Loading USER config for userId:', userId);
           try {
             const db = await getDatabase();
             const userConfig = await getUserConfig(userId, db);
@@ -128,20 +112,11 @@ export async function POST(req: NextRequest) {
               configuredOffers = userConfig.selectedOffers || [];
               userCollectionName = await getUserCollectionName(userId);
               businessName = userConfig.businessName || '';
-              console.log('✅ [SSE] User config loaded:', { offers: configuredOffers, collection: userCollectionName });
-            } else {
-              console.log('❌ [SSE] No user config found for userId:', userId);
             }
           } catch (e) {
-            console.log('⚠️ [SSE] Failed to load user config:', e);
+            // Failed to load user config
           }
-        } else {
-          console.log('❌ [SSE] No clientId or userId - cannot load config');
         }
-
-        console.log('📋 [SSE] CONFIG LOADED');
-        console.log('   configuredOffers (from DB):', configuredOffers);
-        console.log('   offer (from request):', offer || 'NOT PROVIDED');
 
         // ========== STEP 4: DETERMINE WHICH OFFER TO GENERATE ==========
         let selectedOffers: OfferType[];
@@ -154,11 +129,9 @@ export async function POST(req: NextRequest) {
             });
           }
           selectedOffers = [offer as OfferType];
-          console.log('✅ [SSE] Using SPECIFIC offer from request:', offer);
         } else if (configuredOffers.length === 1) {
           // Only one configured - use it
           selectedOffers = configuredOffers;
-          console.log('✅ [SSE] Using SINGLE configured offer:', configuredOffers[0]);
         } else if (configuredOffers.length > 1) {
           // Multiple configured but none specified - ERROR
           return sendError('No specific offer provided in request', {
@@ -171,7 +144,6 @@ export async function POST(req: NextRequest) {
 
         // Filter by intent support
         const offersForIntent = filterOffersForIntent(selectedOffers, effectiveIntent as Intent);
-        console.log('🎯 [SSE] Offers supporting intent "' + effectiveIntent + '":', offersForIntent);
 
         if (offersForIntent.length === 0) {
           return sendError(`No offers support the "${effectiveIntent}" intent`, {
@@ -196,8 +168,6 @@ export async function POST(req: NextRequest) {
           knowledgeSets
         );
 
-        console.log('📚 [SSE] Knowledge retrieved:', advice.length, 'items');
-
         // ========== STEP 5.5: QUERY AND PROCESS STORIES ==========
         // Query full advice objects to get stories with kind field
         let storiesByPhase: Record<string, any[]> = {};
@@ -217,18 +187,13 @@ export async function POST(req: NextRequest) {
               { limit: 20, collectionName: userCollectionName }
             );
 
-            console.log('📖 [SSE] Full advice queried:', fullAdvice.length, 'items');
-            console.log('📖 [SSE] Stories in advice:', fullAdvice.filter(a => a.kind === 'story').length);
-
             // Extract and group stories by phase
             const primaryOfferType = offersForIntent[0] as OfferType || 'real-estate-timeline';
             const allStoriesByPhase = groupStoriesByPhase(fullAdvice, primaryOfferType, userInput);
             storiesByPhase = getTopStoriesPerPhase(allStoriesByPhase, 1); // 1 story per phase
 
             storyCount = Object.values(storiesByPhase).flat().length;
-            console.log('📖 [SSE] Stories matched:', storyCount, 'across', Object.keys(storiesByPhase).length, 'phases');
           } catch (storyError) {
-            console.error('⚠️ [SSE] Story query failed:', storyError);
             // Continue without stories
           }
         }
@@ -259,7 +224,6 @@ export async function POST(req: NextRequest) {
           const offerType = offersForIntent[i];
           const percent = 45 + ((i + 1) / offersForIntent.length) * 40;
 
-          console.log(`🔨 [SSE] Generating offer: ${offerType}`);
           sendEvent('progress', {
             step: 'generating',
             message: `Creating ${offerType.replace(/-/g, ' ')}...`,
@@ -271,7 +235,6 @@ export async function POST(req: NextRequest) {
             const unifiedOffer = getOffer(offerType);
             if (!unifiedOffer) {
               errors[offerType] = 'Offer definition not found in registry';
-              console.error(`❌ [SSE] Offer not found in registry: ${offerType}`);
               continue;
             }
 
@@ -279,12 +242,10 @@ export async function POST(req: NextRequest) {
 
             if (!result.success || !result.data) {
               errors[offerType] = (result as any).error || 'Generation failed';
-              console.error(`❌ [SSE] Generation failed for ${offerType}:`, (result as any).error);
               continue;
             }
 
             results[offerType] = result.data;
-            console.log(`✅ [SSE] Generated successfully: ${offerType}`);
 
             sendEvent('progress', {
               step: 'generating',
@@ -296,7 +257,6 @@ export async function POST(req: NextRequest) {
           } catch (error) {
             const errMsg = error instanceof Error ? error.message : 'Unknown error';
             errors[offerType] = errMsg;
-            console.error(`❌ [SSE] Exception generating ${offerType}:`, error);
           }
         }
 
@@ -345,21 +305,12 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('✅ [SSE] GENERATION COMPLETE');
-        console.log('   offers generated:', Object.keys(results));
-        console.log('   time:', generationTime, 'ms');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
         sendEvent('progress', { step: 'complete', message: 'Ready!', percent: 100 });
         sendEvent('complete', { ...results, _debug: debugInfo, _stories: storiesByPhase });
         controller.close();
 
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown server error';
-        const stack = err instanceof Error ? err.stack : undefined;
-        console.error('🔴 [SSE] UNCAUGHT ERROR:', message);
-        if (stack) console.error(stack);
         sendEvent('error', { error: message });
         controller.close();
       }

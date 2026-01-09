@@ -38,7 +38,6 @@ export function TimelineDisplay({ data }: TimelineDisplayProps) {
     try {
       await generateTimelinePDF(data);
     } catch (error) {
-      console.error('PDF generation failed:', error);
       setDownloadError('Failed to generate PDF. Please try again.');
     } finally {
       setIsDownloading(false);

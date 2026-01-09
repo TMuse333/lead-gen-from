@@ -2,6 +2,7 @@
 // User-specific version that accepts collection name
 
 import { qdrant } from '../../../client';
+import { criticalError } from '@/lib/logger';
 import type { RuleGroup } from '@/types/rules.types';
 import type { AdviceType, AdvicePlacements, KnowledgeKind } from '@/types/advice.types';
 
@@ -55,10 +56,9 @@ export async function storeUserAdvice({
       ],
     });
 
-    console.log(`Stored advice in ${collectionName}:`, title);
     return pointId;
   } catch (error) {
-    console.error('Error storing user advice:', error);
+    criticalError('QdrantAdviceUpsertUser', error);
     throw error;
   }
 }

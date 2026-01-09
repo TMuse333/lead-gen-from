@@ -127,7 +127,6 @@ export default function AgentAdviceUploader() {
         setStatus(`❌ ${response.data.error || 'Failed to upload advice'}`);
       }
     } catch (error: any) {
-      console.error('Error uploading advice:', error);
       setStatus(`❌ ${error.response?.data?.error || error.message || 'Failed to upload advice'}`);
     } finally {
       setIsUploading(false);

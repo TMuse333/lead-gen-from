@@ -53,7 +53,6 @@ export default function AdminRateLimits() {
         setError('Failed to load rate limits');
       }
     } catch (err) {
-      console.error('Error fetching rate limits:', err);
       setError(err instanceof Error ? err.message : 'Failed to load rate limits');
     } finally {
       setLoading(false);
@@ -91,7 +90,6 @@ export default function AdminRateLimits() {
         setError('Failed to update rate limits');
       }
     } catch (err) {
-      console.error('Error saving rate limit:', err);
       setError(err instanceof Error ? err.message : 'Failed to save rate limits');
     } finally {
       setSaving(null);

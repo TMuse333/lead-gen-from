@@ -71,7 +71,6 @@ export async function GET(
       conversation,
     });
   } catch (error) {
-    console.error('Error fetching conversation:', error);
     return NextResponse.json(
       { error: 'Failed to fetch conversation', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -200,7 +199,6 @@ export async function PATCH(
       conversation: updated,
     });
   } catch (error) {
-    console.error('Error updating conversation:', error);
     return NextResponse.json(
       { error: 'Failed to update conversation', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

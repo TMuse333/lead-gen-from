@@ -72,8 +72,8 @@ export async function getPersonalizedAdvice(
             placements: item.applicableWhen?.placements,
           }))
         });
-      } catch (error) {
-        console.error(`Error in vector search for ${knowledgeSet.name}:`, error);
+      } catch {
+        // Vector search failed - continue with other knowledge sets
       }
 
     } else if (knowledgeSet.type === 'rule') {
@@ -106,8 +106,8 @@ export async function getPersonalizedAdvice(
             }))
           });
         }
-      } catch (error) {
-        console.error(`Error in rule-based search for ${knowledgeSet.name}:`, error);
+      } catch {
+        // Rule-based search failed - continue with other knowledge sets
       }
     }
   }
@@ -140,8 +140,7 @@ export async function getAdviceForLocation(
       location,
       { limit, collectionName }
     );
-  } catch (error) {
-    console.error(`Error getting advice for location ${location}:`, error);
+  } catch {
     return [];
   }
 }
@@ -246,8 +245,7 @@ export async function getPhaseSpecificAdvice(
   let embedding: number[];
   try {
     embedding = await generateUserEmbedding(intent, userInput);
-  } catch (error) {
-    console.error('[PhaseAdvice] Failed to generate embedding:', error);
+  } catch {
     return {
       byPhase: new Map(),
       totalItems: 0,
@@ -276,8 +274,7 @@ export async function getPhaseSpecificAdvice(
       );
 
       return { phaseId, advice, success: true };
-    } catch (error) {
-      console.error(`[PhaseAdvice] Query failed for phase ${phaseId}:`, error);
+    } catch {
       return { phaseId, advice: [], success: false };
     }
   });

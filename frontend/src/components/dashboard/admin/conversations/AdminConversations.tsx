@@ -91,7 +91,6 @@ export default function AdminConversations() {
         setAnalytics(analyticsResponse.data.analytics);
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);

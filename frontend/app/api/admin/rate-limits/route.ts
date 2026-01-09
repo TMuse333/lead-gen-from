@@ -99,7 +99,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, configs: result });
   } catch (error) {
-    console.error('Error fetching rate limits:', error);
     return NextResponse.json(
       { error: 'Failed to fetch rate limits' },
       { status: 500 }
@@ -182,7 +181,6 @@ export async function PUT(req: NextRequest) {
       message: 'Rate limit updated successfully',
     });
   } catch (error) {
-    console.error('Error updating rate limit:', error);
     return NextResponse.json(
       { error: 'Failed to update rate limit' },
       { status: 500 }
@@ -239,7 +237,7 @@ export async function POST(req: NextRequest) {
       const operations = Object.entries(DEFAULT_RATE_LIMITS).map(
         ([feature, config]) => ({
           updateOne: {
-            filter: { feature },
+            filter: { feature: feature as FeatureType },
             update: {
               $set: {
                 ...config,
@@ -264,7 +262,6 @@ export async function POST(req: NextRequest) {
       message: 'Rate limits reset successfully',
     });
   } catch (error) {
-    console.error('Error resetting rate limits:', error);
     return NextResponse.json(
       { error: 'Failed to reset rate limits' },
       { status: 500 }

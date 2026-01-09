@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
     });
   } catch (error) {
-    console.error('Error extracting text from file:', error);
     return NextResponse.json(
       {
         error: 'Failed to extract text from file',

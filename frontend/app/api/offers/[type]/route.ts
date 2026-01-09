@@ -17,7 +17,7 @@ import { getOfferDefinition, getAvailableOfferTypes } from '@/lib/offers';
 import { mergeOfferDefinition } from '@/lib/offers/utils/mergeCustomizations';
 import { validateCustomizations } from '@/lib/offers/utils/validateCustomizations';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
-import type { OfferCustomizations } from '@/types/offerCustomization.types';
+import type { OfferCustomizations } from '@/types/offers/offerCustomization.types';
 
 /**
  * GET /api/offers/[type]
@@ -58,19 +58,13 @@ export async function GET(
     };
     
     offerType = (typeMap[normalizedType] || normalizedType) as OfferType;
-    
-    console.log('[GET /api/offers/[type]] Original param:', type);
-    console.log('[GET /api/offers/[type]] Normalized offer type:', offerType);
-    
-    // Get available types for debugging
+
+    // Get available types
     const availableTypes = getAvailableOfferTypes();
-    console.log('[GET /api/offers/[type]] Available offer types:', availableTypes);
 
     // Get system definition
     const systemDef = getOfferDefinition(offerType);
     if (!systemDef) {
-      console.error('[GET /api/offers/[type]] Offer type not found:', offerType);
-      console.error('[GET /api/offers/[type]] Available types:', availableTypes);
       return NextResponse.json(
         { 
           error: `Offer type "${type}" not found. Available types: ${availableTypes.join(', ')}`,
@@ -103,7 +97,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[GET /api/offers/[type]] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -169,7 +162,6 @@ export async function PUT(
       warnings: validation.warnings,
     });
   } catch (error) {
-    console.error('[PUT /api/offers/[type]] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -209,7 +201,6 @@ export async function DELETE(
       deleted,
     });
   } catch (error) {
-    console.error('[DELETE /api/offers/[type]] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

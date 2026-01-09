@@ -55,7 +55,6 @@ export function useDocumentExtractor({
         throw new Error(response.data.error || 'Failed to extract text');
       }
     } catch (err: any) {
-      console.error('Error extracting text:', err);
       setError(err.response?.data?.error || err.message || 'Failed to extract text');
     } finally {
       setLoading(false);
@@ -93,7 +92,6 @@ export function useDocumentExtractor({
         throw new Error(response.data.error || 'Failed to process document');
       }
     } catch (err: any) {
-      console.error('Error processing document:', err);
       setError(err.response?.data?.error || err.message || 'Failed to process document');
     } finally {
       setLoading(false);
@@ -164,7 +162,6 @@ export function useDocumentExtractor({
         throw new Error(response.data.error || 'Failed to upload items');
       }
     } catch (err: any) {
-      console.error('Error uploading items:', err);
       setError(err.response?.data?.error || err.message || 'Failed to upload items');
       setStep('review');
     } finally {

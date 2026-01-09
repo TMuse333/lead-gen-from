@@ -18,7 +18,7 @@ export default function AdviceItemCard({
   searchQuery,
   onToggleSelection,
 }: AdviceItemCardProps) {
-  const hasRules = item.applicableWhen?.ruleGroups?.length > 0;
+  const hasRules = (item.applicableWhen?.ruleGroups?.length ?? 0) > 0;
 
   return (
     <div

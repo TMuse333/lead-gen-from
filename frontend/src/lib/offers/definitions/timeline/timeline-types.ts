@@ -30,6 +30,7 @@ export interface ActionItem {
   priority: ActionPriority;
   estimatedTime?: string; // e.g., "2-3 hours", "1 day"
   isCompleted?: boolean; // For future interactivity
+  details?: string; // Additional task details
 }
 
 /**

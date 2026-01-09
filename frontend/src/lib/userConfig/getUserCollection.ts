@@ -8,8 +8,7 @@ export async function getUserCollectionName(userId: string): Promise<string | nu
     const collection = await getClientConfigsCollection();
     const userConfig = await collection.findOne({ userId });
     return userConfig?.qdrantCollectionName || null;
-  } catch (error) {
-    console.error('Error fetching user collection:', error);
+  } catch {
     return null;
   }
 }

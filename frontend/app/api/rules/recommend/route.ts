@@ -75,6 +75,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Build fields context for LLM and response
+    const fieldsContext = relevantFields.map(f => ({
+      fieldId: f.fieldId,
+      label: f.label,
+      concept: f.concept?.concept,
+      values: f.values,
+      type: f.type,
+    }));
+
     // Check for existing saved recommendations (unless forceRegenerate is true)
     if (!forceRegenerate) {
       const recommendationsCollection = await getRuleRecommendationsCollection();
@@ -84,7 +93,6 @@ export async function POST(request: NextRequest) {
       });
 
       if (existing && existing.recommendations.length > 0) {
-        console.log('✅ Returning existing saved recommendations');
         return NextResponse.json({
           success: true,
           recommendations: existing.recommendations,
@@ -96,14 +104,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Build prompt for LLM
-    const fieldsContext = relevantFields.map(f => ({
-      fieldId: f.fieldId,
-      label: f.label,
-      concept: f.concept?.concept,
-      values: f.values,
-      type: f.type,
-    }));
-
     const conceptsContext = concepts.map(c => ({
       concept: c.concept,
       label: c.label,
@@ -228,7 +228,6 @@ Return ONLY valid JSON, no other text.`;
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      console.error('Failed to parse LLM response:', content);
       return NextResponse.json(
         { error: 'Invalid response from LLM' },
         { status: 500 }
@@ -351,8 +350,6 @@ Return ONLY valid JSON, no other text.`;
       { upsert: true }
     );
 
-    console.log(`✅ Saved ${recommendations.length} recommendations to MongoDB`);
-
     // Update usage tracking with final counts
     usage.featureData.recommendationsGenerated = recommendations.length;
     usage.featureData.savedToMongoDB = true;
@@ -366,7 +363,6 @@ Return ONLY valid JSON, no other text.`;
       generatedAt: now,
     });
   } catch (error) {
-    console.error('Error generating recommendations:', error);
     return NextResponse.json(
       {
         error: 'Failed to generate recommendations',

@@ -19,8 +19,6 @@ export async function GET(
       );
     }
 
-    console.log(`📋 Fetching config for client: ${clientId}`);
-
     // Get client configuration from MongoDB
     const collection = await getClientConfigsCollection();
     const config = await collection.findOne({ 
@@ -29,7 +27,6 @@ export async function GET(
     });
 
     if (!config) {
-      console.log(`❌ Config not found for client: ${clientId}`);
       return NextResponse.json(
         { 
           error: 'Configuration not found',
@@ -60,7 +57,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('❌ Error fetching client config:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch client configuration',

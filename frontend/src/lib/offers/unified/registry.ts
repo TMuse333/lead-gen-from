@@ -38,11 +38,7 @@ export const OFFERS: OfferRegistry = {};
  * Called by each offer definition file
  */
 export function registerOffer<TOutput>(offer: UnifiedOffer<TOutput>): void {
-  if (OFFERS[offer.type]) {
-    console.warn(`[OfferRegistry] Overwriting offer: ${offer.type}`);
-  }
   OFFERS[offer.type] = offer as UnifiedOffer<unknown>;
-  console.log(`[OfferRegistry] Registered: ${offer.type}`);
 }
 
 // ==================== LOOKUP FUNCTIONS ====================
@@ -610,18 +606,8 @@ export function getRegistryStatus(): {
 }
 
 /**
- * Log registry status to console
+ * Log registry status to console (no-op in production)
  */
 export function logRegistryStatus(): void {
-  const status = getRegistryStatus();
-  console.log('[OfferRegistry] Status:');
-  console.log(`  Registered: ${status.registered.join(', ') || 'none'}`);
-  console.log('  By Intent:');
-  console.log(`    buy: ${status.byIntent.buy.join(', ') || 'none'}`);
-  console.log(`    sell: ${status.byIntent.sell.join(', ') || 'none'}`);
-  console.log(`    browse: ${status.byIntent.browse.join(', ') || 'none'}`);
-  console.log('  Questions per offer:');
-  for (const [type, count] of Object.entries(status.totalQuestions)) {
-    console.log(`    ${type}: ${count}`);
-  }
+  // No-op - debug logging removed
 }

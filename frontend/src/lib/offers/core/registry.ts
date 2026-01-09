@@ -21,14 +21,14 @@ import { REAL_ESTATE_TIMELINE_DEFINITION } from '../definitions/realEstateTimeli
  * Global offer registry
  * NOW COMPLETE with all 6 offer definitions!
  */
-export const OFFER_DEFINITIONS: OfferRegistry = {
+export const OFFER_DEFINITIONS = {
   'pdf': PDF_OFFER_DEFINITION,
   'landingPage': LANDING_PAGE_OFFER_DEFINITION,
   'video': VIDEO_OFFER_DEFINITION,
   'home-estimate': HOME_ESTIMATE_OFFER_DEFINITION,
   'custom': CUSTOM_OFFER_DEFINITION,
   'real-estate-timeline': REAL_ESTATE_TIMELINE_DEFINITION,
-};
+} as unknown as OfferRegistry;
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -67,14 +67,7 @@ export function registerOfferDefinition(
   type: OfferType,
   definition: OfferDefinition
 ): void {
-  if (OFFER_DEFINITIONS[type]) {
-    console.warn(
-      `[Registry] Overwriting existing definition for offer type: ${type}`
-    );
-  }
-  
   OFFER_DEFINITIONS[type] = definition;
-  console.log(`[Registry] Registered definition for offer type: ${type}`);
 }
 
 /**
@@ -157,24 +150,8 @@ export function getRegistryStatus(): {
 }
 
 /**
- * Log registry status to console
+ * Log registry status to console (no-op in production)
  */
 export function logRegistryStatus(): void {
-  const status = getRegistryStatus();
-  
-  console.log('[Registry Status]', {
-    total: status.totalTypes,
-    registered: status.registered,
-    missing: status.missing,
-  });
-  
-  status.types.forEach((type) => {
-    const icon = type.registered ? '✅' : '❌';
-    const version = type.version ? ` (v${type.version})` : '';
-    console.log(`  ${icon} ${type.type}${version}`);
-  });
-  
-  if (status.registered === status.totalTypes) {
-    console.log('🎉 All offer types registered!');
-  }
+  // No-op - debug logging removed
 }

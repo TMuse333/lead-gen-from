@@ -30,7 +30,7 @@ export function discoverFieldsFromFlows(
         const fieldId = question.mappingKey;
         
         // Try to map to a concept
-        const concept = findConceptByField(fieldId, question.question);
+        const concept = findConceptByField(fieldId, question.question) ?? undefined;
         
         // Extract button values, filtering out placeholder values
         const rawValues = question.buttons?.map(b => b.value) || [];

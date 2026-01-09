@@ -14,7 +14,7 @@ import {
 import { generateOffer, getOfferDefinition } from '@/lib/offers';
 import { mergeOfferDefinition } from '@/lib/offers/utils/mergeCustomizations';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
-import type { OfferTestRequest } from '@/types/offerCustomization.types';
+import type { OfferTestRequest } from '@/types/offers/offerCustomization.types';
 import OpenAI from 'openai';
 import { createBaseTrackingObject, updateTrackingWithResponse } from '@/lib/tokenUsage/createTrackingObject';
 import { trackUsageAsync } from '@/lib/tokenUsage/trackUsage';
@@ -187,15 +187,14 @@ export async function POST(
         success: false,
         error: result.error,
         metadata: {
-          cost: result.metadata?.cost || 0,
-          tokensUsed: result.metadata?.tokensUsed || 0,
+          cost: 0,
+          tokensUsed: 0,
           duration,
           retries: result.metadata?.retries || 0,
         },
       });
     }
   } catch (error: any) {
-    console.error('[POST /api/offers/[type]/test] Error:', error);
     return NextResponse.json(
       {
         success: false,

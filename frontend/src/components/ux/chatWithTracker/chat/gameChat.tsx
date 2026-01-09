@@ -79,37 +79,11 @@ export function GameChat({
     !userInput[currentQuestion.mappingKey!] &&
     !isFieldSkipped(currentQuestion.mappingKey);
   
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 [ImportantModal] Debug:', {
-      currentFlow,
-      currentNodeId,
-      currentQuestion: currentQuestion ? {
-        id: currentQuestion.id,
-        text: currentQuestion.text,
-        mappingKey: currentQuestion.mappingKey,
-      } : null,
-      shouldShowModal,
-      hasUserInput: currentQuestion?.mappingKey ? !!userInput[currentQuestion.mappingKey] : false,
-      isSkipped: currentQuestion?.mappingKey ? isFieldSkipped(currentQuestion.mappingKey) : false,
-      userInputKeys: Object.keys(userInput),
-    });
-  }, [currentNodeId, currentFlow, currentQuestion, shouldShowModal, userInput, isFieldSkipped]);
-  
   // Show modal when question changes to an important field
   useEffect(() => {
     if (shouldShowModal && currentQuestion) {
-      console.log('✅ [ImportantModal] Showing modal for:', currentQuestion.mappingKey);
       setShowImportantModal(true);
     } else {
-      if (showImportantModal) {
-        console.log('❌ [ImportantModal] Hiding modal:', {
-          shouldShowModal,
-          hasQuestion: !!currentQuestion,
-          hasUserInput: currentQuestion?.mappingKey ? !!userInput[currentQuestion.mappingKey] : false,
-          isSkipped: currentQuestion?.mappingKey ? isFieldSkipped(currentQuestion.mappingKey) : false,
-        });
-      }
       setShowImportantModal(false);
     }
   }, [currentNodeId, shouldShowModal, currentQuestion, userInput, isFieldSkipped]);
@@ -306,7 +280,6 @@ export function GameChat({
                 const skipField = useChatStore.getState().skipField;
                 if (currentQuestion?.mappingKey) {
                   skipField(currentQuestion.mappingKey);
-                  console.log('⏭️ [ImportantModal] Field skipped:', currentQuestion.mappingKey);
                 }
                 setShowImportantModal(false);
               }}

@@ -45,21 +45,19 @@ export default function ResultsPage() {
   // Wait for client-side hydration before accessing Zustand/store
   useEffect(() => {
     setIsHydrated(true);
-    console.log('✅ Results page hydrated');
   }, []);
 
   // Sync zustand debugInfo to local state when it changes
   useEffect(() => {
     if (zustandDebugInfo) {
       try {
-        console.log("Zustand debugInfo detected, syncing to local state");
         setLocalDebugInfo(zustandDebugInfo);
         // Also cache it
         if (typeof window !== 'undefined') {
           localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(zustandDebugInfo));
         }
       } catch (err) {
-        console.error('Error syncing debug info:', err);
+        // Error syncing debug info - silently ignore
       }
     }
   }, [zustandDebugInfo]);
@@ -73,42 +71,29 @@ export default function ResultsPage() {
       try {
         const cached = localStorage.getItem(STORAGE_KEY);
         if (!cached) {
-          console.log("No cached data found in localStorage");
           return null;
         }
 
         const parsed = JSON.parse(cached);
-        console.log("Parsed cached data:", parsed);
-        
+
         // More flexible validation - just check that it's an object with at least one component
         if (parsed && typeof parsed === "object") {
-          const componentKeys = Object.keys(parsed).filter(key => 
-            key !== '_debug' && 
-            parsed[key] !== null && 
-            parsed[key] !== undefined && 
+          const componentKeys = Object.keys(parsed).filter(key =>
+            key !== '_debug' &&
+            parsed[key] !== null &&
+            parsed[key] !== undefined &&
             typeof parsed[key] === 'object'
           );
           if (componentKeys.length > 0) {
-            console.log("✅ Cache hit: Loaded LLM result from localStorage");
-            console.log("Available components:", componentKeys);
             return parsed as LlmOutput;
-          } else {
-            console.warn("⚠️ Cached data exists but no valid components found");
-            console.warn("Cached data keys:", Object.keys(parsed));
           }
         }
       } catch (err) {
-        console.error("❌ Failed to parse cached LLM data:", err);
-        console.error("Error details:", {
-          error: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-        });
         // Clear corrupted cache
         try {
           localStorage.removeItem(STORAGE_KEY);
-          console.log("Cleared corrupted cache");
         } catch (clearErr) {
-          console.error("Failed to clear corrupted cache:", clearErr);
+          // Failed to clear corrupted cache
         }
       }
       return null;
@@ -119,10 +104,9 @@ export default function ResultsPage() {
         const cached = localStorage.getItem(DEBUG_STORAGE_KEY);
         if (!cached) return null;
         const parsed = JSON.parse(cached);
-        console.log("Cache hit: Loaded debug info from localStorage");
         return parsed as GenerationDebugInfo;
       } catch (err) {
-        console.warn("Failed to parse cached debug data:", err);
+        // Failed to parse cached debug data
       }
       return null;
     };
@@ -132,10 +116,9 @@ export default function ResultsPage() {
         const cached = localStorage.getItem(COLOR_THEME_KEY);
         if (!cached) return null;
         const parsed = JSON.parse(cached);
-        console.log("Cache hit: Loaded color theme from localStorage");
         return parsed as ColorTheme;
       } catch (err) {
-        console.warn("Failed to parse cached color theme:", err);
+        // Failed to parse cached color theme
       }
       return null;
     };
@@ -161,19 +144,10 @@ export default function ResultsPage() {
   // Catch any unhandled errors
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
-      console.error('❌ Unhandled error:', event.error);
-      console.error('Error details:', {
-        message: event.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
-        error: event.error,
-      });
       setError(`An error occurred: ${event.message || 'Unknown error'}`);
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
-      console.error('❌ Unhandled promise rejection:', event.reason);
       setError(`An error occurred: ${event.reason?.message || 'Unknown error'}`);
     };
 
@@ -189,41 +163,26 @@ export default function ResultsPage() {
   // Detect when Zustand has fresh output (only after hydration)
   useEffect(() => {
     if (!isHydrated) {
-      console.log("⏳ Waiting for hydration...");
       return;
     }
 
-    console.log("🔍 Checking for llmOutput (hydrated):", {
-      hasLlmOutput: !!llmOutput,
-      isComplete,
-      llmOutputKeys: llmOutput ? Object.keys(llmOutput) : [],
-    });
-
     if (llmOutput) {
-      console.log("✅ Zustand llmOutput ready:", llmOutput);
-      console.log("Output keys:", Object.keys(llmOutput));
       setLoading(false);
     } else if (isComplete) {
-      console.log("⏳ Chat complete, awaiting results...");
       // Set a timeout to show error if results don't arrive
       const timeout = setTimeout(() => {
         if (!llmOutput) {
-          console.error("⚠️ Results not received after completion");
           setError("Results are taking longer than expected. Please try refreshing the page.");
           setLoading(false);
         }
       }, 10000); // 10 second timeout
       return () => clearTimeout(timeout);
-    } else {
-      // Not complete and no output - might be a fresh page load
-      console.log("ℹ️ No output yet, checking cache...");
     }
   }, [llmOutput, isComplete, isHydrated]);
 
   // CLEAR CACHE + ZUSTAND WHEN LEAVING PAGE
   useEffect(() => {
     return () => {
-      console.log("Leaving /results → clearing cache and LLM output");
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(DEBUG_STORAGE_KEY);
       // setLlmOutput(null); // clear Zustand store if needed
@@ -298,8 +257,6 @@ export default function ResultsPage() {
       typeof data[key] === 'object'
     );
   } catch (err) {
-    console.error('❌ Error processing llmOutput:', err);
-    console.error('llmOutput data:', data);
     setError('Error processing results data. Please try again.');
     return (
       <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
@@ -319,10 +276,6 @@ export default function ResultsPage() {
   }
 
   if (availableComponents.length === 0) {
-    console.error('❌ No valid components found in llmOutput');
-    console.error('Full llmOutput:', JSON.stringify(data, null, 2));
-    console.error('llmOutput type:', typeof data);
-    console.error('llmOutput keys:', Object.keys(data || {}));
     return (
       <main className="flex min-h-screen items-center justify-center bg-blue-100 p-4">
         <div className="max-w-md rounded-lg bg-red-50 p-6 text-red-800 shadow-md">
@@ -340,8 +293,6 @@ export default function ResultsPage() {
       </main>
     );
   }
-
-  console.log('✅ Available components:', availableComponents);
 
   // Filter out debug and stories data from main output
   const { _debug, _stories, ...mainOutput } = data as typeof data & { _stories?: Record<string, any[]> };
@@ -385,7 +336,7 @@ export default function ResultsPage() {
                 adviceUsed={localDebugInfo.adviceUsed}
                 generationTime={localDebugInfo.generationTime}
                 userInput={localDebugInfo.userInput}
-                flow={localDebugInfo.flow}  
+                flow={localDebugInfo.flow || 'buy'}
               />
             </ErrorBoundary>
           )}
@@ -400,7 +351,7 @@ export default function ResultsPage() {
               }
             >
               <TimelineLandingPage
-                data={timelineEntry[1] as TimelineOutput}
+                data={timelineEntry[1] as unknown as TimelineOutput}
                 colorTheme={colorTheme || undefined}
                 storiesByPhase={storiesByPhase}
               />

@@ -54,8 +54,6 @@ interface OfferEditorProps {
 }
 
 export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
-  console.log('🟢 [OfferEditor] Component rendering with offerType:', offerType);
-  
   const {
     activeTab,
     setActiveTab,
@@ -84,19 +82,6 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
 
   const isLoading = editorLoading || dataLoading;
   const error = editorError || dataError;
-
-  // Log when data loads
-  useEffect(() => {
-    if (definition) {
-      console.log('🟢 [OfferEditor] Definition loaded:', definition.type, definition.label);
-    }
-    if (customization) {
-      console.log('🟢 [OfferEditor] Customization loaded:', hasCustomizations);
-    }
-    if (error) {
-      console.error('🔴 [OfferEditor] Error:', error);
-    }
-  }, [definition, customization, hasCustomizations, error]);
 
   const handleToggleEnabled = async (enabled: boolean) => {
     if (!definition) return;
@@ -192,7 +177,6 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
       );
       setHasUnsavedChanges(false);
     } catch (err: any) {
-      console.error('Error adding/saving offer:', err);
       setEditorError(err.message || 'Failed to save offer');
     } finally {
       setEditorLoading(false);

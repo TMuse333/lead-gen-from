@@ -79,7 +79,6 @@ const handleSaveRecording = (questionId: string, blob: Blob, transcript: string)
       setQuestions(newQuestions);
       setScriptPrompt(''); // clear prompt after success
     } catch (err: any) {
-      console.error('Generate script failed:', err);
       alert('Failed to generate script: ' + (err.response?.data?.error || err.message));
     } finally {
       setIsGenerating(false);

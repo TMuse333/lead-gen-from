@@ -40,9 +40,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`🎨 Updating color config for user: ${userId}`);
-    console.log(`   Theme: ${colorConfig.name}`);
-
     // 4. Update color config in MongoDB
     const collection = await getClientConfigsCollection();
     const result = await collection.updateOne(
@@ -65,8 +62,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Color configuration updated successfully');
-
     // 5. Return success response
     return NextResponse.json({
       success: true,
@@ -76,7 +71,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ Error updating color config:', error);
     return NextResponse.json(
       {
         error: 'Failed to update color configuration',

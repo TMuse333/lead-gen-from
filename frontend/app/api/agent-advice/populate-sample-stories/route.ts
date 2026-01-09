@@ -144,7 +144,6 @@ export async function POST() {
       results,
     });
   } catch (error) {
-    console.error('Error populating sample stories:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to populate stories' },
       { status: 500 }

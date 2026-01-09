@@ -60,7 +60,6 @@ async function callJsonLlm<T = unknown>(prompt: string, model = 'gpt-4o-mini'): 
   try {
     return JSON.parse(content) as T;
   } catch (parseError) {
-    console.error('Failed to parse LLM JSON:', content);
     throw parseError;
   }
 }
@@ -170,7 +169,6 @@ async function analyzeUserIntent(params: {
       suggestedTone: result.suggestedTone,
     };
   } catch (error) {
-    console.error('Intent analysis failed:', error);
     return { primary: 'clarification_question', confidence: 0.5 };
   }
 }
@@ -179,8 +177,6 @@ async function analyzeUserIntent(params: {
 // Main POST handler
 // ————————————————————————
 export async function POST(req: NextRequest) {
-  console.log('API Route: /api/chat/smart called');
-
   try {
     // Check rate limits
     let userId: string | undefined;
@@ -319,7 +315,6 @@ export async function POST(req: NextRequest) {
     // ——————————————————
     if (isButtonClick) {
       answerValue = buttonValue!;
-      console.log('Button click → answer:', answerValue);
     }
     // ——————————————————
     // 2. Free Text → Classify intent
@@ -391,11 +386,10 @@ Keep it short and kind.`;
         const intentForNormalization = currentIntent || currentFlow;
         if (intentForNormalization) {
           const prompt = normalizeToRealEstateSchemaPrompt(userInput, intentForNormalization as any);
-          const normalized = await callJsonLlm(prompt);
-          console.log('Profile normalized:', normalized);
+          await callJsonLlm(prompt);
         }
       } catch (error) {
-        console.error('Background normalization failed:', error);
+        // Background normalization failed silently
       }
     })();
 
@@ -477,7 +471,6 @@ Be kind, human, and engaging.`;
       isComplete: isLastQuestion,
     });
   } catch (error: any) {
-    console.error('chat-smart error:', error);
     return NextResponse.json(
       { error: 'Something went wrong. Please try again.' },
       { status: 500 }

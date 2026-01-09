@@ -24,9 +24,7 @@ export async function incrementAdviceUsage(adviceId: string) {
         lastUsed: new Date().toISOString(),
       },
     });
-
-    console.log(`Incremented usage: ${adviceId} → ${current + 1}`);
-  } catch (error) {
-    console.error('Error incrementing usage:', error);
+  } catch {
+    // Non-critical - usage tracking failure shouldn't break the app
   }
 }

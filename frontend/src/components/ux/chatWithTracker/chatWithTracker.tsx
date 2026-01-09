@@ -105,19 +105,9 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   const toggleChat = () => setIsChatOpen(prev => !prev);
   const closeChat = () => setIsChatOpen(false);
 
-  // DEBUG: Log every time isComplete changes
-  useEffect(() => {
-    console.log('🔄 isComplete changed to:', isComplete);
-  }, [isComplete]);
-
   // Load client config and colors if provided
   useEffect(() => {
     if (clientConfig && !clientConfigLoadedRef.current) {
-      console.log('🔄 Loading client configuration...', {
-        businessName: clientConfig.businessName,
-        selectedOffers: clientConfig.selectedOffers,
-      });
-
       // Store client identifier and config for API calls and UI
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('clientId', clientConfig.businessName);
@@ -139,7 +129,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
       }
 
       clientConfigLoadedRef.current = true;
-      console.log('✅ Client config and colors loaded');
     }
   }, [clientConfig, updateInitialMessage]);
 
@@ -183,7 +172,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   // This is the NEW flow - modal shows BEFORE isComplete, when the email question is reached
   useEffect(() => {
     if (storeShowContactModal && !showContactModal && !hasSkippedContact) {
-      console.log('📧 Store triggered contact modal - showing modal');
       // Add the bot message first
       addContactRequestMessage();
       // Small delay to let message render, then show modal
@@ -200,55 +188,34 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   const effectiveIntent = currentIntent || currentFlow;
 
   useEffect(() => {
-    console.log('🔍 Completion useEffect triggered:');
-    console.log('   - isComplete:', isComplete);
-    console.log('   - currentIntent:', currentIntent);
-    console.log('   - currentFlow:', currentFlow);
-    console.log('   - effectiveIntent:', effectiveIntent);
-    console.log('   - selectedOffer:', selectedOffer);
-    console.log('   - userInput length:', Object.keys(userInput).length);
-    console.log('   - submissionCalled:', submissionCalledRef.current);
-    console.log('   - isGenerating:', isGenerating);
-    console.log('   - showContactModal:', showContactModal);
-    console.log('   - hasSkippedContact:', hasSkippedContact);
-
     // Early exit conditions - prevent race conditions
     if (!isComplete) {
-      console.log('❌ Not complete yet - skipping');
       return;
     }
 
     if (submissionCalledRef.current) {
-      console.log('❌ Already submitted - skipping');
       return;
     }
 
     if (isGenerating) {
-      console.log('❌ Already generating - skipping');
       return;
     }
 
     if (showContactModal) {
-      console.log('❌ Contact modal already showing - skipping');
       return;
     }
 
     if (hasSkippedContact) {
-      console.log('ℹ️ User skipped contact - showing retrigger button instead');
       return;
     }
 
     // Check for intent OR flow (support both new and legacy systems)
     if (!effectiveIntent || !userInput || Object.keys(userInput).length === 0) {
-      console.log('❌ Missing intent/flow or userInput - skipping');
-      console.log('   effectiveIntent:', effectiveIntent);
-      console.log('   userInput keys:', Object.keys(userInput));
       return;
     }
 
     // Check if all required contact info is already collected (name + email)
     if (userInput.contactName && userInput.contactEmail) {
-      console.log('✅ Contact info already collected, starting generation directly');
       submissionCalledRef.current = true;
       startGeneration({
         name: userInput.contactName,
@@ -256,7 +223,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
         phone: userInput.contactPhone || '',
       });
     } else {
-      console.log('📋 Adding bot message and showing contact collection modal');
       // Add the bot message first
       addContactRequestMessage();
       // Small delay to let message render, then show modal
@@ -270,7 +236,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
 
   // Handle contact submission from modal
   const handleContactSubmit = useCallback((contact: ContactData) => {
-    console.log('📋 Contact submitted:', contact);
     setShowContactModal(false);
     setStoreShowContactModal(false); // Reset store flag
     submissionCalledRef.current = true;
@@ -278,20 +243,9 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
     // Track analytics
     if (!contactAnalyticsRef.current.firstAttemptCompleted && contactAnalyticsRef.current.skippedCount === 0) {
       contactAnalyticsRef.current.firstAttemptCompleted = true;
-      console.log('📊 Analytics: User completed contact on first attempt');
     } else if (contactAnalyticsRef.current.skippedCount > 0) {
       contactAnalyticsRef.current.retryCompleted = true;
-      console.log('📊 Analytics: User completed contact on retry (after skipping)');
     }
-
-    // Log analytics summary
-    console.log('📊 Contact Analytics:', {
-      firstAttemptShown: contactAnalyticsRef.current.firstAttemptShown,
-      firstAttemptCompleted: contactAnalyticsRef.current.firstAttemptCompleted,
-      skippedCount: contactAnalyticsRef.current.skippedCount,
-      retryCompleted: contactAnalyticsRef.current.retryCompleted,
-      conversionType: contactAnalyticsRef.current.firstAttemptCompleted ? 'first_try' : 'retry',
-    });
 
     // Add contact info to userInput using addAnswer for each field
     const { addAnswer, setComplete } = useChatStore.getState();
@@ -311,16 +265,12 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
 
   // Handle skip from contact modal
   const handleContactSkip = useCallback(() => {
-    console.log('⏭️ User skipped contact collection');
     setShowContactModal(false);
     setStoreShowContactModal(false); // Reset store flag
     setHasSkippedContact(true);
 
     // Track skip analytics
     contactAnalyticsRef.current.skippedCount += 1;
-    console.log('📊 Analytics: User skipped contact collection', {
-      skipCount: contactAnalyticsRef.current.skippedCount,
-    });
 
     // Add a message letting user know they can complete it later
     const { addMessage } = useChatStore.getState();
@@ -333,7 +283,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
 
   // Handle re-trigger of contact modal
   const handleContactRetrigger = useCallback(() => {
-    console.log('🔄 User clicked retrigger button');
     setHasSkippedContact(false);
     setShowContactModal(true);
   }, []);
@@ -354,28 +303,17 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
       const freshUserInput = storeState.userInput;
       const freshConversationId = storeState.conversationId;
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📤 [CLIENT] PREPARING GENERATION REQUEST');
-      console.log('   selectedOffer (from store):', storeState.selectedOffer || '❌ NULL');
-      console.log('   enabledOffers (from store):', storeState.enabledOffers);
-      console.log('   freshOffer (will be sent):', freshOffer || '❌ NULL');
-      console.log('   intent:', freshIntent);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
       if (!freshIntent) {
         throw new Error('No intent/flow selected. Please complete the conversation first.');
       }
 
       if (!freshOffer) {
-        console.error('🔴 [CLIENT] OFFER IS NULL! Cannot proceed.');
         throw new Error('No offer selected. The chatbot did not set selectedOffer in the store.');
       }
 
       const clientId = typeof window !== 'undefined'
         ? sessionStorage.getItem('clientId')
         : null;
-
-      console.log('🔑 [CLIENT] clientId from sessionStorage:', clientId || '❌ NOT SET');
 
       const requestBody: any = {
         intent: freshIntent,
@@ -395,8 +333,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
         requestBody.clientId = clientId;
         requestBody.clientIdentifier = clientId;
       }
-
-      console.log('📤 [CLIENT] Request body:', { offer: requestBody.offer, intent: requestBody.intent, userInputKeys: Object.keys(requestBody.userInput) });
 
       // Use fetch for SSE
       const response = await fetch('/api/offers/generate-stream', {
@@ -421,7 +357,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
         const { done, value } = await reader.read();
 
         if (done) {
-          console.log('✅ SSE stream ended');
           break;
         }
 
@@ -440,7 +375,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              console.log('📥 SSE Event:', data);
 
               // Handle progress events
               if (data.step) {
@@ -460,8 +394,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
 
               // Handle complete event (final data)
               if (data._debug !== undefined || (!data.step && !data.error && Object.keys(data).length > 0)) {
-                console.log('✅ Received final data:', Object.keys(data));
-
                 const { _debug, ...llmOutput } = data;
 
                 // Store results
@@ -498,7 +430,6 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
         }
       }
     } catch (err: any) {
-      console.error('❌ Generation failed:', err);
       setGenerationError(err.message || 'Unknown error occurred');
       setIsGenerating(false);
       submissionCalledRef.current = false;

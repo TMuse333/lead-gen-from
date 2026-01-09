@@ -80,7 +80,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error creating generation:', error);
     return NextResponse.json(
       { error: 'Failed to create generation', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -155,7 +154,6 @@ export async function GET(req: NextRequest) {
       skip,
     });
   } catch (error) {
-    console.error('Error fetching generations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch generations', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

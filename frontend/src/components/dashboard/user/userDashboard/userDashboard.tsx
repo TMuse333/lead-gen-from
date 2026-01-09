@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -62,31 +62,15 @@ const USER_SECTIONS: DashboardSection[] = [
   }
 ];
 
-export default function UserDashboard() {
+function UserDashboardContent() {
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get('section');
   
   // Determine active section (default to 'overview' if not specified)
   const activeSection = sectionParam || 'overview';
-  
-  // Log section changes
-  useEffect(() => {
-    console.log('🟡 [UserDashboard] Active section changed:', activeSection);
-    console.log('🟡 [UserDashboard] Section param from URL:', sectionParam);
-    console.log('🟡 [UserDashboard] Current pathname:', typeof window !== 'undefined' ? window.location.pathname : 'SSR');
-  }, [activeSection, sectionParam]);
-  
+
   const currentSection = USER_SECTIONS.find(s => s.id === activeSection);
   const ActiveComponent = currentSection?.component;
-  
-  // Log component selection
-  useEffect(() => {
-    if (currentSection) {
-      console.log('🟡 [UserDashboard] Rendering component:', currentSection.label, currentSection.id);
-    } else {
-      console.warn('🟡 [UserDashboard] No component found for section:', activeSection);
-    }
-  }, [currentSection, activeSection]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -120,5 +104,13 @@ export default function UserDashboard() {
         {ActiveComponent && <ActiveComponent />}
       </div>
     </div>
+  );
+}
+
+export default function UserDashboard() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-cyan-400 border-t-transparent rounded-full" /></div>}>
+      <UserDashboardContent />
+    </Suspense>
   );
 }

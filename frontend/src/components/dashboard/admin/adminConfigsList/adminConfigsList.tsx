@@ -105,7 +105,6 @@ export default function AdminConfigsList() {
       const data = await response.json();
       setConfigs(data.configs || []);
     } catch (err) {
-      console.error("Error fetching configs:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
@@ -135,7 +134,6 @@ export default function AdminConfigsList() {
         }
       }
     } catch (err) {
-      console.error("Error fetching full config:", err);
       setError(err instanceof Error ? err.message : "Failed to load details");
     } finally {
       setLoadingFullConfig(false);
@@ -174,7 +172,6 @@ export default function AdminConfigsList() {
       }
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting config:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete configuration');
     } finally {
       setDeletingId(null);

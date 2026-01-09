@@ -99,7 +99,6 @@ Current progress: ${currentAnswers.length}/${REQUIRED_FIELDS.length} answered`;
     });
 
   } catch (error) {
-    console.error('Chat extract error:', error);
     return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
   }
 }

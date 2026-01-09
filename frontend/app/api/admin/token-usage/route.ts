@@ -164,7 +164,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error fetching admin token usage stats:', error);
     return NextResponse.json(
       { error: 'Failed to fetch stats' },
       { status: 500 }

@@ -220,7 +220,6 @@ export default function PropertiesDisplay() {
         setError('error' );
       }
     } catch (err) {
-      console.error('Error fetching properties:', err);
       setError('Failed to load properties');
     } finally {
       setLoading(false);

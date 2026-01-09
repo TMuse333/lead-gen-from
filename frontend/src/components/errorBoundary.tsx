@@ -32,20 +32,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('❌ ErrorBoundary caught an error:', error);
-    console.error('Error info:', errorInfo);
-    console.error('Error stack:', error.stack);
-    
-    // Log to console with full context
-    const errorDetails = {
-      timestamp: new Date().toISOString(),
-      message: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
-    };
-    console.error('📋 Full error context:', JSON.stringify(errorDetails, null, 2));
-    
     this.setState({
       error,
       errorInfo,

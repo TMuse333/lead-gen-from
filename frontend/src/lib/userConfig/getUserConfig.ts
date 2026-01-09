@@ -33,8 +33,7 @@ export async function getUserConfig(
       dataCollection: userConfig.dataCollection,
       selectedIntentions: userConfig.selectedIntentions,
     };
-  } catch (error) {
-    console.error('Error fetching user config:', error);
+  } catch {
     return null;
   }
 }

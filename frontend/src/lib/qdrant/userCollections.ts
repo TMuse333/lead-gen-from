@@ -2,6 +2,7 @@
 // Helper functions for per-user Qdrant collections
 
 import { qdrant } from './client';
+import { criticalError } from '@/lib/logger';
 
 /**
  * Generate collection name from business name
@@ -42,21 +43,15 @@ export async function ensureUserCollection(businessName: string): Promise<string
           memmap_threshold: 20000,
         },
       });
-      console.log('✅ Created Qdrant collection:', collectionName);
-    } else {
-      console.log('✅ Qdrant collection already exists:', collectionName);
-      // If collection exists, we can optionally clear it or just use it
-      // For now, we'll use the existing collection
     }
-    
+
     return collectionName;
   } catch (error: any) {
     // Handle case where collection might already exist (race condition)
     if (error?.message?.includes('already exists') || error?.status === 409) {
-      console.log('✅ Qdrant collection already exists (from error):', collectionName);
       return collectionName;
     }
-    console.error('❌ Failed to ensure user collection:', error);
+    criticalError('QdrantUserCollections', error);
     throw error;
   }
 }
@@ -66,12 +61,11 @@ export async function ensureUserCollection(businessName: string): Promise<string
  */
 export async function deleteUserCollection(businessName: string): Promise<void> {
   const collectionName = getUserCollectionName(businessName);
-  
+
   try {
     await qdrant.deleteCollection(collectionName);
-    console.log('✅ Deleted Qdrant collection:', collectionName);
   } catch (error) {
-    console.error('❌ Failed to delete user collection:', error);
+    criticalError('QdrantUserCollections', error);
     throw error;
   }
 }
@@ -81,12 +75,11 @@ export async function deleteUserCollection(businessName: string): Promise<void> 
  */
 export async function collectionExists(businessName: string): Promise<boolean> {
   const collectionName = getUserCollectionName(businessName);
-  
+
   try {
     const { collections } = await qdrant.getCollections();
     return collections.some((col) => col.name === collectionName);
-  } catch (error) {
-    console.error('❌ Failed to check collection existence:', error);
+  } catch {
     return false;
   }
 }

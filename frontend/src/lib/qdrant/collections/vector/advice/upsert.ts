@@ -2,6 +2,7 @@
 
 import { qdrant } from '../../../client';
 import { ADVICE_COLLECTION } from './collection';
+import { criticalError } from '@/lib/logger';
 import { AgentAdviceScenario } from '@/types';
 import type { RuleGroup } from '@/types/rules.types';
 import type { AdvicePlacements } from '@/types/advice.types';
@@ -58,10 +59,9 @@ export async function storeAgentAdvice({
       ],
     });
 
-    console.log('Stored advice:', title);
     return pointId;
   } catch (error) {
-    console.error('Error storing agent advice:', error);
+    criticalError('QdrantAdviceUpsert', error);
     throw error;
   }
 }
@@ -104,9 +104,8 @@ export async function updateAdvice(
       });
     }
 
-    console.log('Updated advice:', adviceId);
   } catch (error) {
-    console.error('Error updating advice:', error);
+    criticalError('QdrantAdviceUpdate', error);
     throw error;
   }
 }
@@ -117,9 +116,8 @@ export async function deleteAdvice(adviceId: string) {
       wait: true,
       points: [adviceId],
     });
-    console.log('Deleted advice:', adviceId);
   } catch (error) {
-    console.error('Error deleting advice:', error);
+    criticalError('QdrantAdviceDelete', error);
     throw error;
   }
 }

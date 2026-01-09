@@ -15,12 +15,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const flow = searchParams.get('flow') || null;
+    const flow = searchParams.get('flow') || undefined;
 
     const collection = await getRuleRecommendationsCollection();
     const saved = await collection.findOne({
       userId: session.user.id,
-      flow: flow,
+      flow,
     });
 
     if (!saved) {
@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
       updatedAt: saved.updatedAt,
     });
   } catch (error) {
-    console.error('Error fetching recommendations:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch recommendations',
@@ -107,7 +106,6 @@ export async function PUT(request: NextRequest) {
       message: 'Recommendation updated',
     });
   } catch (error) {
-    console.error('Error updating recommendation:', error);
     return NextResponse.json(
       {
         error: 'Failed to update recommendation',
@@ -128,7 +126,7 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const recommendationId = searchParams.get('recommendationId');
-    const flow = searchParams.get('flow') || null;
+    const flow = searchParams.get('flow') || undefined;
     const deleteAll = searchParams.get('deleteAll') === 'true';
 
     const collection = await getRuleRecommendationsCollection();
@@ -137,7 +135,7 @@ export async function DELETE(request: NextRequest) {
       // Delete entire document
       await collection.deleteOne({
         userId: session.user.id,
-        flow: flow,
+        flow,
       });
       return NextResponse.json({
         success: true,
@@ -147,7 +145,7 @@ export async function DELETE(request: NextRequest) {
       // Delete specific recommendation
       const saved = await collection.findOne({
         userId: session.user.id,
-        flow: flow,
+        flow,
       });
 
       if (!saved) {
@@ -182,7 +180,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error('Error deleting recommendation:', error);
     return NextResponse.json(
       {
         error: 'Failed to delete recommendation',
@@ -256,7 +253,6 @@ export async function POST(request: NextRequest) {
       message: 'Recommendation added',
     });
   } catch (error) {
-    console.error('Error adding recommendation:', error);
     return NextResponse.json(
       {
         error: 'Failed to add recommendation',

@@ -156,7 +156,6 @@ Return ONLY the JSON, no other text.`;
       fields: fieldsContext,
     });
   } catch (error) {
-    console.error('Error translating rules:', error);
     return NextResponse.json(
       {
         error: 'Failed to translate rules',

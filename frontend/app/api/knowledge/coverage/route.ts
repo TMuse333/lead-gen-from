@@ -67,7 +67,6 @@ async function getUserCollectionName(userId: string): Promise<string | null> {
     const userConfig = await collection.findOne({ userId });
     return userConfig?.qdrantCollectionName || null;
   } catch (error) {
-    console.error('Error fetching user collection:', error);
     return null;
   }
 }
@@ -95,7 +94,6 @@ async function getAllAdviceItems(collectionName: string): Promise<AdviceItem[]> 
       };
     });
   } catch (error) {
-    console.error('Error fetching advice items:', error);
     return [];
   }
 }
@@ -254,7 +252,6 @@ export async function GET(request: NextRequest) {
 
     // 5. Get all advice items
     const allItems = await getAllAdviceItems(collectionName);
-    console.log(`[Coverage] Found ${allItems.length} total advice items`);
 
     // 6. Calculate coverage for each phase
     const phases: PhaseCoverage[] = [];
@@ -315,13 +312,8 @@ export async function GET(request: NextRequest) {
       missingCritical,
     };
 
-    console.log(
-      `[Coverage] ${offerType}/${intent}: ${Math.round(overallCoverage * 100)}% coverage`
-    );
-
     return NextResponse.json(response);
   } catch (error) {
-    console.error('[Coverage] Error:', error);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Unknown error',

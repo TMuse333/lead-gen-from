@@ -83,7 +83,6 @@ export default function MarketAnalysisDisplay({ area = 'Halifax' }: { area?: str
         setError(result.error || 'Failed to load analysis');
       }
     } catch (err) {
-      console.error('Error fetching market analysis:', err);
       setError('Failed to load market analysis');
     } finally {
       setLoading(false);

@@ -12,10 +12,11 @@ import type {
   
   // ==================== VALIDATION PATTERNS ====================
   
-  const VALIDATION_PATTERNS = {
+  const VALIDATION_PATTERNS: Record<string, RegExp | undefined> = {
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     phone: /^[\d\s\-\+\(\)]+$/,
     number: /^-?\d+\.?\d*$/,
+    text: undefined, // Text has no special validation
   };
   
   // ==================== FIELD VALIDATION ====================
@@ -67,8 +68,8 @@ import type {
             reason: 'Does not match required pattern',
           };
         }
-      } catch (error) {
-        console.error(`Invalid regex pattern for field ${fieldName}:`, error);
+      } catch {
+        // Invalid regex pattern - skip validation
       }
     }
     

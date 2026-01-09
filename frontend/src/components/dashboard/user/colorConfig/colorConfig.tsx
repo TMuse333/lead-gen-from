@@ -119,7 +119,6 @@ export default function ColorConfig() {
         setSaveStatus('idle');
       }, 3000);
     } catch (err) {
-      console.error('Error saving color config:', err);
       setErrorMessage(err instanceof Error ? err.message : 'Failed to save color configuration');
       setSaveStatus('error');
     } finally {

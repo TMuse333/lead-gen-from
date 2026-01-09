@@ -63,8 +63,6 @@ Example format:
 
 Return ONLY the JSON object, no other text.`;
 
-    console.log(`Generating advice questions for ${businessName}...`);
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -88,7 +86,6 @@ Return ONLY the JSON object, no other text.`;
     try {
       parsed = JSON.parse(raw);
     } catch (parseErr) {
-      console.error("Failed to parse LLM JSON:", raw);
       return NextResponse.json(
         { error: "LLM did not return valid JSON", raw },
         { status: 500 }
@@ -112,7 +109,6 @@ Return ONLY the JSON object, no other text.`;
 
     return NextResponse.json({ questions: cleanedQuestions });
   } catch (error: any) {
-    console.error("Error generating questions:", error);
     return NextResponse.json(
       { error: error.message || "Failed to generate questions" },
       { status: 500 }

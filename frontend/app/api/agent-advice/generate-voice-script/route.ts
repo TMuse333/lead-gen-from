@@ -17,8 +17,6 @@ interface RequestBody {
 }
 
 export async function POST(req: NextRequest) {
-  console.log('POST /api/agent-advice/generate-voice-script – Request received');
-
   try {
     const body = await req.json();
     const {
@@ -40,9 +38,6 @@ export async function POST(req: NextRequest) {
     const validFlows = flows.filter((f): f is Flow =>
       ['sell', 'buy', 'browse'].includes(f)
     );
-
-    console.log(`Generating script for flows: [${validFlows.join(', ')}]`);
-    if (customPrompt) console.log(`Custom prompt: "${customPrompt}"`);
 
     const prompt = createVoiceScriptPrompt({
       agentId: 'placeholder', // you can use real agent ID later
@@ -76,7 +71,6 @@ export async function POST(req: NextRequest) {
         throw new Error('Not a valid string array');
       }
     } catch (err) {
-      console.error('Failed to parse questions JSON:', raw);
       return NextResponse.json(
         { error: 'Invalid response format from AI', raw },
         { status: 500 }
@@ -88,8 +82,6 @@ export async function POST(req: NextRequest) {
       .map(q => q.trim())
       .filter(q => q && q.endsWith('?') && q.length > 15 && q.length < 300);
 
-    console.log(`Success! Generated ${cleanedQuestions.length} questions`);
-
     return NextResponse.json({
       questions: cleanedQuestions,
       _debug: {
@@ -100,7 +92,6 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: any) {
-    console.error('Error in generate-voice-script:', err);
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
       { status: 500 }

@@ -36,8 +36,7 @@ export function detectIncompleteOnboarding(): OnboardingState | null {
     }
 
     return null;
-  } catch (error) {
-    console.error("Error detecting incomplete onboarding:", error);
+  } catch {
     return null;
   }
 }

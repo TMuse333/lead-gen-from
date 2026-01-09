@@ -30,7 +30,6 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  console.log('🔵 [API] /api/offers/generate - Request received');
 
   try {
     // Check rate limits
@@ -39,18 +38,14 @@ export async function POST(req: NextRequest) {
     try {
       session = await auth();
       userId = session?.user?.id;
-      console.log('🔵 [API] Auth check:', { hasSession: !!session, userId });
     } catch (authError) {
-      console.log('🔵 [API] Auth error (continuing without auth):', authError);
       // Not authenticated, continue
     }
 
     const ip = getClientIP(req);
     const rateLimit = await checkRateLimit('offerGeneration', userId, ip);
-    console.log('🔵 [API] Rate limit check:', { allowed: rateLimit.allowed, remaining: rateLimit.remaining });
 
     if (!rateLimit.allowed) {
-      console.log('🔴 [API] Rate limit exceeded');
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
@@ -71,16 +66,7 @@ export async function POST(req: NextRequest) {
     let body: any;
     try {
       body = await req.json();
-      console.log('🔵 [API] Request body parsed:', {
-        flow: body.flow,
-        hasUserInput: !!body.userInput,
-        userInputKeys: body.userInput ? Object.keys(body.userInput) : [],
-        clientIdentifier: body.clientIdentifier,
-        clientId: body.clientId,
-        conversationId: body.conversationId,
-      });
     } catch (err) {
-      console.log('🔴 [API] Failed to parse JSON body:', err);
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 }
@@ -113,21 +99,14 @@ export async function POST(req: NextRequest) {
 
     // Check for public bot client identifier
     const clientId = clientIdentifier || body?.clientId;
-    console.log('🔵 [API] Config lookup:', { clientId, userId });
 
     if (clientId) {
       // Public bot: fetch client config
-      console.log('🔵 [API] Looking up client config for:', clientId);
       try {
         const collection = await getClientConfigsCollection();
         const config = await collection.findOne({
           businessName: clientId,
           isActive: true,
-        });
-        console.log('🔵 [API] Client config found:', {
-          found: !!config,
-          selectedOffers: config?.selectedOffers,
-          hasQdrant: !!config?.qdrantCollectionName,
         });
         if (config) {
           configuredOffers = config.selectedOffers || [];
@@ -135,31 +114,21 @@ export async function POST(req: NextRequest) {
           businessName = config.businessName;
         }
       } catch (configError) {
-        console.error('🔴 [API] Error fetching client config:', configError);
         // Continue without client config
       }
     } else if (userId) {
       // Authenticated user: get from user config
-      console.log('🔵 [API] Looking up user config for userId:', userId);
       try {
         const db = await getDatabase();
         const userConfig = await getUserConfig(userId, db);
-        console.log('🔵 [API] User config found:', {
-          found: !!userConfig,
-          selectedOffers: userConfig?.selectedOffers,
-          businessName: userConfig?.businessName,
-        });
         if (userConfig) {
           configuredOffers = userConfig.selectedOffers || [];
           userCollectionName = await getUserCollectionName(userId);
           businessName = userConfig.businessName || '';
         }
       } catch (userConfigError) {
-        console.error('🔴 [API] Error fetching user config:', userConfigError);
         // Continue without user config
       }
-    } else {
-      console.log('🟡 [API] No clientId or userId - cannot load offers config');
     }
 
     // IMPORTANT: Require specific offer from request to prevent generating all offers.
@@ -174,14 +143,11 @@ export async function POST(req: NextRequest) {
         );
       }
       selectedOffers = [offer as OfferType];
-      console.log(`🔵 [API] Using specific offer from request: ${offer}`);
     } else if (configuredOffers.length === 1) {
       // Only one offer configured, use it
       selectedOffers = configuredOffers;
-      console.log(`🔵 [API] Using single configured offer: ${configuredOffers[0]}`);
     } else if (configuredOffers.length > 1) {
       // Multiple offers configured but none specified - this is an error
-      console.error('🔴 [API] Multiple offers configured but no specific offer provided in request');
       return NextResponse.json(
         {
           error: 'No specific offer provided. Please specify which offer to generate.',
@@ -191,22 +157,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     } else {
-      console.log('🔴 [API] No offers configured - returning 400');
       return NextResponse.json(
         { error: 'No offers configured. Please complete onboarding first.' },
         { status: 400 }
       );
     }
 
-    console.log('🔵 [API] Final config:', {
-      selectedOffers,
-      userCollectionName,
-      businessName,
-    });
-
     // If no offers selected (shouldn't happen after above logic, but safety check)
     if (selectedOffers.length === 0) {
-      console.log('🔴 [API] No offers configured - returning 400');
       return NextResponse.json(
         { error: 'No offers configured. Please complete onboarding first.' },
         { status: 400 }
@@ -258,7 +216,6 @@ export async function POST(req: NextRequest) {
 
     // Filter offers to only those supporting this intent
     const offersForIntent = filterOffersForIntent(selectedOffers, effectiveIntent as Intent);
-    console.log('🔵 [API] Offers supporting', effectiveIntent + ':', offersForIntent);
 
     if (offersForIntent.length === 0) {
       return NextResponse.json(
@@ -270,39 +227,26 @@ export async function POST(req: NextRequest) {
     // NOTE: Validation removed - the chatbot guarantees all required questions are answered
     // before triggering generation. Both use the same offer definition as source of truth.
 
-    console.log('🔵 [API] Starting offer generation loop for:', offersForIntent);
-
     for (const offerType of offersForIntent) {
-      console.log(`🔵 [API] Processing offer type: ${offerType}`);
       try {
         // Get the unified offer definition
         const unifiedOffer = getOffer(offerType);
 
         if (!unifiedOffer) {
-          console.log(`🔴 [API] No unified offer found for: ${offerType}`);
           errors[offerType] = 'Offer definition not found';
           continue;
         }
 
         // Validation already passed at merged level - proceed to generation
-        console.log(`🔵 [API] Calling generateFromUnifiedOffer for ${offerType}...`);
         const result = await generateFromUnifiedOffer(unifiedOffer, mergedUserInput, context, openai);
-        console.log(`🔵 [API] generateFromUnifiedOffer result for ${offerType}:`, {
-          success: result.success,
-          hasData: !!(result as any).data,
-          error: (result as any).error,
-        });
 
         if (!result.success || !result.data) {
-          console.log(`🔴 [API] Generation failed for ${offerType}:`, (result as any).error);
           errors[offerType] = (result as any).error || 'Generation failed';
           continue;
         }
 
-        console.log(`✅ [API] Successfully generated ${offerType}`);
         results[offerType] = result.data;
       } catch (error) {
-        console.error(`🔴 [API] Exception generating ${offerType}:`, error);
         errors[offerType] = error instanceof Error ? error.message : 'Unknown error';
       }
     }
@@ -364,19 +308,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Return results
-    console.log(`✅ [API] Returning response with ${Object.keys(results).length} offers`);
     return NextResponse.json({
       ...results,
       _debug: debugInfo,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown server error';
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error('🔴 [API] Top-level error in /api/offers/generate:', {
-      message,
-      stack,
-      err,
-    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

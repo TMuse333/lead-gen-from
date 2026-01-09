@@ -21,7 +21,7 @@ import { validateOfferInputs } from '../validators/inputValidator';
 import { extractJSON, sanitizeOutput } from '../validators/outputValidator';
 import { calculateActualCost } from './costEstimator';
 import { isVersionDeprecated } from './versionControl';
-import { hasOffer } from '../unified/registry';
+import { hasOffer, deriveInputRequirements } from '../unified/registry';
 import type { UnifiedOffer, PromptContext as UnifiedPromptContext, Intent } from '../unified/types';
 
 // ==================== FALLBACK HANDLERS ====================

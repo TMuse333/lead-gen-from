@@ -50,14 +50,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🚀 Starting onboarding completion for user: ${userId}`);
-    console.log(`   Business: ${businessName}`);
-    console.log(`   Knowledge base items: ${knowledgeBaseItems?.length || 0}`);
-
     // 3. Create Qdrant collection
-    console.log('📦 Creating Qdrant collection...');
     const collectionName = await ensureUserCollection(businessName);
-    console.log(`✅ Collection created: ${collectionName}`);
 
     // 3.5. Check if collection already has items and clear them to prevent duplicates
     try {
@@ -66,53 +60,44 @@ export async function POST(request: NextRequest) {
         with_payload: false,
         with_vector: false,
       });
-      
+
       if (existingItems.points.length > 0) {
-        console.log(`⚠️ Collection already has ${existingItems.points.length} items. Clearing to prevent duplicates...`);
         // Get all point IDs to delete
         const allItems = await qdrant.scroll(collectionName, {
           limit: 10000, // Get all items
           with_payload: false,
           with_vector: false,
         });
-        
+
         if (allItems.points.length > 0) {
           const pointIds = allItems.points.map((p) => p.id as string);
           await qdrant.delete(collectionName, {
             wait: true,
             points: pointIds,
           });
-          console.log(`✅ Cleared ${pointIds.length} existing items from collection`);
         }
       }
     } catch (error) {
-      console.log('⚠️ Could not check/clear existing items (collection might be new):', error);
       // Continue anyway - collection might be new
     }
 
     // 4. Upload knowledge base items to Qdrant (with embeddings)
     const uploadedItems: string[] = [];
-    
+
     if (knowledgeBaseItems && knowledgeBaseItems.length > 0) {
-      console.log(`📤 Uploading ${knowledgeBaseItems.length} knowledge base items...`);
-      
       // Deduplicate items by title+advice hash to prevent duplicates in the same batch
       const seenItems = new Set<string>();
-      const uniqueItems = knowledgeBaseItems.filter((item) => {
+      const uniqueItems = knowledgeBaseItems.filter((item: { title: string; advice: string; flows?: string[] }) => {
         const key = `${item.title}|${item.advice}`.toLowerCase().trim();
         if (seenItems.has(key)) {
-          console.log(`   ⚠️ Skipping duplicate item: "${item.title}"`);
           return false;
         }
         seenItems.add(key);
         return true;
       });
-      
-      console.log(`   📊 Deduplicated: ${uniqueItems.length} unique items (${knowledgeBaseItems.length - uniqueItems.length} duplicates removed)`);
-      
+
       for (let i = 0; i < uniqueItems.length; i++) {
         const item = uniqueItems[i];
-        console.log(`   [${i + 1}/${uniqueItems.length}] Processing: "${item.title}"`);
         
         try {
           // Generate embedding
@@ -155,18 +140,13 @@ export async function POST(request: NextRequest) {
           });
           
           uploadedItems.push(pointId);
-          console.log(`   ✅ Uploaded: ${item.title}`);
         } catch (error) {
-          console.error(`   ❌ Failed to upload "${item.title}":`, error);
           // Continue with other items even if one fails
         }
       }
-      
-      console.log(`✅ Uploaded ${uploadedItems.length}/${uniqueItems.length} items to Qdrant`);
     }
 
     // 5. Save configuration to MongoDB
-    console.log('💾 Saving configuration to MongoDB...');
     
     const clientConfig: ClientConfigDocument = {
       userId,
@@ -204,11 +184,9 @@ export async function POST(request: NextRequest) {
           },
         }
       );
-      console.log('✅ Updated existing client configuration');
     } else {
       // Create new config
-      const result = await collection.insertOne(clientConfig);
-      console.log('✅ Created new client configuration:', result.insertedId);
+      await collection.insertOne(clientConfig);
     }
 
     // 6. Return success response
@@ -223,7 +201,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ Error completing onboarding:', error);
     return NextResponse.json(
       {
         error: 'Failed to complete onboarding',

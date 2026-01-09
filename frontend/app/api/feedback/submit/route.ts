@@ -12,9 +12,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.verify((error) => {
-  if (error) console.error('SMTP Connection Error:', error);
-  else console.log('SMTP Ready – Emails will send');
+transporter.verify(() => {
+  // SMTP connection verified
 });
 
 interface FeedbackData {
@@ -107,7 +106,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Feedback sent!' });
 
   } catch (error: any) {
-    console.error('Email send failed:', error);
     return NextResponse.json(
       { error: 'Failed to send feedback', details: error.message },
       { status: 500 }

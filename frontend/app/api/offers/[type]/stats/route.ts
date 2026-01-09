@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
 import { getDatabase } from '@/lib/mongodb/db';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
-import type { OfferStats } from '@/types/offerCustomization.types';
+import type { OfferStats } from '@/types/offers/offerCustomization.types';
 
 /**
  * GET /api/offers/[type]/stats
@@ -40,7 +40,6 @@ export async function GET(
 
     return NextResponse.json(stats);
   } catch (error) {
-    console.error('[GET /api/offers/[type]/stats] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

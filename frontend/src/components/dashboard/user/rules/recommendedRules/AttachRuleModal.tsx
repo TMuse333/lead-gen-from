@@ -71,7 +71,6 @@ export default function AttachRuleModal({
         alert(response.data.error || 'Failed to attach client situation');
       }
     } catch (err: any) {
-      console.error('Error attaching client situation:', err);
       alert(err.response?.data?.error || 'Failed to attach client situation');
     } finally {
       setAttaching(false);

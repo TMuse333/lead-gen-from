@@ -109,7 +109,6 @@ export async function GET(req: NextRequest) {
       skip,
     });
   } catch (error) {
-    console.error('Error fetching admin conversations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch conversations' },
       { status: 500 }

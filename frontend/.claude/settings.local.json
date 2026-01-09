@@ -8,7 +8,9 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm use:*)"
     ]
   }
 }

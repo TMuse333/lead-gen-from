@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
       items,
     });
   } catch (error) {
-    console.error('❌ Error fetching Qdrant items:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch Qdrant items',

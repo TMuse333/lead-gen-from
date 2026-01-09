@@ -19,7 +19,6 @@ async function getUserCollectionName(userId: string): Promise<string | null> {
     const userConfig = await collection.findOne({ userId });
     return userConfig?.qdrantCollectionName || null;
   } catch (error) {
-    console.error('Error fetching user collection:', error);
     return null;
   }
 }
@@ -53,17 +52,12 @@ export async function GET(request: NextRequest) {
     const agentId = searchParams.get('agentId');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    console.log(`📋 Fetching advice for user: ${session.user.id}`);
-    console.log(`📦 Using collection: ${COLLECTION_NAME}`);
-
     // Fetch from Qdrant
     const response = await client.scroll(COLLECTION_NAME, {
       limit,
       with_payload: true,
       with_vector: false,
     });
-
-    console.log(`✅ Found ${response.points.length} points`);
 
     // Transform to friendly format (FIXED - properly extract applicableWhen)
     const adviceList = response.points
@@ -80,10 +74,7 @@ export async function GET(request: NextRequest) {
         
         // Extract type from tags or use default
         const type = payload?.type || getAdviceTypeFromTags(tags);
-        
-        // Log to debug
-        console.log('Raw payload applicableWhen:', payload?.applicableWhen);
-        
+
         // Build applicableWhen from payload structure
         // Qdrant stores ruleGroups directly in payload, not nested in applicableWhen
         const applicableWhen = {
@@ -108,15 +99,12 @@ export async function GET(request: NextRequest) {
         };
       });
 
-    console.log('Sample advice item:', JSON.stringify(adviceList[0], null, 2));
-
     return NextResponse.json({
       success: true,
       count: adviceList.length,
       advice: adviceList,
     });
   } catch (error) {
-    console.error('❌ Error fetching agent advice:', error);
     return NextResponse.json(
       {
         success: false,
@@ -162,21 +150,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log(`🗑️  Deleting advice: ${adviceId} from collection: ${COLLECTION_NAME}`);
-
     await client.delete(COLLECTION_NAME, {
       wait: true,
       points: [adviceId],
     });
-
-    console.log('✅ Advice deleted successfully');
 
     return NextResponse.json({
       success: true,
       message: 'Advice deleted successfully',
     });
   } catch (error) {
-    console.error('❌ Error deleting advice:', error);
     return NextResponse.json(
       {
         success: false,

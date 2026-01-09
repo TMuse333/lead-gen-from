@@ -99,7 +99,6 @@ export async function PUT(request: NextRequest) {
       message: 'Advice updated successfully',
     });
   } catch (error) {
-    console.error('Error updating advice:', error);
     return NextResponse.json(
       {
         error: 'Failed to update advice',

@@ -82,7 +82,7 @@ export async function queryRelevantAdvice(
           const score = calculateMatchScore(
             {
               applicableWhen: {
-                flow: flows,
+                flow: flows as ('sell' | 'buy' | 'browse')[],
                 ruleGroups: ruleGroups,
               },
             },
@@ -133,8 +133,7 @@ export async function queryRelevantAdvice(
     });
 
     return results;
-  } catch (error) {
-    console.error('Error querying advice:', error);
+  } catch {
     return [];
   }
 }
@@ -197,8 +196,7 @@ export async function getAgentAdvice(
         usageCount: payload?.usageCount,
       };
     });
-  } catch (error) {
-    console.error('Error fetching agent advice:', error);
+  } catch {
     return [];
   }
 }

@@ -122,7 +122,6 @@ export default function OffersDashboard() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button
                 onClick={() => {
-                  console.log('🔵 [OffersDashboard] "Configure Offers" button clicked - redirecting to /dashboard/offers/add');
                   router.push('/dashboard/offers/add');
                 }}
                 whileHover={{ scale: 1.02 }}
@@ -264,8 +263,6 @@ export default function OffersDashboard() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
-                        console.log('🔵 [OffersDashboard] "Configure" button clicked for offer:', offer.type);
-                        console.log('🔵 [OffersDashboard] Navigating to:', `/dashboard/offers/${offer.type}`);
                         router.push(`/dashboard/offers/${offer.type}`);
                       }}
                       className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg transition-colors flex items-center gap-2"
@@ -298,7 +295,6 @@ export default function OffersDashboard() {
             </div>
             <button
               onClick={() => {
-                console.log('🔵 [OffersDashboard] "Add Offers" button clicked - redirecting to /dashboard/offers/add');
                 router.push('/dashboard/offers/add');
               }}
               className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all flex items-center gap-2"

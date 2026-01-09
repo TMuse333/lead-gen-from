@@ -41,17 +41,17 @@ export function InputsTab({ definition }: InputsTabProps) {
   // Get questions for each intent from the unified offer
   const intentData: { intent: Intent; label: string; questions: Question[] }[] = [
     {
-      intent: 'buy',
+      intent: 'buy' as Intent,
       label: 'Buy Intent',
       questions: getQuestionsForOffer(definition.type as any, 'buy'),
     },
     {
-      intent: 'sell',
+      intent: 'sell' as Intent,
       label: 'Sell Intent',
       questions: getQuestionsForOffer(definition.type as any, 'sell'),
     },
     {
-      intent: 'browse',
+      intent: 'browse' as Intent,
       label: 'Browse Intent',
       questions: getQuestionsForOffer(definition.type as any, 'browse'),
     },
