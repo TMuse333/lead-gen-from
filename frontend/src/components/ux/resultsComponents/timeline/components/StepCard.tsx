@@ -274,24 +274,37 @@ export function StepCard({
             )}
           </div>
 
-          {/* Matched Stories - Full width below */}
+          {/* Matched Stories - Prominent display with amber styling */}
           {matchedStories.length > 0 && (
-            <div className="space-y-3 max-w-2xl mx-auto">
-              <div className="flex items-center justify-center gap-2">
-                <Sparkles className="h-4 w-4 text-amber-500" />
-                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                  Similar Client Experience
-                </h4>
+            <div className="mt-6">
+              {/* Stories header with amber accent */}
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+                <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-100 rounded-full border border-amber-200">
+                  <Sparkles className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">
+                    Real Client Story
+                  </span>
+                </div>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
               </div>
-              {matchedStories.slice(0, 1).map((story) => (
-                <StoryCard
-                  key={story.id}
-                  story={story}
-                  accentColor={colors.accentColor}
-                  borderColor={colors.borderColor}
-                  compact
-                />
-              ))}
+
+              {/* Stories grid - up to 2 stories */}
+              <div className={`grid ${matchedStories.length > 1 ? 'md:grid-cols-2' : ''} gap-4 max-w-3xl mx-auto`}>
+                {matchedStories.slice(0, 2).map((story) => (
+                  <div
+                    key={story.id}
+                    className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border-2 border-amber-200/60 p-4 shadow-md hover:shadow-lg transition-all duration-300"
+                  >
+                    <StoryCard
+                      story={story}
+                      accentColor="text-amber-700"
+                      borderColor="border-transparent"
+                      compact={false}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

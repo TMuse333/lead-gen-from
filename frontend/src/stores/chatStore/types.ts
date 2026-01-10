@@ -23,15 +23,21 @@ export interface ChatMessage {
 }
 
 export interface GenerationDebugInfo {
-  qdrantRetrieval: QdrantRetrievalMetadata[];
-  promptLength: number;
-  adviceUsed: number;
+  // Server-side (LLM) generation properties - optional for client-side
+  qdrantRetrieval?: QdrantRetrievalMetadata[];
+  promptLength?: number;
+  adviceUsed?: number;
+  // Common properties
   generationTime?: number;
-  userInput: Record<string, string>;
+  userInput?: Record<string, string>;
   offer?: OfferType;
   intent?: Intent;
   /** @deprecated Use intent instead */
   flow?: string;
+  // Client-side generation properties
+  generatedBy?: string;
+  storyCount?: number;
+  offersGenerated?: string[];
 }
 
 export interface LlmResultState {

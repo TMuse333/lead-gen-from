@@ -25,24 +25,9 @@ const BUYING_PHASES: PhaseTemplate[] = [
     order: 1,
   },
   {
-    id: 'find-agent',
-    name: 'Find Your Real Estate Agent',
-    baseTimeline: 'Week 2-3',
-    description: 'Partner with an experienced agent who knows your target market',
-    suggestedActionItems: [
-      'Research local real estate agents',
-      'Schedule consultations with 2-3 agents',
-      'Check reviews, testimonials, and past transactions',
-      'Ask about their experience in your price range and area',
-      'Sign buyer representation agreement with chosen agent',
-    ],
-    conditionalNote: 'Skip if already working with an agent',
-    order: 2,
-  },
-  {
     id: 'house-hunting',
     name: 'House Hunting',
-    baseTimeline: 'Week 3-8',
+    baseTimeline: 'Week 2-7',
     description: 'Search for properties that meet your needs and budget',
     suggestedActionItems: [
       'Create a list of must-haves vs nice-to-haves',
@@ -51,26 +36,26 @@ const BUYING_PHASES: PhaseTemplate[] = [
       'Research neighborhoods (schools, amenities, commute)',
       'Narrow down to top 2-3 properties',
     ],
-    order: 3,
+    order: 2,
   },
   {
     id: 'make-offer',
     name: 'Make an Offer',
-    baseTimeline: 'Week 8-10',
+    baseTimeline: 'Week 7-9',
     description: 'Submit a competitive offer on your chosen property',
     suggestedActionItems: [
-      'Work with agent to determine fair offer price',
+      'Work with your agent to determine fair offer price',
       'Include appropriate contingencies (inspection, financing, appraisal)',
       'Submit offer letter with pre-approval',
       'Negotiate terms if there are counteroffers',
       'Celebrate when offer is accepted!',
     ],
-    order: 4,
+    order: 3,
   },
   {
     id: 'under-contract',
     name: 'Under Contract',
-    baseTimeline: 'Week 10-14',
+    baseTimeline: 'Week 9-13',
     description: 'Complete due diligence and finalize financing',
     suggestedActionItems: [
       'Schedule and attend home inspection',
@@ -80,12 +65,12 @@ const BUYING_PHASES: PhaseTemplate[] = [
       'Purchase homeowners insurance',
       'Do final walkthrough before closing',
     ],
-    order: 5,
+    order: 4,
   },
   {
     id: 'closing',
     name: 'Closing Day',
-    baseTimeline: 'Week 14-16',
+    baseTimeline: 'Week 13-15',
     description: 'Sign paperwork and receive keys to your new home',
     suggestedActionItems: [
       'Review closing disclosure 3 days before closing',
@@ -95,12 +80,12 @@ const BUYING_PHASES: PhaseTemplate[] = [
       'Set up utilities and change locks',
       'Move in and enjoy your new home!',
     ],
-    order: 6,
+    order: 5,
   },
   {
     id: 'post-closing',
     name: 'Post-Closing',
-    baseTimeline: 'Week 16+',
+    baseTimeline: 'Week 15+',
     description: 'Settle into your new home',
     suggestedActionItems: [
       'Update your address with USPS, banks, and services',
@@ -110,7 +95,7 @@ const BUYING_PHASES: PhaseTemplate[] = [
       'Leave a review for your agent!',
     ],
     isOptional: true,
-    order: 7,
+    order: 6,
   },
 ];
 
@@ -140,24 +125,23 @@ const SELLING_PHASES: PhaseTemplate[] = [
     order: 1,
   },
   {
-    id: 'choose-agent-price',
-    name: 'Choose Agent & Set Price',
-    baseTimeline: 'Week 4-6',
-    description: 'Partner with an agent and determine optimal listing price',
+    id: 'set-price',
+    name: 'Set Your Listing Price',
+    baseTimeline: 'Week 4-5',
+    description: 'Work with your agent to determine optimal listing price',
     suggestedActionItems: [
-      'Interview 2-3 listing agents',
-      'Review comparative market analysis (CMA)',
-      'Discuss marketing strategy and timeline',
+      'Review comparative market analysis (CMA) with your agent',
+      'Discuss pricing strategy based on market conditions',
+      'Consider recent comparable sales in your area',
       'Set competitive listing price',
-      'Sign listing agreement',
+      'Finalize marketing strategy and timeline',
     ],
-    conditionalNote: 'Skip if already working with an agent',
     order: 2,
   },
   {
     id: 'list-property',
     name: 'List Your Property',
-    baseTimeline: 'Week 6-7',
+    baseTimeline: 'Week 5-6',
     description: 'Create compelling listing and go live on the market',
     suggestedActionItems: [
       'Schedule professional photography',
@@ -171,7 +155,7 @@ const SELLING_PHASES: PhaseTemplate[] = [
   {
     id: 'marketing-showings',
     name: 'Marketing & Showings',
-    baseTimeline: 'Week 7-12',
+    baseTimeline: 'Week 6-10',
     description: 'Market your home and accommodate buyer showings',
     suggestedActionItems: [
       'Host open houses (typically weekends)',
@@ -185,7 +169,7 @@ const SELLING_PHASES: PhaseTemplate[] = [
   {
     id: 'review-offers',
     name: 'Review & Negotiate Offers',
-    baseTimeline: 'Week 12-14',
+    baseTimeline: 'Week 10-12',
     description: 'Evaluate offers and negotiate best terms',
     suggestedActionItems: [
       'Review all offers with your agent',
@@ -199,7 +183,7 @@ const SELLING_PHASES: PhaseTemplate[] = [
   {
     id: 'under-contract-sell',
     name: 'Under Contract',
-    baseTimeline: 'Week 14-18',
+    baseTimeline: 'Week 12-16',
     description: 'Work with buyer through due diligence period',
     suggestedActionItems: [
       'Accommodate buyer\'s home inspection',
@@ -213,7 +197,7 @@ const SELLING_PHASES: PhaseTemplate[] = [
   {
     id: 'closing-sell',
     name: 'Closing',
-    baseTimeline: 'Week 18-20',
+    baseTimeline: 'Week 16-18',
     description: 'Complete the sale and transfer ownership',
     suggestedActionItems: [
       'Review closing statement',

@@ -117,6 +117,7 @@ export async function queryRelevantAdvice(
         tags,
         advice: payload?.advice,
         type,
+        kind: payload?.kind, // 'tip' or 'story' - important for story filtering
         applicableWhen: {
           flow: payload?.flow,
           offerTypes: payload?.offerTypes,
@@ -184,8 +185,11 @@ export async function getAgentAdvice(
         tags,
         advice: payload?.advice,
         type,
+        kind: payload?.kind, // 'tip' or 'story'
         applicableWhen: {
           flow: payload?.flow,
+          offerTypes: payload?.offerTypes,
+          placements: payload?.placements,
           conditions: payload?.conditions,
           ruleGroups: payload?.ruleGroups,
         },

@@ -19,14 +19,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, title, advice, tags, type } = await request.json();
+    const { id, title, advice, tags, type, kind, placements } = await request.json();
 
-    if (!id || !title || !advice) {
+    // ID is always required
+    if (!id) {
       return NextResponse.json(
-        { error: 'id, title, and advice are required' },
+        { error: 'id is required' },
         { status: 400 }
       );
     }
+
+    // For full updates, title and advice are required
+    // For partial updates (just placements), they're optional
+    const isPartialUpdate = placements !== undefined && !title && !advice;
 
     // Get user's Qdrant collection name
     const clientConfigsCollection = await getClientConfigsCollection();
@@ -57,25 +62,33 @@ export async function PUT(request: NextRequest) {
 
     const existingItem = retrieveResult[0];
     const existingPayload = existingItem.payload as any;
+    const existingVector = existingItem.vector as number[];
 
-    // Generate new embedding for updated advice
-    const textToEmbed = `${title}. ${advice}`;
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: textToEmbed,
-    });
-    const newEmbedding = embeddingResponse.data[0].embedding;
+    // For partial updates (placements only), keep existing embedding
+    // For full updates, regenerate embedding
+    let newEmbedding = existingVector;
+    const finalTitle = title || existingPayload.title;
+    const finalAdvice = advice || existingPayload.advice;
+
+    if (!isPartialUpdate && (title || advice)) {
+      const textToEmbed = `${finalTitle}. ${finalAdvice}`;
+      const embeddingResponse = await openai.embeddings.create({
+        model: 'text-embedding-ada-002',
+        input: textToEmbed,
+      });
+      newEmbedding = embeddingResponse.data[0].embedding;
+    }
 
     // Handle type: use provided type, or extract from existing tags, or default
     const existingTags = existingPayload.tags || [];
-    const adviceType = type && isValidAdviceType(type) 
-      ? type 
+    const adviceType = type && isValidAdviceType(type)
+      ? type
       : getAdviceTypeFromTags(existingTags);
-    
+
     // Ensure type tag is in tags array
     const updatedTags = tags ? ensureTypeTag(tags, adviceType) : ensureTypeTag(existingTags, adviceType);
 
-    // Update the advice item with new title, advice, embedding, tags, type, and updatedAt
+    // Update the advice item
     await qdrant.upsert(collectionName, {
       wait: true,
       points: [
@@ -84,10 +97,13 @@ export async function PUT(request: NextRequest) {
           vector: newEmbedding,
           payload: {
             ...existingPayload,
-            title,
-            advice,
+            title: finalTitle,
+            advice: finalAdvice,
             tags: updatedTags,
             type: adviceType,
+            // Only update kind/placements if explicitly provided
+            ...(kind !== undefined && { kind }),
+            ...(placements !== undefined && { placements }),
             updatedAt: new Date().toISOString(),
           },
         },

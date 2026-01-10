@@ -22,6 +22,7 @@ export { default as ListingLive } from './ListingLive'; // list-property
 export { default as ShowingDay } from './ShowingDay'; // marketing-showings
 export { default as OfferReview } from './OfferReview'; // review-offers
 export { default as ClosingSale } from './ClosingSale'; // closing
+export { default as SoldCelebration } from './SoldCelebration'; // celebration for completed sales
 export { default as SellingTimelineProgress } from './SellingTimelineProgress';
 
 // ============================================
@@ -33,6 +34,11 @@ export { default as SaveFavorites } from './SaveFavorites'; // financial-educati
 export { default as CompareHomes } from './CompareHomes'; // decision-time
 export { default as ReadyToAct } from './ReadyToAct'; // next-steps
 export { default as BrowsingTimelineProgress } from './BrowsingTimelineProgress';
+
+// ============================================
+// HERO VISUALIZATIONS
+// ============================================
+export { default as HeroTimelineStats } from './HeroTimelineStats';
 
 // ============================================
 // PHASE TO SVG MAPPING
@@ -69,7 +75,6 @@ export type PhaseIconProps = {
 export const PHASE_ICONS: Record<string, Record<string, ComponentType<PhaseIconProps>>> = {
   buy: {
     'financial-prep': PreApprovalSuccess,
-    'find-agent': AgentPartnership,
     'house-hunting': HotListingSearch,
     'make-offer': OfferAccepted,
     'under-contract': HomeInspection,
@@ -77,9 +82,8 @@ export const PHASE_ICONS: Record<string, Record<string, ComponentType<PhaseIconP
     'post-closing': MovingDay,
   },
   sell: {
-    'financial-prep': HomeValuation, // Getting home valued
     'home-prep': StagingPrep,
-    'choose-agent-price': AgentPartnership, // Reuse for agent selection
+    'set-price': HomeValuation, // Setting the listing price
     'list-property': ListingLive,
     'marketing-showings': ShowingDay,
     'review-offers': OfferReview,

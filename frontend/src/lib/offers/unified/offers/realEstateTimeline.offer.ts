@@ -229,33 +229,6 @@ const BUY_QUESTIONS: Question[] = [
     { order: 35, required: false }
   ),
 
-  createButtonQuestion(
-    'hasAgent',
-    'Are you working with a real estate agent?',
-    'hasAgent',
-    [
-      {
-        id: 'yes',
-        label: 'Yes',
-        value: 'yes',
-        tracker: {
-          insight: "Perfect — you're covered",
-          dbMessage: 'Skipping agent-finding phase...',
-        },
-      },
-      {
-        id: 'no',
-        label: 'Not yet',
-        value: 'no',
-        tracker: {
-          insight: 'We can help with that',
-          dbMessage: 'Adding agent selection steps...',
-        },
-      },
-    ],
-    { order: 36, required: false }
-  ),
-
   { ...TIMELINE_QUESTION, text: 'When do you want to move in?' },
 
   createEmailQuestion({ order: 90 }),
@@ -484,14 +457,6 @@ const KNOWLEDGE_REQUIREMENTS: KnowledgeRequirements = {
       exampleContent: 'In Austin, getting pre-approved typically takes 3-5 days. I recommend starting with a local lender because they often have better relationships with title companies and can close faster.',
       usageHint: 'Use this to help buyers understand the pre-approval timeline, lender recommendations, and financing options for their area',
     },
-    'find-agent': {
-      description: 'Agent selection and representation advice',
-      searchTags: ['agent', 'buyer-agent', 'representation', 'interview', 'realtor'],
-      priority: 'high',
-      minItems: 2,
-      exampleContent: 'When interviewing agents, ask about their experience with your price range. An agent who typically works with $800k+ buyers might not be the best fit for a $300k home.',
-      usageHint: 'Provide tips on what to look for in an agent and how to evaluate their fit',
-    },
     'house-hunting': {
       description: 'Property search strategies and neighborhood insights',
       searchTags: ['house-hunting', 'neighborhoods', 'property-search', 'open-house', 'search-strategy'],
@@ -542,13 +507,13 @@ const KNOWLEDGE_REQUIREMENTS: KnowledgeRequirements = {
       exampleContent: 'The best ROI improvements are usually paint, flooring, and landscaping. A fresh coat of neutral paint can make a home feel 10 years newer.',
       usageHint: 'Guide sellers on which improvements are worth the investment for their price point',
     },
-    'choose-agent-price': {
-      description: 'Pricing strategy and agent selection',
-      searchTags: ['pricing', 'listing-agent', 'cma', 'market-analysis', 'commission'],
+    'set-price': {
+      description: 'Pricing strategy and market analysis',
+      searchTags: ['pricing', 'cma', 'market-analysis', 'listing-price', 'valuation'],
       priority: 'critical',
       minItems: 2,
       exampleContent: 'Price it right the first time. Homes that sit on the market over 30 days often end up selling for less than if they had been priced correctly from the start.',
-      usageHint: 'Help sellers understand pricing strategy and how to evaluate agents',
+      usageHint: 'Help sellers understand pricing strategy and market dynamics',
     },
     'list-property': {
       description: 'Listing optimization and photography tips',
@@ -685,7 +650,7 @@ function buildTimelinePrompt(
   }
 
   // Filter phases based on current stage
-  if (userInput.currentStage || userInput.preApproved || userInput.hasAgent) {
+  if (userInput.currentStage || userInput.preApproved) {
     phases = filterPhasesByStage(phases, {
       currentStage: userInput.currentStage,
       userResponses: userInput,
@@ -964,12 +929,6 @@ export const TIMELINE_OFFER: UnifiedOffer<TimelineOutput> = {
         icon: 'CheckCircle',
         label: 'Pre-Approved',
         priority: 5,
-        preview: false,
-      },
-      hasAgent: {
-        icon: 'Users',
-        label: 'Has Agent',
-        priority: 6,
         preview: false,
       },
       email: {

@@ -223,3 +223,37 @@ export interface AgentAdviceScenario {
   updatedAt?: Date;
   usageCount?: number;
 }
+
+// ==================== STATIC STORY MAPPING TYPES ====================
+
+/**
+ * Mapping of phase IDs to story IDs (Qdrant point IDs)
+ * Allows agents to explicitly configure which stories appear in which phases
+ */
+export type PhaseStoryMapping = Record<string, string[]>;
+
+/**
+ * Story mappings organized by flow type
+ * Each flow (buy/sell/browse) has its own phase-to-story mappings
+ */
+export interface StoryMappings {
+  buy?: PhaseStoryMapping;
+  sell?: PhaseStoryMapping;
+  browse?: PhaseStoryMapping;
+}
+
+/**
+ * Lightweight story reference for display
+ * Minimal data needed to show a story in the timeline
+ */
+export interface StoryReference {
+  id: string;
+  title: string;
+  advice: string; // The story content
+  tags?: string[];
+}
+
+/**
+ * Stories organized by phase for timeline rendering
+ */
+export type StoriesByPhase = Record<string, StoryReference[]>;

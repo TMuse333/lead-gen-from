@@ -16,12 +16,15 @@ import { TechnicalDetails } from './technicalDetails';
 import { DownloadReportButton } from './downloadReportButton';
 
 interface GenerationSummaryProps {
-  metadata: QdrantRetrievalMetadata[];
-  promptLength: number;
-  adviceUsed: number;
+  metadata?: QdrantRetrievalMetadata[];
+  promptLength?: number;
+  adviceUsed?: number;
   generationTime?: number;
-  userInput: Record<string, string>;
+  userInput?: Record<string, string>;
   flow: string;
+  // Client-side generation properties
+  generatedBy?: string;
+  storyCount?: number;
 }
 
 export function GenerationSummary(props: GenerationSummaryProps) {
@@ -37,37 +40,47 @@ export function GenerationSummary(props: GenerationSummaryProps) {
     });
   };
 
-  const avgVectorScore = props.metadata
+  // Handle both server-side (with metadata) and client-side (without) generation
+  const metadata = props.metadata || [];
+
+  const avgVectorScore = metadata
     .filter(m => m.type === 'vector')
     .flatMap(m => m.items)
     .filter(item => item.score !== undefined)
     .reduce((sum, item, _, arr) => arr.length > 0 ? sum + (item.score || 0) / arr.length : 0, 0);
 
-  const vectorItemsCount = props.metadata
+  const vectorItemsCount = metadata
     .filter(m => m.type === 'vector')
     .reduce((sum, m) => sum + m.count, 0);
 
-  const avgMatchScore = props.metadata
+  const avgMatchScore = metadata
     .flatMap(m => m.items)
     .filter(item => item.score !== undefined)
     .reduce((sum, item, _, arr) => sum + (item.score || 0) / arr.length, 0);
 
-  const rulesMatched = props.metadata
+  const rulesMatched = metadata
     .filter(m => m.type === 'rule')
     .reduce((sum, m) => sum + m.count, 0);
+
+  // Client-side generation info
+  const isClientSide = props.generatedBy === 'client-side-static';
+
+  const userInput = props.userInput || {};
 
   const personalizationJourney = [
     {
       step: 1,
       title: "Analyzed Your Profile",
-      description: `Identified you as a ${props.flow === 'buy' ? 'buyer' : props.flow === 'sell' ? 'seller' : 'browser'} ${props.userInput.timeline ? `looking to move within ${props.userInput.timeline}` : 'exploring the market'}`,
+      description: `Identified you as a ${props.flow === 'buy' ? 'buyer' : props.flow === 'sell' ? 'seller' : 'browser'} ${userInput.timeline ? `looking to move within ${userInput.timeline}` : 'exploring the market'}`,
       icon: User,
       color: "from-blue-500 to-cyan-600",
     },
     {
       step: 2,
-      title: "Searched Knowledge Base",
-      description: `Queried ${props.metadata.length} specialized collections using vector similarity and rule-based matching`,
+      title: isClientSide ? "Loaded Your Stories" : "Searched Knowledge Base",
+      description: isClientSide
+        ? `Retrieved ${props.storyCount || 0} pre-configured stories for your timeline`
+        : `Queried ${metadata.length} specialized collections using vector similarity and rule-based matching`,
       icon: Database,
       color: "from-purple-500 to-pink-600",
     },
@@ -129,9 +142,9 @@ export function GenerationSummary(props: GenerationSummaryProps) {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Stats Overview */}
               <div className="p-6 bg-gradient-to-br from-gray-900 to-gray-600 text-white rounded-xl shadow-xl w-full">
-                <StatsOverview 
-                  collectionsCount={props.metadata.length}
-                  insightsCount={props.adviceUsed}
+                <StatsOverview
+                  collectionsCount={metadata.length}
+                  insightsCount={props.adviceUsed || props.storyCount || 0}
                   avgMatchScore={avgMatchScore}
                 />
               </div>
@@ -151,48 +164,51 @@ export function GenerationSummary(props: GenerationSummaryProps) {
                   <User className="h-6 w-6 text-blue-600" />
                   Your Unique Profile
                 </h3>
-                <UserProfile userInput={props.userInput} />
+                <UserProfile userInput={userInput} />
               </div>
 
-              {/* AI Performance Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white rounded-xl shadow-xl
-              ">
-                <PerformanceMetrics 
-                  avgVectorScore={avgVectorScore}
-                  vectorItemsCount={vectorItemsCount}
-                  rulesMatched={rulesMatched}
-                  promptLength={props.promptLength}
-                  generationTime={props.generationTime}
-                />
-              </div>
+              {/* AI Performance Metrics - only show for server-side generation */}
+              {!isClientSide && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white rounded-xl shadow-xl">
+                  <PerformanceMetrics
+                    avgVectorScore={avgVectorScore}
+                    vectorItemsCount={vectorItemsCount}
+                    rulesMatched={rulesMatched}
+                    promptLength={props.promptLength || 0}
+                    generationTime={props.generationTime}
+                  />
+                </div>
+              )}
 
               {/* Before/After Comparison */}
-              <BeforeAfterComparison 
-                userInput={props.userInput}
+              <BeforeAfterComparison
+                userInput={userInput}
                 flow={props.flow}
-                adviceUsed={props.adviceUsed}
-                collectionsCount={props.metadata.length}
+                adviceUsed={props.adviceUsed || props.storyCount || 0}
+                collectionsCount={metadata.length}
               />
 
-              {/* Qdrant Collections Detail */}
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Database className="h-6 w-6 text-indigo-600" />
-                  Knowledge Base Retrieval
-                </h3>
-                {props.metadata.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                    <Database className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500 font-medium">No Qdrant collections were used for this generation</p>
-                  </div>
-                ) : (
-                  <CollectionsDetail 
-                    metadata={props.metadata}
-                    expandedCollections={expandedCollections}
-                    toggleCollection={toggleCollection}
-                  />
-                )}
-              </div>
+              {/* Qdrant Collections Detail - only show for server-side generation */}
+              {!isClientSide && (
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Database className="h-6 w-6 text-indigo-600" />
+                    Knowledge Base Retrieval
+                  </h3>
+                  {metadata.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                      <Database className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500 font-medium">No Qdrant collections were used for this generation</p>
+                    </div>
+                  ) : (
+                    <CollectionsDetail
+                      metadata={metadata}
+                      expandedCollections={expandedCollections}
+                      toggleCollection={toggleCollection}
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Technical Details */}
               <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
@@ -200,15 +216,25 @@ export function GenerationSummary(props: GenerationSummaryProps) {
                   <Clock className="h-6 w-6 text-gray-600" />
                   Technical Details
                 </h3>
-                <TechnicalDetails 
-                  promptLength={props.promptLength}
-                  adviceUsed={props.adviceUsed}
+                <TechnicalDetails
+                  promptLength={props.promptLength || 0}
+                  adviceUsed={props.adviceUsed || props.storyCount || 0}
                   generationTime={props.generationTime}
+                  generatedBy={props.generatedBy}
                 />
               </div>
 
-              {/* Download Button */}
-              <DownloadReportButton {...props} />
+              {/* Download Button - only for server-side with full data */}
+              {!isClientSide && metadata.length > 0 && (
+                <DownloadReportButton
+                  metadata={metadata}
+                  promptLength={props.promptLength || 0}
+                  adviceUsed={props.adviceUsed || 0}
+                  generationTime={props.generationTime}
+                  userInput={userInput}
+                  flow={props.flow}
+                />
+              )}
             </div>
 
             {/* Footer */}

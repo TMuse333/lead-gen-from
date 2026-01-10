@@ -5,7 +5,7 @@ import { ObjectId } from 'mongodb';
 import type { ConversationFlow } from '@/stores/conversationConfig/conversation.store';
 import type { DataCollectionType, FlowIntention, OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { ColorTheme } from '@/lib/colors/defaultTheme';
-import type { AdviceType } from '@/types/advice.types';
+import type { AdviceType, StoryMappings } from '@/types/advice.types';
 
 /**
  * Client Configuration Document (stored in 'client_configs' collection)
@@ -47,7 +47,30 @@ export interface ClientConfigDocument {
   
   // Color configuration
   colorConfig?: ColorTheme; // Optional: if not provided, uses default theme
-  
+
+  // Agent Profile (for display to leads)
+  agentProfile?: {
+    name: string;
+    title?: string;
+    company?: string;
+    photo?: string;
+    yearsExperience: number;
+    totalTransactions?: number;
+    transactionsInArea?: number;
+    similarClientsHelped?: number;
+    specializations?: string[];
+    certifications?: string[];
+    avgRating?: number;
+    reviewCount?: number;
+    areasServed?: string[];
+    email?: string;
+    phone?: string;
+  };
+
+  // Story Mappings (explicit phase-to-story linking)
+  // Maps flow types to phase IDs to Qdrant story IDs
+  storyMappings?: StoryMappings;
+
   // Status
   isActive: boolean;
   onboardingCompletedAt: Date;

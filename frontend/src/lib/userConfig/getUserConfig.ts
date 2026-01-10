@@ -3,6 +3,29 @@
 
 import { Db } from 'mongodb';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
+import type { StoryMappings } from '@/types/advice.types';
+
+/**
+ * Agent profile for display in offers
+ * This is what leads see about the agent
+ */
+export interface AgentProfile {
+  name: string;
+  title?: string;
+  company?: string;
+  photo?: string;
+  yearsExperience: number;
+  totalTransactions?: number;
+  transactionsInArea?: number;
+  similarClientsHelped?: number;
+  specializations?: string[];
+  certifications?: string[];
+  avgRating?: number;
+  reviewCount?: number;
+  areasServed?: string[];
+  email?: string;
+  phone?: string;
+}
 
 export interface UserConfig {
   selectedOffers: OfferType[];
@@ -11,6 +34,8 @@ export interface UserConfig {
   industry?: string;
   dataCollection?: string[];
   selectedIntentions?: string[];
+  agentProfile?: AgentProfile;
+  storyMappings?: StoryMappings;
 }
 
 export async function getUserConfig(
@@ -32,6 +57,8 @@ export async function getUserConfig(
       industry: userConfig.industry,
       dataCollection: userConfig.dataCollection,
       selectedIntentions: userConfig.selectedIntentions,
+      agentProfile: userConfig.agentProfile,
+      storyMappings: userConfig.storyMappings,
     };
   } catch {
     return null;

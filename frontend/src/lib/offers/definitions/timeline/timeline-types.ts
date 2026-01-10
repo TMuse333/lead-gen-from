@@ -86,6 +86,8 @@ export interface UserSituation {
   isFirstTime?: boolean;
   additionalContext?: string;
   propertyType?: string; // e.g., "single-family", "condo"
+  contactName?: string; // User's name for personalization
+  contactEmail?: string; // User's email
 }
 
 /**
@@ -119,6 +121,7 @@ export interface TimelineOutput extends BaseOfferProps {
     generatedBy?: string;
     phasesCount?: number;
     totalActionItems?: number;
+    storyCount?: number;
   };
 }
 

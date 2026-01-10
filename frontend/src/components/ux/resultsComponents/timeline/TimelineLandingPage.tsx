@@ -3,33 +3,30 @@
 
 import { useState } from 'react';
 import {
-  Calendar,
-  Clock,
-  MapPin,
-  DollarSign,
-  User,
   Download,
   Share2,
-  TrendingUp,
   Sparkles,
   AlertCircle,
   ArrowRight,
   CheckCircle2,
   Loader2,
   Target,
-  BarChart3,
+  Users,
 } from 'lucide-react';
 import { StepByStepGuide } from './components/StepByStepGuide';
-import { MarketContext, type MarketData } from './components/MarketContext';
+import { type MarketData } from './components/MarketContext';
 import { AgentExpertise, type AgentCredentials } from './components/AgentExpertise';
-import { PersonalizationChip } from './components/PersonalizationChip';
-import type { MatchedStory } from './components/StoryCard';
+import { StoryCard, type MatchedStory } from './components/StoryCard';
+import { ClientTestimonial } from '@/components/svg/stories';
+import { HeroTimelineStats } from '@/components/svg/timeline';
 import type { TimelineOutput } from '@/lib/offers/definitions/timeline/timeline-types';
 import { generateTimelinePDF } from '@/lib/pdf/generateTimelinePDF';
 import type { ColorTheme } from '@/lib/colors/defaultTheme';
 
 interface TimelineLandingPageProps {
   data: TimelineOutput;
+  /** User's name for personalization */
+  userName?: string;
   /** Agent/business name for personalization */
   agentName?: string;
   /** Agent credentials for expertise section */
@@ -42,6 +39,8 @@ interface TimelineLandingPageProps {
   interactive?: boolean;
   /** User's color theme - if provided, overrides default flow colors */
   colorTheme?: ColorTheme;
+  /** Force mobile layout (for preview purposes) */
+  forceMobileLayout?: boolean;
 }
 
 /**
@@ -50,13 +49,21 @@ interface TimelineLandingPageProps {
  */
 export function TimelineLandingPage({
   data,
+  userName,
   agentName,
   agentCredentials,
   marketData,
   storiesByPhase = {},
   interactive = true,
   colorTheme,
+  forceMobileLayout = false,
 }: TimelineLandingPageProps) {
+  // Helper for responsive classes - when forceMobileLayout is true, use mobile styles
+  const responsive = (mobile: string, desktop: string) =>
+    forceMobileLayout ? mobile : `${mobile} lg:${desktop.replace(/^lg:/, '')}`;
+
+  // Get user's name - prioritize contactName from data, fallback to userName prop
+  const displayUserName = data.userSituation.contactName || userName;
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -177,7 +184,7 @@ export function TimelineLandingPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
+      {/* Hero Section - Personalized with user name and animated visualization */}
       <section
         className={`relative overflow-hidden ${hasCustomTheme ? '' : `bg-gradient-to-r ${colors.heroGradient}`}`}
         style={heroStyle}
@@ -189,50 +196,85 @@ export function TimelineLandingPage({
           }} />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-24">
-          <div className="text-center text-white">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-6">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                Personalized for You
-              </span>
+        <div className="relative max-w-6xl mx-auto px-4 py-10 md:py-14">
+          {/* Mobile: flex-col, Desktop: grid */}
+          <div className={`flex flex-col ${forceMobileLayout ? '' : 'lg:grid lg:grid-cols-2 lg:gap-8'} gap-6 items-center`}>
+            {/* Left: Text content */}
+            <div className={`text-white text-center ${forceMobileLayout ? '' : 'lg:text-left'} order-1`}>
+              {/* Personalized greeting badge */}
+              {displayUserName && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-3">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">
+                    Created for {displayUserName}
+                  </span>
+                </div>
+              )}
+
+              {/* Title - with user's name highlighted */}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3">
+                {displayUserName ? (
+                  <>
+                    <span className="text-white">{displayUserName}</span>
+                    <span className="text-white/70">'s </span>
+                  </>
+                ) : (
+                  <span className="text-white/90">Your </span>
+                )}
+                <span className="text-white">{flowLabel.action} Timeline</span>
+              </h1>
+
+              {/* Intro description - prepares user for what this page is */}
+              <p className={`text-base md:text-lg text-white/90 max-w-xl mx-auto ${forceMobileLayout ? '' : 'lg:mx-0'} mb-4 leading-relaxed`}>
+                This is your personalized roadmap — a step-by-step guide designed specifically for your situation.
+                Below you'll find expert advice, actionable tasks, and everything you need to navigate your{' '}
+                {flowLabel.action.toLowerCase()} journey with confidence.
+              </p>
+
+              {/* Your details - shown below the description */}
+              <div className={`flex flex-wrap justify-center ${forceMobileLayout ? '' : 'lg:justify-start'} gap-2 mb-4`}>
+                {data.userSituation.location && (
+                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                    📍 {data.userSituation.location}
+                  </span>
+                )}
+                {data.userSituation.isFirstTime && (
+                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                    🏠 First-Time {flowLabel.noun}
+                  </span>
+                )}
+                {data.userSituation.budget && (
+                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                    💰 {data.userSituation.budget}
+                  </span>
+                )}
+                {data.userSituation.timeline && (
+                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                    📅 {data.userSituation.timeline}
+                  </span>
+                )}
+              </div>
+
+              {/* What's included - small text */}
+              <p className="text-xs text-white/70">
+                Includes {data.phases.length} phases, {data.metadata?.totalActionItems || 0} action items
+                {totalStories > 0 && `, and ${totalStories} relevant client stories`}
+              </p>
             </div>
 
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-              {data.title}
-            </h1>
-
-            {/* Subtitle */}
-            {data.subtitle && (
-              <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-8">
-                {data.subtitle}
-              </p>
-            )}
-
-            {/* Quick stats */}
-            <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                <Clock className="h-5 w-5" />
-                <span className="font-semibold">{data.totalEstimatedTime}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="font-semibold">{data.phases.length} Steps</span>
-              </div>
-              {data.metadata?.totalActionItems && (
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <Target className="h-5 w-5" />
-                  <span className="font-semibold">{data.metadata.totalActionItems} Actions</span>
-                </div>
-              )}
-              {totalStories > 0 && (
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <Sparkles className="h-5 w-5" />
-                  <span className="font-semibold">{totalStories} Client Stories</span>
-                </div>
-              )}
+            {/* Right: Animated Stats Visualization */}
+            <div className={`flex justify-center order-2 w-full max-w-sm ${forceMobileLayout ? '' : 'lg:max-w-none lg:justify-end'}`}>
+              <HeroTimelineStats
+                duration={data.totalEstimatedTime || '4-5 months'}
+                steps={data.phases.length}
+                actions={data.metadata?.totalActionItems || 0}
+                stories={totalStories}
+                budget={data.userSituation.budget}
+                primaryColor={hasCustomTheme ? colorTheme?.primary : undefined}
+                secondaryColor={hasCustomTheme ? colorTheme?.gradientTo : undefined}
+                width={320}
+                height={220}
+              />
             </div>
           </div>
         </div>
@@ -248,119 +290,8 @@ export function TimelineLandingPage({
         </div>
       </section>
 
-      {/* User Situation Summary with Personalization Chips */}
-      <section className="py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div
-            className={`${hasCustomTheme ? '' : colors.gradient} rounded-2xl border-2 ${hasCustomTheme ? '' : colors.borderColor} p-6 md:p-8 shadow-lg`}
-            style={hasCustomTheme ? { ...gradientBgStyle, ...borderStyle } : undefined}
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div
-                className={`p-2 ${hasCustomTheme ? '' : colors.iconBg} rounded-lg`}
-                style={iconBgStyle}
-              >
-                <User className={`h-5 w-5 ${hasCustomTheme ? '' : colors.accentColor}`} style={accentStyle} />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Your Situation
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Goal */}
-              <div
-                className={`flex items-center gap-3 p-4 bg-white/70 rounded-xl border ${hasCustomTheme ? '' : colors.borderColor}`}
-                style={borderStyle}
-              >
-                <TrendingUp className={`h-5 w-5 ${hasCustomTheme ? '' : colors.accentColor}`} style={accentStyle} />
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Goal</p>
-                  <p className="text-sm font-bold text-gray-900">{flowLabel.action}</p>
-                </div>
-              </div>
-
-              {/* Location */}
-              {data.userSituation.location && (
-                <div
-                  className={`flex items-center gap-3 p-4 bg-white/70 rounded-xl border ${hasCustomTheme ? '' : colors.borderColor}`}
-                  style={borderStyle}
-                >
-                  <MapPin className={`h-5 w-5 ${hasCustomTheme ? '' : colors.accentColor}`} style={accentStyle} />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</p>
-                    <p className="text-sm font-bold text-gray-900">{data.userSituation.location}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Budget */}
-              {data.userSituation.budget && (
-                <div
-                  className={`flex items-center gap-3 p-4 bg-white/70 rounded-xl border ${hasCustomTheme ? '' : colors.borderColor}`}
-                  style={borderStyle}
-                >
-                  <DollarSign className={`h-5 w-5 ${hasCustomTheme ? '' : colors.accentColor}`} style={accentStyle} />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Budget</p>
-                    <p className="text-sm font-bold text-gray-900">{data.userSituation.budget}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Timeline */}
-              {data.userSituation.timeline && (
-                <div
-                  className={`flex items-center gap-3 p-4 bg-white/70 rounded-xl border ${hasCustomTheme ? '' : colors.borderColor}`}
-                  style={borderStyle}
-                >
-                  <Calendar className={`h-5 w-5 ${hasCustomTheme ? '' : colors.accentColor}`} style={accentStyle} />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Timeline</p>
-                    <p className="text-sm font-bold text-gray-900">{data.userSituation.timeline}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Personalization chips row */}
-            <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-gray-200/50">
-              {data.userSituation.isFirstTime && (
-                <PersonalizationChip type="user" value={`First-Time ${flowLabel.noun}`} highlight />
-              )}
-              {data.userSituation.currentStage && (
-                <PersonalizationChip type="stage" value={data.userSituation.currentStage} />
-              )}
-              {data.userSituation.propertyType && (
-                <PersonalizationChip type="property" value={data.userSituation.propertyType} />
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Market Context (if provided) */}
-      {marketData && (
-        <section className="py-8 px-4">
-          <div className="max-w-4xl mx-auto">
-            <MarketContext data={marketData} accentColor={colors.accentColor} />
-          </div>
-        </section>
-      )}
-
-      {/* Agent Expertise (if provided) */}
-      {agentCredentials && (
-        <section className="py-8 px-4">
-          <div className="max-w-4xl mx-auto">
-            <AgentExpertise
-              agent={agentCredentials}
-              userSituation={data.userSituation}
-              accentColor={colors.accentColor}
-            />
-          </div>
-        </section>
-      )}
-
+      {/* SECTION 1: Step-by-Step Guide - THE CORE VALUE (moved up immediately after hero)
+          Information Theory: Deliver highest-value content first while attention is peak */}
       {/* Step-by-Step Guide */}
       <section
         className={`${hasCustomTheme ? '' : colors.gradient} border-y ${hasCustomTheme ? '' : colors.borderColor}`}
@@ -380,6 +311,105 @@ export function TimelineLandingPage({
           colorTheme={colorTheme}
         />
       </section>
+
+      {/* SECTION 2: Agent Expertise - "Your Guide" (credibility after seeing value)
+          Information Theory: Build trust after demonstrating competence */}
+      {agentCredentials && (
+        <section className="py-10 px-4 bg-white">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                Your Guide for This Journey
+              </h2>
+              <p className="text-gray-600">
+                Expert support every step of the way
+              </p>
+            </div>
+            <AgentExpertise
+              agent={agentCredentials}
+              userSituation={data.userSituation}
+              accentColor={colors.accentColor}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 3: Featured Stories - Social Proof (after core content engagement)
+          Information Theory: Social validation reinforces decision after seeing value */}
+      {totalStories > 0 && (
+        <section className="py-10 px-4 bg-gradient-to-b from-amber-50/50 to-white">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col items-center">
+              {/* Hero SVG - Centered above content */}
+              <div className="mb-6 flex justify-center">
+                <ClientTestimonial size={180} />
+              </div>
+
+              {/* Section Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 rounded-full mb-3">
+                  <Sparkles className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-semibold text-amber-700">Real Client Experiences</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                  Success Stories From People Like You
+                </h2>
+                <p className="text-gray-600 max-w-2xl mx-auto">
+                  See how others navigated their journey with personalized guidance
+                </p>
+              </div>
+
+              {/* Stories Grid */}
+              <div className="w-full grid sm:grid-cols-2 gap-5">
+                {Object.entries(storiesByPhase)
+                  .flatMap(([phaseId, stories]) =>
+                    stories.map(story => ({ ...story, phaseId }))
+                  )
+                  .slice(0, 4)
+                  .map((story, idx) => (
+                    <div
+                      key={story.id || idx}
+                      className="bg-white rounded-2xl border-2 border-amber-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-amber-300 overflow-hidden"
+                    >
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 border-b border-amber-100">
+                        <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                          {story.phaseId?.replace(/-/g, ' ') || 'Client Story'}
+                        </span>
+                      </div>
+                      <div className="p-4">
+                        <StoryCard
+                          story={story}
+                          accentColor={hasCustomTheme ? '' : colors.accentColor}
+                          borderColor="border-transparent"
+                          compact={false}
+                        />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {totalStories > 4 && (
+                <div className="text-center mt-6">
+                  <p className="text-sm text-gray-500">
+                    <span className="font-medium">{totalStories - 4} more stories</span> are embedded throughout your timeline
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Market Context - Hidden until reliable data source is available
+          To re-enable: uncomment the section below
+      {marketData && (
+        <section className="py-8 px-4">
+          <div className="max-w-4xl mx-auto">
+            <MarketContext data={marketData} accentColor={colors.accentColor} />
+          </div>
+        </section>
+      )}
+      */}
 
       {/* Disclaimer */}
       {data.disclaimer && (

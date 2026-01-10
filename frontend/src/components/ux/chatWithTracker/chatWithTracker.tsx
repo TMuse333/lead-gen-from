@@ -24,6 +24,7 @@ import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
 import { getQuestionCount, getQuestion, type OfferType } from '@/lib/offers/unified';
 import { ContactCollectionModal, ContactRetriggerButton, type ContactData } from './modals/ContactCollectionModal';
 import { GenerationLoadingOverlay, GENERATION_STEPS } from './components/GenerationLoadingOverlay';
+import { useClientSideTimeline } from '@/hooks/offers/useClientSideTimeline';
 
 // Analytics tracking for contact collection
 interface ContactAnalytics {
@@ -287,12 +288,15 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
     setShowContactModal(true);
   }, []);
 
-  // Start generation with SSE
+  // Client-side timeline generation hook
+  const { fetchConfig, generateTimeline } = useClientSideTimeline();
+
+  // Start generation - now uses client-side generation (no LLM calls for timeline)
   const startGeneration = useCallback(async (contact: ContactData) => {
     setIsGenerating(true);
     setGenerationStep('config');
     setGenerationPercent(0);
-    setGenerationMessage('');
+    setGenerationMessage('Loading configuration...');
     setGenerationError(null);
 
     try {
@@ -315,127 +319,96 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
         ? sessionStorage.getItem('clientId')
         : null;
 
-      const requestBody: any = {
-        intent: freshIntent,
-        offer: freshOffer,
-        flow: freshIntent, // backwards compatibility
-        userInput: {
-          ...freshUserInput,
-          contactName: contact.name,
-          contactEmail: contact.email,
-          contactPhone: contact.phone,
-          email: contact.email,
-        },
-        conversationId: freshConversationId || undefined,
+      // Merge contact info into userInput
+      const mergedUserInput = {
+        ...freshUserInput,
+        contactName: contact.name,
+        contactEmail: contact.email,
+        contactPhone: contact.phone,
+        email: contact.email,
       };
 
-      if (clientId) {
-        requestBody.clientId = clientId;
-        requestBody.clientIdentifier = clientId;
+      // Step 1: Fetch config
+      setGenerationStep('config');
+      setGenerationPercent(20);
+      setGenerationMessage('Loading your agent configuration...');
+
+      const config = await fetchConfig(clientId || undefined);
+      if (!config) {
+        throw new Error('Failed to load configuration. Please try again.');
       }
 
-      // Use fetch for SSE
-      const response = await fetch('/api/offers/generate-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
+      // Step 2: Generate timeline (client-side, no LLM)
+      setGenerationStep('generating');
+      setGenerationPercent(50);
+      setGenerationMessage('Creating your personalized timeline...');
+
+      const flow = freshIntent as 'buy' | 'sell' | 'browse';
+      const result = await generateTimeline({
+        flow,
+        userInput: mergedUserInput,
+        config,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!result) {
+        throw new Error('Failed to generate timeline. Please try again.');
       }
 
-      if (!response.body) {
-        throw new Error('No response body');
-      }
+      // Step 3: Prepare output
+      setGenerationStep('finalizing');
+      setGenerationPercent(80);
+      setGenerationMessage('Finalizing your results...');
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      // Build llmOutput in the expected format
+      // Cast to any to bypass strict type checking - the output structure is correct
+      const llmOutput = {
+        'real-estate-timeline': result.timeline as any,
+        _stories: result.storiesByPhase,
+      };
 
-      while (true) {
-        const { done, value } = await reader.read();
+      const debugInfo = {
+        generationTime: result.generationTime,
+        flow: freshIntent,
+        userInput: mergedUserInput as Record<string, string>,
+        storyCount: Object.values(result.storiesByPhase).flat().length,
+        generatedBy: 'client-side-static',
+        offersGenerated: ['real-estate-timeline'],
+      };
 
-        if (done) {
-          break;
-        }
+      // Store results
+      localStorage.setItem('llmResultsCache', JSON.stringify(llmOutput));
+      localStorage.setItem('llmDebugCache', JSON.stringify(debugInfo));
 
-        buffer += decoder.decode(value, { stream: true });
+      setLlmOutput(llmOutput as any);
+      setDebugInfo(debugInfo);
 
-        // Process complete events
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            const eventType = line.slice(7);
-            continue;
-          }
-
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              // Handle progress events
-              if (data.step) {
-                setGenerationStep(data.step);
-              }
-              if (data.percent !== undefined) {
-                setGenerationPercent(data.percent);
-              }
-              if (data.message) {
-                setGenerationMessage(data.message);
-              }
-
-              // Handle error events
-              if (data.error) {
-                throw new Error(data.error);
-              }
-
-              // Handle complete event (final data)
-              if (data._debug !== undefined || (!data.step && !data.error && Object.keys(data).length > 0)) {
-                const { _debug, ...llmOutput } = data;
-
-                // Store results
-                localStorage.setItem("llmResultsCache", JSON.stringify(llmOutput));
-                if (_debug) {
-                  localStorage.setItem("llmDebugCache", JSON.stringify(_debug));
-                }
-
-                setLlmOutput(llmOutput);
-                if (_debug) setDebugInfo(_debug);
-
-                // Update conversation status
-                if (freshConversationId) {
-                  try {
-                    await updateConversation({ status: 'completed', progress: 100 });
-                  } catch (e) {
-                    console.warn('Failed to update conversation status:', e);
-                  }
-                }
-
-                // Brief pause on complete step before redirect
-                setGenerationStep('complete');
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Reset and redirect
-                resetChat();
-                window.location.href = '/results';
-                return;
-              }
-            } catch (parseError) {
-              console.warn('Failed to parse SSE data:', line, parseError);
-            }
-          }
+      // Update conversation status
+      if (freshConversationId) {
+        try {
+          await updateConversation({ status: 'completed', progress: 100 });
+        } catch (e) {
+          console.warn('Failed to update conversation status:', e);
         }
       }
+
+      // Step 4: Complete
+      setGenerationStep('complete');
+      setGenerationPercent(100);
+      setGenerationMessage('Ready!');
+
+      // Brief pause before redirect
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Reset and redirect
+      resetChat();
+      window.location.href = '/results';
+
     } catch (err: any) {
       setGenerationError(err.message || 'Unknown error occurred');
       setIsGenerating(false);
       submissionCalledRef.current = false;
     }
-    // Dependencies are minimal since we read fresh values from store directly
-  }, [setLlmOutput, setDebugInfo, updateConversation, resetChat]);
+  }, [fetchConfig, generateTimeline, setLlmOutput, setDebugInfo, updateConversation, resetChat]);
 
   // Handle retry from error overlay
   const handleRetry = useCallback(() => {

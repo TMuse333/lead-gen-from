@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         colorConfig: config.colorConfig,
         knowledgeBaseItems: config.knowledgeBaseItems,
         qdrantCollectionName: config.qdrantCollectionName,
+        agentProfile: config.agentProfile,
         isActive: config.isActive,
         onboardingCompletedAt: config.onboardingCompletedAt,
         createdAt: config.createdAt,
@@ -82,7 +83,7 @@ export async function PUT(request: NextRequest) {
 
     const userId = session.user.id;
     const body = await request.json();
-    const { selectedOffers, conversationFlows } = body;
+    const { selectedOffers, conversationFlows, agentProfile } = body;
 
     // 2. Get user's client configuration
     const collection = await getClientConfigsCollection();
@@ -113,6 +114,11 @@ export async function PUT(request: NextRequest) {
       updateFields.conversationFlows = conversationFlows;
     }
 
+    // Update agentProfile if provided
+    if (agentProfile && typeof agentProfile === 'object') {
+      updateFields.agentProfile = agentProfile;
+    }
+
     // 4. Apply updates
     if (Object.keys(updateFields).length > 1) { // More than just updatedAt
       await collection.updateOne(
@@ -141,6 +147,7 @@ export async function PUT(request: NextRequest) {
         colorConfig: updatedConfig?.colorConfig,
         knowledgeBaseItems: updatedConfig?.knowledgeBaseItems,
         qdrantCollectionName: updatedConfig?.qdrantCollectionName,
+        agentProfile: updatedConfig?.agentProfile,
         isActive: updatedConfig?.isActive,
         onboardingCompletedAt: updatedConfig?.onboardingCompletedAt,
         createdAt: updatedConfig?.createdAt,

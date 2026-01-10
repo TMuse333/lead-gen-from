@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
       conditions = {},
       ruleGroups, // Optional: complex rules (AND/OR logic)
       type, // Optional: advice type (defaults to 'general-advice')
+      kind, // Optional: 'tip' or 'story' (defaults to 'tip')
+      placements = {}, // Optional: offer-specific placements
     } = body;
 
     // Validate required fields
@@ -94,6 +96,8 @@ export async function POST(request: NextRequest) {
         conditions,
         ruleGroups, // Optional: will be undefined if not provided
         type: adviceType, // Include type in metadata
+        kind: kind || 'tip', // 'tip' or 'story'
+        placements, // Offer-specific placements
       },
     });
 

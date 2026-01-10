@@ -30,9 +30,17 @@ import {
   Inbox,
   CheckCircle2,
   Wand2,
+  Heart,
+  Zap,
+  Users,
+  ArrowRight,
+  Star,
+  X,
+  ChevronLeft,
 } from 'lucide-react';
 import StoryUploader from './StoryUploader';
 import StoryPlacementManager from './StoryPlacementManager';
+import { StoryImpactIntro, StoryBridge } from '@/components/svg/stories';
 
 interface Story {
   id: string;
@@ -74,6 +82,25 @@ export default function StoriesDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPopulating, setIsPopulating] = useState(false);
   const [populateResult, setPopulateResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Intro slideshow state
+  const [showIntro, setShowIntro] = useState(false);
+  const [introStep, setIntroStep] = useState(1);
+  const TOTAL_INTRO_STEPS = 4;
+
+  // Check if user has seen intro before
+  useEffect(() => {
+    const hasSeenIntro = localStorage.getItem('stories-intro-seen');
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
+  }, []);
+
+  const handleCloseIntro = () => {
+    localStorage.setItem('stories-intro-seen', 'true');
+    setShowIntro(false);
+    setIntroStep(1);
+  };
 
   const fetchStories = useCallback(async () => {
     setIsLoading(true);
@@ -218,16 +245,49 @@ export default function StoriesDashboard() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
+      {/* Why Stories Matter Banner */}
+      <div className="mb-8 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 rounded-xl border border-amber-500/30 p-6">
+        <div className="flex items-start gap-4">
+          {/* StoryBridge SVG */}
+          <div className="hidden md:flex items-center justify-center flex-shrink-0">
+            <StoryBridge className="scale-[0.65]" />
+          </div>
+
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Heart className="h-5 w-5 text-amber-400" />
+              <h2 className="text-lg font-bold text-white">Stories Are What Make This Work</h2>
+            </div>
+            <p className="text-slate-300 text-sm mb-3">
+              When a lead sees that you helped someone <span className="text-amber-300 font-medium">just like them</span>,
+              trust happens instantly. Your stories bridge the gap between "stranger" and "trusted advisor."
+            </p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowIntro(true)}
+                className="text-sm text-amber-400 hover:text-amber-300 underline underline-offset-2"
+              >
+                Learn why stories matter →
+              </button>
+              <span className="text-slate-500 text-sm">|</span>
+              <span className="text-slate-400 text-sm">
+                Aim for <span className="text-amber-300 font-medium">3-5 stories</span> per flow (buy/sell/browse)
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-500/20 rounded-lg">
-            <BookOpen className="w-6 h-6 text-amber-400" />
+            <Heart className="w-6 h-6 text-amber-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100">Client Stories</h1>
             <p className="text-slate-400 mt-1">
-              Real experiences that build trust and connection
+              Real experiences that build trust and convert leads
             </p>
           </div>
         </div>
@@ -600,6 +660,120 @@ export default function StoriesDashboard() {
                 {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stories Intro Slideshow Modal */}
+      {showIntro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleCloseIntro} />
+          <div className="relative bg-slate-800 rounded-2xl border border-amber-500/30 shadow-2xl w-full max-w-2xl p-8 mx-4">
+            {/* Close button */}
+            <button
+              onClick={handleCloseIntro}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Slideshow Content */}
+            <div className="min-h-[350px]">
+              {/* StoryImpactIntro SVG that changes based on step */}
+              <div className="flex items-center justify-center mb-4">
+                <StoryImpactIntro step={introStep} />
+              </div>
+
+              {introStep === 1 && (
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-white mb-3">Every Lead Starts as a Stranger</h3>
+                  <p className="text-slate-300 max-w-md mx-auto">
+                    They don't know you. They don't trust you yet. There's a gap between their situation and your expertise.
+                  </p>
+                </div>
+              )}
+
+              {introStep === 2 && (
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-white mb-3">Stories Bridge the Gap</h3>
+                  <p className="text-slate-300 max-w-md mx-auto">
+                    When you share a story about helping someone <span className="text-amber-300">just like them</span>,
+                    suddenly you're not a stranger anymore. You're the person who solved their exact problem.
+                  </p>
+                </div>
+              )}
+
+              {introStep === 3 && (
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-white mb-3">Trust Happens Instantly</h3>
+                  <p className="text-slate-300 max-w-md mx-auto">
+                    "You helped a first-time buyer in my exact situation? You understand me!"
+                    <br /><br />
+                    <span className="text-amber-300 font-medium">That's the power of a well-placed story.</span>
+                  </p>
+                </div>
+              )}
+
+              {introStep === 4 && (
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-white mb-3">Add Your Stories Now</h3>
+                  <p className="text-slate-300 max-w-md mx-auto mb-6">
+                    Think of 3-5 clients you've helped in each flow (buying, selling, browsing).
+                    What was their situation? What did you do? What was the outcome?
+                  </p>
+                  <button
+                    onClick={handleCloseIntro}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors"
+                  >
+                    Get Started
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-700">
+              <button
+                onClick={() => setIntroStep((s) => Math.max(1, s - 1))}
+                disabled={introStep === 1}
+                className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Back
+              </button>
+
+              {/* Step indicators */}
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4].map((step) => (
+                  <button
+                    key={step}
+                    onClick={() => setIntroStep(step)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      step === introStep ? 'bg-amber-400' : 'bg-slate-600 hover:bg-slate-500'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {introStep < TOTAL_INTRO_STEPS ? (
+                <button
+                  onClick={() => setIntroStep((s) => Math.min(TOTAL_INTRO_STEPS, s + 1))}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-lg"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleCloseIntro}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-lg font-medium"
+                >
+                  Done
+                  <CheckCircle2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>

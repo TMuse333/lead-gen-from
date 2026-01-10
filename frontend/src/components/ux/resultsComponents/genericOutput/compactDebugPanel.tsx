@@ -126,13 +126,15 @@ export function CompactDebugPanel({
               className="overflow-hidden"
             >
               <div className="pt-3 border-t border-gray-200 space-y-3">
-                {/* Prompt Length */}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-600">Prompt Length</span>
-                  <span className="font-semibold text-gray-900">
-                    {debugInfo.promptLength.toLocaleString()} chars
-                  </span>
-                </div>
+                {/* Prompt Length (only show for server-side generation) */}
+                {debugInfo.promptLength !== undefined && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Prompt Length</span>
+                    <span className="font-semibold text-gray-900">
+                      {debugInfo.promptLength.toLocaleString()} chars
+                    </span>
+                  </div>
+                )}
 
                 {/* Flow */}
                 <div className="flex items-center justify-between text-xs">

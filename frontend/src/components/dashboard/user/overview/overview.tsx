@@ -17,11 +17,17 @@ import {
   Users,
   FileText,
   ChevronRight,
+  Heart,
+  Zap,
+  Target,
+  Star,
 } from 'lucide-react';
 import Link from 'next/link';
 
 // Import sample SVGs to show
 import { PreApprovalSuccess, HomeValuation, NeighborhoodExplore } from '@/components/svg/timeline';
+// Story emphasis SVGs
+import { StoryBridge, SocialProofPulse, EmptyVsFull } from '@/components/svg/stories';
 
 const QUICK_LINKS = [
   {
@@ -112,11 +118,83 @@ export default function WelcomeOverview() {
           </p>
         </motion.div>
 
-        {/* How It Works - Simple Flow */}
+        {/* STORIES - The Secret Weapon Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-12"
+        >
+          <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/10 rounded-2xl border-2 border-amber-500/30 p-8 relative overflow-hidden">
+            {/* Decorative glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-amber-500/20 rounded-xl">
+                  <Heart className="h-8 w-8 text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Stories Are Your Secret Weapon</h2>
+                  <p className="text-amber-200/70">This is what makes your bot actually convert leads</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 mt-6">
+                {/* StoryBridge SVG */}
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="flex items-center justify-center mb-3">
+                    <StoryBridge className="scale-75" />
+                  </div>
+                  <h3 className="font-semibold text-white mb-1 text-center">Bridge the Gap</h3>
+                  <p className="text-sm text-slate-400 text-center">
+                    Your experience + their situation = instant trust
+                  </p>
+                </div>
+
+                {/* SocialProofPulse SVG */}
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="flex items-center justify-center mb-3">
+                    <SocialProofPulse className="scale-75" />
+                  </div>
+                  <h3 className="font-semibold text-white mb-1 text-center">Multiply Your Impact</h3>
+                  <p className="text-sm text-slate-400 text-center">
+                    One story influences every matching lead
+                  </p>
+                </div>
+
+                {/* EmptyVsFull SVG */}
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="flex items-center justify-center mb-3 overflow-hidden">
+                    <EmptyVsFull className="scale-[0.6]" />
+                  </div>
+                  <h3 className="font-semibold text-white mb-1 text-center">The Difference</h3>
+                  <p className="text-sm text-slate-400 text-center">
+                    Phases with stories convert 3x better
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-center gap-4">
+                <Link
+                  href="/dashboard?section=knowledge-base"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-colors"
+                >
+                  <Target className="h-5 w-5" />
+                  Add Your Stories Now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <span className="text-slate-500 text-sm">Takes 5 minutes, impacts every lead</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* How It Works - Simple Flow */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8 mb-12"
         >
           <h2 className="text-lg font-semibold text-slate-300 mb-6 text-center">How It Works</h2>

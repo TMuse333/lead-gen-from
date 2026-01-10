@@ -143,11 +143,24 @@ export default function StoryPlacementManager({
     });
   };
 
+  // Map phase IDs to their flow type
+  const getFlowForPhase = (phaseId: string): 'buy' | 'sell' | 'browse' | null => {
+    const buyPhases = ['financial-prep', 'find-agent', 'house-hunting', 'make-offer', 'under-contract', 'closing', 'post-closing'];
+    const sellPhases = ['home-prep', 'choose-agent-price', 'set-price', 'list-property', 'marketing-showings', 'review-offers', 'under-contract-sell', 'closing-sell'];
+    const browsePhases = ['understand-options', 'financial-education', 'market-research', 'decision-time', 'next-steps'];
+
+    if (buyPhases.includes(phaseId)) return 'buy';
+    if (sellPhases.includes(phaseId)) return 'sell';
+    if (browsePhases.includes(phaseId)) return 'browse';
+    return null;
+  };
+
   const handleSave = async () => {
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // 1. Update story placements in Qdrant (for backward compatibility)
       const response = await fetch('/api/agent-advice/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -161,6 +174,56 @@ export default function StoryPlacementManager({
         const data = await response.json();
         throw new Error(data.error || 'Failed to update placements');
       }
+
+      // 2. Sync to MongoDB storyMappings (source of truth for generation)
+      // Only handle real-estate-timeline placements for now
+      const timelinePlacements = placements['real-estate-timeline'] || [];
+      const previousTimelinePlacements = currentPlacements['real-estate-timeline'] || [];
+
+      // Get current storyMappings from MongoDB
+      const mappingsRes = await fetch('/api/story-mappings');
+      const mappingsData = await mappingsRes.json();
+      const currentMappings = mappingsData.storyMappings || {};
+
+      // Group placements by flow
+      const addedPhases = timelinePlacements.filter(p => !previousTimelinePlacements.includes(p));
+      const removedPhases = previousTimelinePlacements.filter(p => !timelinePlacements.includes(p));
+
+      // Build updated mappings
+      const updatedMappings = { ...currentMappings };
+
+      // Add story to new phases
+      for (const phaseId of addedPhases) {
+        const flow = getFlowForPhase(phaseId);
+        if (flow) {
+          if (!updatedMappings[flow]) updatedMappings[flow] = {};
+          if (!updatedMappings[flow][phaseId]) updatedMappings[flow][phaseId] = [];
+          if (!updatedMappings[flow][phaseId].includes(storyId)) {
+            updatedMappings[flow][phaseId].push(storyId);
+          }
+        }
+      }
+
+      // Remove story from removed phases
+      for (const phaseId of removedPhases) {
+        const flow = getFlowForPhase(phaseId);
+        if (flow && updatedMappings[flow]?.[phaseId]) {
+          updatedMappings[flow][phaseId] = updatedMappings[flow][phaseId].filter(
+            (id: string) => id !== storyId
+          );
+          // Clean up empty arrays
+          if (updatedMappings[flow][phaseId].length === 0) {
+            delete updatedMappings[flow][phaseId];
+          }
+        }
+      }
+
+      // Save updated mappings to MongoDB
+      await fetch('/api/story-mappings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyMappings: updatedMappings }),
+      });
 
       setSuccess(true);
       setTimeout(() => {

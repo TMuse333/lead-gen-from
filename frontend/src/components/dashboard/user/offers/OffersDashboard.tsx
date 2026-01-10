@@ -92,31 +92,17 @@ export default function OffersDashboard() {
                 What are offers?
               </h3>
               <p className="text-slate-300 mb-4">
-                Offers are the value you provide to users after they complete your chatbot conversation. 
-                Examples include:
+                Offers are the value you provide to users after they complete your chatbot conversation.
               </p>
               <ul className="space-y-2 text-slate-300">
                 <li className="flex items-start gap-2">
                   <Calendar className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <span><strong>Real Estate Timeline</strong> - Personalized step-by-step timeline (Recommended)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <FileText className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <span><strong>PDF Guides</strong> - Downloadable resources personalized to their situation</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Layout className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <span><strong>Landing Pages</strong> - Personalized results pages with insights and recommendations</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Home className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <span><strong>Home Estimates</strong> - Property valuations and market analysis</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Video className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <span><strong>Video Content</strong> - Personalized video scripts and content</span>
+                  <span><strong>Real Estate Timeline</strong> - Personalized step-by-step timeline based on their buying/selling journey</span>
                 </li>
               </ul>
+              <p className="text-slate-400 text-sm mt-4">
+                More offer types coming soon!
+              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -277,7 +263,8 @@ export default function OffersDashboard() {
           })}
         </div>
 
-        {/* Add More Offers CTA */}
+        {/* Add More Offers CTA - Hidden for now (other offers not fully implemented) */}
+        {/* TODO: Re-enable when pdf and home-estimate offers are ready
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -304,6 +291,7 @@ export default function OffersDashboard() {
             </button>
           </div>
         </motion.div>
+        */}
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ import { FileText, Layout, Video, Plus, X, ArrowRight, ArrowLeft, AlertCircle, S
 import { useOnboardingStore, OfferType, FlowIntention } from "@/stores/onboardingStore/onboarding.store";
 import { getOfferRequirements, FIELD_LABELS } from "@/lib/offers/offerRequirements";
 
-const OFFER_OPTIONS: { value: OfferType; label: string; icon: React.ReactNode; description: string }[] = [
+// All available offer options (some hidden for now - only showing timeline)
+const ALL_OFFER_OPTIONS: { value: OfferType; label: string; icon: React.ReactNode; description: string }[] = [
   {
     value: 'real-estate-timeline',
     label: 'Real Estate Timeline',
@@ -38,6 +39,9 @@ const OFFER_OPTIONS: { value: OfferType; label: string; icon: React.ReactNode; d
     description: 'Video content or tutorial'
   },
 ];
+
+// Only show timeline offer for now (others not fully implemented yet)
+const OFFER_OPTIONS = ALL_OFFER_OPTIONS.filter(o => o.value === 'real-estate-timeline');
 
 const FLOW_OPTIONS: { value: FlowIntention; label: string; icon: React.ReactNode }[] = [
   { value: 'buy', label: 'Buy', icon: <ShoppingCart className="h-4 w-4" /> },

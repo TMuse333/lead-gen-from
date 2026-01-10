@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, Maximize2, Minimize2, Monitor, Smartphone } from 'lucide-react';
 import type { OfferDefinition } from '@/lib/offers/core/types';
 import { TimelineLandingPage } from '@/components/ux/resultsComponents/timeline/TimelineLandingPage';
@@ -18,6 +18,15 @@ import type { MatchedStory } from '@/components/ux/resultsComponents/timeline/co
 interface OutputTabProps {
   definition: OfferDefinition;
   agentName?: string;
+}
+
+// Type for user config API response
+interface UserConfigResponse {
+  success: boolean;
+  config?: {
+    agentProfile?: AgentCredentials;
+    businessName?: string;
+  };
 }
 
 // Sample timeline data for preview - Halifax, Nova Scotia
@@ -58,24 +67,9 @@ const SAMPLE_TIMELINE_OUTPUT: TimelineOutput = {
       order: 1,
     },
     {
-      id: 'find-agent',
-      name: 'Find Your Agent',
-      timeline: 'Week 2-3',
-      description: 'Connect with a local real estate agent who knows Halifax\'s unique neighbourhoods and market dynamics.',
-      actionItems: [
-        { task: 'Interview 2-3 buyer\'s agents with Halifax experience', priority: 'high', estimatedTime: '3-4 hours' },
-        { task: 'Ask about their experience in your target neighbourhoods', priority: 'medium', estimatedTime: '30 min' },
-        { task: 'Review and sign buyer representation agreement', priority: 'high', estimatedTime: '1 hour' },
-      ],
-      agentAdvice: [
-        'Look for an agent who knows the difference between Clayton Park, Fairview, and Bedford - each has its own character and price points.',
-      ],
-      order: 2,
-    },
-    {
       id: 'house-hunting',
       name: 'House Hunting',
-      timeline: 'Week 3-10',
+      timeline: 'Week 2-9',
       description: 'Tour properties across Halifax Regional Municipality and narrow down your must-haves versus nice-to-haves.',
       actionItems: [
         { task: 'Create your wish list (must-haves vs nice-to-haves)', priority: 'high', estimatedTime: '2 hours' },
@@ -87,12 +81,12 @@ const SAMPLE_TIMELINE_OUTPUT: TimelineOutput = {
         'Halifax homes in popular areas like the South End or near Dalhousie can move within days. Be ready to act!',
         'Don\'t overlook Dartmouth - it offers great value and the ferry commute is actually quite pleasant.',
       ],
-      order: 3,
+      order: 2,
     },
     {
       id: 'make-offer',
       name: 'Make an Offer',
-      timeline: 'Week 10-12',
+      timeline: 'Week 9-11',
       description: 'Found the one? Let\'s put together a competitive offer that stands out.',
       actionItems: [
         { task: 'Review comparable sales with your agent', priority: 'high', estimatedTime: '1-2 hours' },
@@ -103,12 +97,12 @@ const SAMPLE_TIMELINE_OUTPUT: TimelineOutput = {
       agentAdvice: [
         'In Halifax\'s current market, clean offers with fewer conditions can help you stand out - but never skip the home inspection!',
       ],
-      order: 4,
+      order: 3,
     },
     {
       id: 'under-contract',
       name: 'Under Contract',
-      timeline: 'Week 12-16',
+      timeline: 'Week 11-15',
       description: 'Complete due diligence, inspections, and prepare for closing. Halifax homes often have unique considerations.',
       actionItems: [
         { task: 'Schedule home inspection (check for Halifax-specific issues)', priority: 'high', estimatedTime: '3-4 hours' },
@@ -120,12 +114,12 @@ const SAMPLE_TIMELINE_OUTPUT: TimelineOutput = {
       agentAdvice: [
         'Halifax homes, especially older ones in the South End or North End, should be checked for knob-and-tube wiring, oil tank issues, and foundation concerns due to the soil conditions.',
       ],
-      order: 5,
+      order: 4,
     },
     {
       id: 'closing',
       name: 'Closing Day',
-      timeline: 'Week 16-18',
+      timeline: 'Week 15-17',
       description: 'Final walkthrough, sign documents at your lawyer\'s office, and get your keys!',
       actionItems: [
         { task: 'Complete final walkthrough of the property', priority: 'high', estimatedTime: '1 hour' },
@@ -138,14 +132,14 @@ const SAMPLE_TIMELINE_OUTPUT: TimelineOutput = {
         'In Nova Scotia, you\'ll close at a lawyer\'s office rather than a title company. Budget $1,200-$1,800 for legal fees.',
         'Beware of wire fraud! Always verify wiring instructions by calling your lawyer directly at a known number.',
       ],
-      order: 6,
+      order: 5,
     },
   ],
   totalEstimatedTime: '4-5 months',
   disclaimer: 'Timelines are estimates and can vary based on market conditions, financing approval, and other factors. The Halifax market can be competitive, so actual timelines may differ. Always consult with your real estate professional for current market conditions.',
   metadata: {
-    phasesCount: 6,
-    totalActionItems: 26,
+    phasesCount: 5,
+    totalActionItems: 23,
   },
 };
 
@@ -226,6 +220,33 @@ type ViewMode = 'desktop' | 'mobile';
 export function OutputTab({ definition, agentName }: OutputTabProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
+  const [agentCredentials, setAgentCredentials] = useState<AgentCredentials>(SAMPLE_AGENT_CREDENTIALS);
+  const [displayAgentName, setDisplayAgentName] = useState(agentName || 'Atlantic Realty Group');
+
+  // Fetch user's agent profile from config
+  useEffect(() => {
+    async function fetchAgentProfile() {
+      try {
+        const response = await fetch('/api/user/config');
+        if (response.ok) {
+          const data: UserConfigResponse = await response.json();
+          if (data.success && data.config?.agentProfile) {
+            // Use user's custom agent profile
+            setAgentCredentials({
+              ...SAMPLE_AGENT_CREDENTIALS,
+              ...data.config.agentProfile,
+            });
+          }
+          if (data.config?.businessName) {
+            setDisplayAgentName(agentName || data.config.businessName);
+          }
+        }
+      } catch {
+        // Keep using sample credentials on error
+      }
+    }
+    fetchAgentProfile();
+  }, [agentName]);
 
   const isTimeline = definition.type === 'real-estate-timeline';
 
@@ -402,11 +423,13 @@ export function OutputTab({ definition, agentName }: OutputTabProps) {
           >
             <TimelineLandingPage
               data={SAMPLE_TIMELINE_OUTPUT}
-              agentName={agentName || 'Atlantic Realty Group'}
-              agentCredentials={SAMPLE_AGENT_CREDENTIALS}
+              userName="Alex"
+              agentName={displayAgentName}
+              agentCredentials={agentCredentials}
               marketData={SAMPLE_MARKET_DATA}
               storiesByPhase={SAMPLE_STORIES_BY_PHASE}
               interactive={true}
+              forceMobileLayout={viewMode === 'mobile'}
             />
           </div>
         </div>
