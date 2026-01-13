@@ -20,18 +20,17 @@ export function detectIncompleteOnboarding(): OnboardingState | null {
     if (!state) return null;
 
     // Check if onboarding is actually incomplete
-    // Incomplete means: has some data but not at step 6 (complete)
+    // Incomplete means: has started (past welcome screen) and has some data but not complete
+    const hasStarted = state.currentStep > 0;
     const hasData =
       state.businessName ||
-      state.selectedIntentions.length > 0 ||
-      state.selectedOffers.length > 0 ||
-      state.knowledgeBaseItems.length > 0 ||
-      Object.keys(state.conversationFlows).length > 0;
+      state.agentFirstName ||
+      state.agentEmail;
 
-    const isComplete = state.currentStep === 6;
+    const isComplete = state.currentStep === 2 || state.completedSteps?.includes(2);
 
-    // Return state if there's data but not complete
-    if (hasData && !isComplete) {
+    // Return state if user has started, has data, but not complete
+    if (hasStarted && hasData && !isComplete) {
       return state;
     }
 
@@ -56,7 +55,7 @@ export function getOnboardingProgressSummary(
     currentStep: state.currentStep || 1,
     businessName: state.businessName || "Unnamed Business",
     completedSteps: state.completedSteps || [],
-    progress: Math.round(((state.currentStep || 1) / 6) * 100),
+    progress: Math.round(((state.currentStep || 1) / 2) * 100), // 2 steps in ultra-simplified flow
   };
 }
 

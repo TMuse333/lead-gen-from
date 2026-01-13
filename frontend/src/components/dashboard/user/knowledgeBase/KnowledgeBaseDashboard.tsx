@@ -1,16 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, Mic, HelpCircle, Sparkles, List, LayoutGrid, MessageCircle, Heart } from 'lucide-react';
+import { BookOpen, Mic, Sparkles, Heart } from 'lucide-react';
 import AgentAdviceDashboard from '../adviceDashboard/agentAdviceDashboard';
 import AgentAdviceSpeechUploader from '../agentSpeechUploader/agentSpeechUploader';
-import RulesExplanation from '../rules/rulesExplanation';
-import RecommendedRules from '../rules/recommendedRules';
-import ViewAllRules from '../rules/viewAllRules';
-import OfferKnowledgeDashboard from './OfferKnowledgeDashboard';
 import StoriesDashboard from './StoriesDashboard';
+import RecommendedStories from './RecommendedStories';
 
-type KnowledgeBaseTab = 'stories' | 'advice' | 'by-offer' | 'upload' | 'explanation' | 'recommended' | 'view-all';
+type KnowledgeBaseTab = 'stories' | 'advice' | 'upload' | 'recommended';
 
 interface TabConfig {
   id: KnowledgeBaseTab;
@@ -25,44 +22,26 @@ const TABS: TabConfig[] = [
     id: 'stories',
     label: 'Stories',
     icon: Heart,
-    description: 'Client stories that build trust',
-    highlight: true, // Special emphasis
+    description: 'Client success stories that build trust',
+    highlight: true,
   },
   {
     id: 'advice',
     label: 'Tips & Advice',
     icon: BookOpen,
-    description: 'Manage advice content',
+    description: 'Expert knowledge and market insights',
   },
   {
-    id: 'by-offer',
-    label: 'By Offer',
-    icon: LayoutGrid,
-    description: 'Knowledge organized by offer phases',
+    id: 'recommended',
+    label: 'Suggested',
+    icon: Sparkles,
+    description: 'Story ideas for your timeline phases',
   },
   {
     id: 'upload',
     label: 'Upload',
     icon: Mic,
-    description: 'Upload via speech/script',
-  },
-  {
-    id: 'explanation',
-    label: 'How It Works',
-    icon: HelpCircle,
-    description: 'Learn about client situations',
-  },
-  {
-    id: 'recommended',
-    label: 'Recommended',
-    icon: Sparkles,
-    description: 'AI-generated suggestions',
-  },
-  {
-    id: 'view-all',
-    label: 'View All',
-    icon: List,
-    description: 'All client situations',
+    description: 'Add content via speech or script',
   },
 ];
 
@@ -75,16 +54,10 @@ export default function KnowledgeBaseDashboard() {
         return <StoriesDashboard />;
       case 'advice':
         return <AgentAdviceDashboard />;
-      case 'by-offer':
-        return <OfferKnowledgeDashboard />;
+      case 'recommended':
+        return <RecommendedStories />;
       case 'upload':
         return <AgentAdviceSpeechUploader />;
-      case 'explanation':
-        return <RulesExplanation />;
-      case 'recommended':
-        return <RecommendedRules />;
-      case 'view-all':
-        return <ViewAllRules />;
       default:
         return <StoriesDashboard />;
     }

@@ -9,3 +9,4 @@ export { PersonalizationChip, BasedOnYour } from './PersonalizationChip';
 export { MarketContext, type MarketData } from './MarketContext';
 export { AgentExpertise, type AgentCredentials } from './AgentExpertise';
 export { InteractiveChecklist } from './InteractiveChecklist';
+export { PhaseInsight, PhaseInsightCompact, type PhaseTip } from './PhaseInsight';

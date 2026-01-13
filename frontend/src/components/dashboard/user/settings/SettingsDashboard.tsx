@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Palette, BarChart3, User } from 'lucide-react';
+import { Settings, Palette, BarChart3 } from 'lucide-react';
 import ConfigSummary from '../configSummary/configSummary';
 import ColorConfig from '../colorConfig/colorConfig';
-import AgentProfileSettings from './AgentProfileSettings';
 import dynamic from 'next/dynamic';
 
 const TokenUsageDashboard = dynamic(
@@ -12,7 +11,8 @@ const TokenUsageDashboard = dynamic(
   { ssr: false }
 );
 
-type SettingsTab = 'profile' | 'general' | 'colors' | 'usage';
+// Agent Profile moved to Timeline > Agent Stats tab
+type SettingsTab = 'general' | 'colors' | 'usage';
 
 interface TabConfig {
   id: SettingsTab;
@@ -22,12 +22,6 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  {
-    id: 'profile',
-    label: 'Agent Profile',
-    icon: User,
-    description: 'Your public profile',
-  },
   {
     id: 'general',
     label: 'General',
@@ -49,12 +43,10 @@ const TABS: TabConfig[] = [
 ];
 
 export default function SettingsDashboard() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'profile':
-        return <AgentProfileSettings />;
       case 'general':
         return <ConfigSummary />;
       case 'colors':
@@ -62,7 +54,7 @@ export default function SettingsDashboard() {
       case 'usage':
         return <TokenUsageDashboard />;
       default:
-        return <AgentProfileSettings />;
+        return <ConfigSummary />;
     }
   };
 

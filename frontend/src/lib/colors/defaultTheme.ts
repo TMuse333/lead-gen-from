@@ -160,18 +160,18 @@ export const TRADITIONAL_THEMES: ColorTheme[] = [
   },
 ];
 
-// Dark themes (low contrast, dark backgrounds)
+// Dark themes (high contrast, neutral dark backgrounds with white text)
 export const DARK_THEMES: ColorTheme[] = [
   FOCUSFLOW_THEME,
   {
-    name: 'Forest Green',
+    name: 'Emerald Dark',
     primary: '#10b981',
     secondary: '#059669',
-    background: '#064e3b',
-    surface: '#065f46',
-    text: '#d1fae5',
-    textSecondary: '#6ee7b7',
-    border: '#047857',
+    background: '#0a0a0a',        // neutral black
+    surface: '#171717',           // neutral-900
+    text: '#ffffff',              // white
+    textSecondary: '#a3a3a3',     // neutral-400
+    border: '#262626',            // neutral-800
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
@@ -181,31 +181,31 @@ export const DARK_THEMES: ColorTheme[] = [
     gradientTo: '#059669',
   },
   {
-    name: 'Sunset Orange',
-    primary: '#f97316',
-    secondary: '#ea580c',
-    background: '#7c2d12',
-    surface: '#9a3412',
-    text: '#ffedd5',
-    textSecondary: '#fed7aa',
-    border: '#c2410c',
+    name: 'Amber Dark',
+    primary: '#f59e0b',
+    secondary: '#d97706',
+    background: '#0a0a0a',        // neutral black
+    surface: '#171717',           // neutral-900
+    text: '#ffffff',              // white
+    textSecondary: '#a3a3a3',     // neutral-400
+    border: '#262626',            // neutral-800
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
-    accent: '#fb923c',
-    buttonHover: '#ea580c',
-    gradientFrom: '#f97316',
-    gradientTo: '#ea580c',
+    accent: '#fbbf24',
+    buttonHover: '#d97706',
+    gradientFrom: '#f59e0b',
+    gradientTo: '#d97706',
   },
   {
-    name: 'Royal Purple',
+    name: 'Violet Dark',
     primary: '#8b5cf6',
     secondary: '#7c3aed',
-    background: '#3b0764',
-    surface: '#581c87',
-    text: '#f3e8ff',
-    textSecondary: '#c4b5fd',
-    border: '#6b21a8',
+    background: '#0a0a0a',        // neutral black
+    surface: '#171717',           // neutral-900
+    text: '#ffffff',              // white
+    textSecondary: '#a3a3a3',     // neutral-400
+    border: '#262626',            // neutral-800
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
@@ -215,14 +215,14 @@ export const DARK_THEMES: ColorTheme[] = [
     gradientTo: '#7c3aed',
   },
   {
-    name: 'Ocean Blue',
+    name: 'Blue Dark',
     primary: '#3b82f6',
     secondary: '#2563eb',
-    background: '#1e3a8a',
-    surface: '#1e40af',
-    text: '#dbeafe',
-    textSecondary: '#93c5fd',
-    border: '#1d4ed8',
+    background: '#0a0a0a',        // neutral black
+    surface: '#171717',           // neutral-900
+    text: '#ffffff',              // white
+    textSecondary: '#a3a3a3',     // neutral-400
+    border: '#262626',            // neutral-800
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
@@ -232,14 +232,14 @@ export const DARK_THEMES: ColorTheme[] = [
     gradientTo: '#2563eb',
   },
   {
-    name: 'Rose Pink Dark',
+    name: 'Rose Dark',
     primary: '#ec4899',
     secondary: '#db2777',
-    background: '#831843',
-    surface: '#9f1239',
-    text: '#fce7f3',
-    textSecondary: '#fbcfe8',
-    border: '#be185d',
+    background: '#0a0a0a',        // neutral black
+    surface: '#171717',           // neutral-900
+    text: '#ffffff',              // white
+    textSecondary: '#a3a3a3',     // neutral-400
+    border: '#262626',            // neutral-800
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',

@@ -1,7 +1,8 @@
 // components/ux/resultsComponents/timeline/components/AgentInsight.tsx
 'use client';
 
-import { Sparkles, MessageCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, MessageCircle, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 
 interface AgentInsightProps {
   advice: string;
@@ -81,7 +82,7 @@ export function AgentInsight({
 }
 
 /**
- * Container for multiple agent insights
+ * Container for multiple agent insights with collapsible support
  */
 interface AgentInsightsListProps {
   insights: string[];
@@ -90,6 +91,8 @@ interface AgentInsightsListProps {
   /** Show first insight as featured */
   featureFirst?: boolean;
   title?: string;
+  /** Max insights to show before collapsing (default: 2) */
+  maxVisible?: number;
 }
 
 export function AgentInsightsList({
@@ -98,29 +101,76 @@ export function AgentInsightsList({
   accentColor = 'text-blue-600',
   featureFirst = false,
   title = "From my experience...",
+  maxVisible = 2,
 }: AgentInsightsListProps) {
+  const [showAll, setShowAll] = useState(false);
+
   if (insights.length === 0) return null;
 
+  const hasMore = insights.length > maxVisible;
+  const visibleInsights = showAll ? insights : insights.slice(0, maxVisible);
+  const hiddenCount = insights.length - maxVisible;
+
+  // Get background color class from accent
+  const bgColor = accentColor.replace('text-', 'bg-').replace('-600', '-50');
+  const borderColor = accentColor.replace('text-', 'border-');
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Sparkles className={`h-5 w-5 ${accentColor}`} />
-        <h4 className="text-lg font-semibold text-gray-900">
+    <div className="space-y-3">
+      {/* Header with colored background */}
+      <div className={`flex items-center gap-2 px-3 py-2 ${bgColor} rounded-lg border ${borderColor}/30`}>
+        <Lightbulb className={`h-5 w-5 ${accentColor}`} />
+        <h4 className={`text-sm font-bold ${accentColor} uppercase tracking-wide`}>
           {title}
         </h4>
+        <span className={`ml-auto text-xs ${accentColor}/70 font-medium`}>
+          {insights.length} {insights.length === 1 ? 'tip' : 'tips'}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        {insights.map((advice, idx) => (
+      {/* Insights list */}
+      <div className="space-y-2">
+        {visibleInsights.map((advice, idx) => (
           <AgentInsight
             key={idx}
             advice={advice}
-            agentName={agentName}
+            agentName={idx === 0 ? agentName : undefined}
             accentColor={accentColor}
             featured={featureFirst && idx === 0}
           />
         ))}
       </div>
+
+      {/* Show more/less button */}
+      {hasMore && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className={`
+            w-full flex items-center justify-center gap-2
+            px-3 py-2 text-sm font-medium
+            ${accentColor} hover:${bgColor}
+            rounded-lg border ${borderColor}/30
+            transition-all duration-200
+          `}
+        >
+          {showAll ? (
+            <>
+              <ChevronUp className="h-4 w-4" />
+              Show fewer tips
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-4 w-4" />
+              Show {hiddenCount} more {hiddenCount === 1 ? 'tip' : 'tips'}
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Subtle disclaimer */}
+      <p className="text-xs text-gray-400 italic text-center mt-2">
+        *Tips based on similar client experiences
+      </p>
     </div>
   );
 }

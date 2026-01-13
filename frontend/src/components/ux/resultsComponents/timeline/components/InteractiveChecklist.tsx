@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { ActionItem } from '@/lib/offers/definitions/timeline/timeline-types';
+import type { ColorTheme } from '@/lib/colors/defaultTheme';
 
 interface InteractiveActionItem extends ActionItem {
   isCompleted?: boolean;
@@ -26,6 +27,8 @@ interface InteractiveChecklistProps {
   onItemToggle?: (index: number, completed: boolean) => void;
   onAddNote?: (index: number, note: string) => void;
   interactive?: boolean;
+  /** Custom color theme for dark mode support */
+  colorTheme?: ColorTheme;
 }
 
 const priorityStyles = {
@@ -57,6 +60,7 @@ export function InteractiveChecklist({
   onItemToggle,
   onAddNote,
   interactive = true,
+  colorTheme,
 }: InteractiveChecklistProps) {
   const [checkedItems, setCheckedItems] = useState<Set<number>>(
     new Set(items.map((item, idx) => item.isCompleted ? idx : -1).filter(idx => idx >= 0))
@@ -67,6 +71,32 @@ export function InteractiveChecklist({
   const completedCount = checkedItems.size;
   const totalCount = items.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
+
+  // Dark mode support
+  const isDarkTheme = colorTheme && (colorTheme.background === '#0a0a0a' || colorTheme.background === '#0f172a');
+
+  // Priority styles that adapt to theme
+  const getPriorityStyle = (priority: 'high' | 'medium' | 'low') => {
+    if (isDarkTheme) {
+      // Dark theme priority styles - more muted backgrounds
+      const darkStyles = {
+        high: {
+          badge: 'bg-red-900/50 text-red-300 border-red-700/50',
+          dot: 'bg-red-500',
+        },
+        medium: {
+          badge: 'bg-amber-900/50 text-amber-300 border-amber-700/50',
+          dot: 'bg-amber-500',
+        },
+        low: {
+          badge: 'bg-gray-700/50 text-gray-300 border-gray-600/50',
+          dot: 'bg-gray-500',
+        },
+      };
+      return darkStyles[priority];
+    }
+    return priorityStyles[priority];
+  };
 
   const handleToggle = (index: number) => {
     if (!interactive) return;
@@ -91,11 +121,11 @@ export function InteractiveChecklist({
       {/* Header with progress */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className={`h-5 w-5 ${accentColor}`} />
-          <h4 className="text-lg font-semibold text-gray-900">
+          <CheckCircle2 className={`h-5 w-5 ${accentColor}`} style={colorTheme ? { color: colorTheme.primary } : undefined} />
+          <h4 className={`text-lg font-semibold ${isDarkTheme ? 'text-white' : 'text-gray-900'}`}>
             Action Items
           </h4>
-          <span className="text-sm text-gray-500">
+          <span className={`text-sm ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>
             ({completedCount}/{totalCount})
           </span>
         </div>
@@ -103,13 +133,13 @@ export function InteractiveChecklist({
         {/* Mini progress bar */}
         {interactive && (
           <div className="flex items-center gap-2">
-            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className={`w-24 h-2 rounded-full overflow-hidden ${isDarkTheme ? 'bg-gray-700' : 'bg-gray-200'}`}>
               <div
-                className={`h-full ${accentColor.replace('text-', 'bg-')} transition-all duration-300`}
-                style={{ width: `${progressPercent}%` }}
+                className={`h-full transition-all duration-300`}
+                style={{ width: `${progressPercent}%`, backgroundColor: colorTheme?.primary || undefined }}
               />
             </div>
-            <span className="text-xs font-medium text-gray-500">{progressPercent}%</span>
+            <span className={`text-xs font-medium ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>{progressPercent}%</span>
           </div>
         )}
       </div>
@@ -118,7 +148,7 @@ export function InteractiveChecklist({
       <div className="space-y-2">
         {items.map((item, idx) => {
           const priority = item.priority || 'medium';
-          const style = priorityStyles[priority];
+          const style = getPriorityStyle(priority);
           const isChecked = checkedItems.has(idx);
           const isExpanded = expandedItem === idx;
 
@@ -128,8 +158,8 @@ export function InteractiveChecklist({
               className={`
                 rounded-xl border-2 transition-all duration-200
                 ${isChecked
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-white border-gray-200 hover:border-gray-300'
+                  ? isDarkTheme ? 'bg-green-900/30 border-green-700/50' : 'bg-green-50 border-green-200'
+                  : isDarkTheme ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300'
                 }
               `}
             >
@@ -141,11 +171,11 @@ export function InteractiveChecklist({
                     onClick={() => handleToggle(idx)}
                     className={`
                       flex-shrink-0 mt-0.5 transition-all duration-200
-                      ${isChecked ? 'text-green-500' : 'text-gray-300 hover:text-gray-400'}
+                      ${isChecked ? 'text-green-500' : isDarkTheme ? 'text-gray-500 hover:text-gray-400' : 'text-gray-300 hover:text-gray-400'}
                     `}
                   >
                     {isChecked ? (
-                      <CheckCircle2 className="h-6 w-6 fill-green-100" />
+                      <CheckCircle2 className={`h-6 w-6 ${isDarkTheme ? 'fill-green-900/50' : 'fill-green-100'}`} />
                     ) : (
                       <Circle className="h-6 w-6" />
                     )}
@@ -158,7 +188,10 @@ export function InteractiveChecklist({
                 <div className="flex-1 min-w-0">
                   <p className={`
                     font-medium transition-all
-                    ${isChecked ? 'text-gray-500 line-through' : 'text-gray-900'}
+                    ${isChecked
+                      ? isDarkTheme ? 'text-gray-500 line-through' : 'text-gray-500 line-through'
+                      : isDarkTheme ? 'text-white' : 'text-gray-900'
+                    }
                   `}>
                     {item.task}
                   </p>
@@ -166,7 +199,7 @@ export function InteractiveChecklist({
                   {/* Meta info */}
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     {item.estimatedTime && (
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                      <span className={`inline-flex items-center gap-1 text-xs ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>
                         <Clock className="h-3 w-3" />
                         {item.estimatedTime}
                       </span>
@@ -183,7 +216,7 @@ export function InteractiveChecklist({
 
                   {/* Note (if exists) */}
                   {notes[idx] && (
-                    <div className="mt-2 p-2 bg-amber-50 rounded-lg text-sm text-amber-800 border border-amber-200">
+                    <div className={`mt-2 p-2 rounded-lg text-sm border ${isDarkTheme ? 'bg-amber-900/30 text-amber-300 border-amber-700/50' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
                       <span className="font-medium">Note:</span> {notes[idx]}
                     </div>
                   )}
@@ -193,12 +226,12 @@ export function InteractiveChecklist({
                 {interactive && (
                   <button
                     onClick={() => setExpandedItem(isExpanded ? null : idx)}
-                    className="flex-shrink-0 p-1.5 hover:bg-gray-100 rounded-lg transition"
+                    className={`flex-shrink-0 p-1.5 rounded-lg transition ${isDarkTheme ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                   >
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                      <ChevronUp className={`h-4 w-4 ${isDarkTheme ? 'text-gray-500' : 'text-gray-400'}`} />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                      <ChevronDown className={`h-4 w-4 ${isDarkTheme ? 'text-gray-500' : 'text-gray-400'}`} />
                     )}
                   </button>
                 )}
@@ -206,29 +239,29 @@ export function InteractiveChecklist({
 
               {/* Expanded actions */}
               {interactive && isExpanded && (
-                <div className="px-4 pb-4 pt-0 border-t border-gray-100">
+                <div className={`px-4 pb-4 pt-0 border-t ${isDarkTheme ? 'border-gray-700' : 'border-gray-100'}`}>
                   <div className="pt-3 space-y-3">
                     {/* Add note */}
                     <div>
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <label className={`text-xs font-medium uppercase tracking-wide ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>
                         Add a personal note
                       </label>
                       <textarea
                         value={notes[idx] || ''}
                         onChange={(e) => handleNoteChange(idx, e.target.value)}
                         placeholder="e.g., Call John at the bank on Monday..."
-                        className="mt-1 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none"
+                        className={`mt-1 w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none ${isDarkTheme ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500' : 'border-gray-200 text-gray-900'}`}
                         rows={2}
                       />
                     </div>
 
                     {/* Quick actions */}
                     <div className="flex gap-2">
-                      <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                      <button className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${isDarkTheme ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}>
                         <Bell className="h-3 w-3" />
                         Set Reminder
                       </button>
-                      <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                      <button className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${isDarkTheme ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}>
                         <MessageCircle className="h-3 w-3" />
                         Ask a Question
                       </button>
@@ -243,10 +276,10 @@ export function InteractiveChecklist({
 
       {/* Completion celebration */}
       {interactive && completedCount === totalCount && totalCount > 0 && (
-        <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 text-center">
+        <div className={`p-4 rounded-xl border-2 text-center ${isDarkTheme ? 'bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'}`}>
           <Sparkles className="h-6 w-6 text-green-500 mx-auto mb-2" />
-          <p className="font-semibold text-green-800">Phase Complete!</p>
-          <p className="text-sm text-green-600">Great job completing all action items</p>
+          <p className={`font-semibold ${isDarkTheme ? 'text-green-300' : 'text-green-800'}`}>Phase Complete!</p>
+          <p className={`text-sm ${isDarkTheme ? 'text-green-400' : 'text-green-600'}`}>Great job completing all action items</p>
         </div>
       )}
     </div>

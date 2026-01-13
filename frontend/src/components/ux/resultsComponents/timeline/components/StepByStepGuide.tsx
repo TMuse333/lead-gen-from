@@ -43,6 +43,8 @@ interface StepByStepGuideProps {
   };
   /** Custom color theme (overrides colors when provided) */
   colorTheme?: ColorTheme;
+  /** Use unified insight mode (1 story + 1 tip per phase) - default true */
+  unifiedInsightMode?: boolean;
 }
 
 /**
@@ -61,6 +63,7 @@ export function StepByStepGuide({
   interactive = true,
   userSituation,
   colorTheme,
+  unifiedInsightMode = true,
 }: StepByStepGuideProps) {
   // If colorTheme is provided, use it for inline styles
   const hasCustomTheme = !!colorTheme;
@@ -131,10 +134,16 @@ export function StepByStepGuide({
         {/* Title */}
         {title && (
           <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+            <h2
+              className={`text-3xl md:text-4xl font-bold ${hasCustomTheme ? '' : 'text-gray-900'}`}
+              style={hasCustomTheme ? { color: colorTheme.text } : undefined}
+            >
               {title}
             </h2>
-            <p className="mt-2 text-gray-600">
+            <p
+              className={`mt-2 ${hasCustomTheme ? '' : 'text-gray-600'}`}
+              style={hasCustomTheme ? { color: colorTheme.textSecondary } : undefined}
+            >
               {phases.length} steps to reach your goal
             </p>
           </div>
@@ -161,6 +170,7 @@ export function StepByStepGuide({
                 interactive={interactive}
                 userSituation={userSituation}
                 colorTheme={colorTheme}
+                unifiedInsightMode={unifiedInsightMode}
               />
             </div>
           ))}

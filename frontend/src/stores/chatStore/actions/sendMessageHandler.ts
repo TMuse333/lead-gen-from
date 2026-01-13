@@ -1,11 +1,14 @@
-// stores/chatStore/sendMessageHandler.ts - UNIFIED OFFER SYSTEM
+// stores/chatStore/sendMessageHandler.ts - MONGODB QUESTIONS
 import { ChatMessage, ChatState } from '../types';
 import {
-  getQuestion,
   getNextQuestion,
-  isComplete,
-  getProgress,
-} from '@/lib/offers/unified';
+  getQuestionById,
+  isFlowComplete,
+  calculateProgress,
+  convertButtons,
+  getBotQuestions,
+} from '@/lib/chat/questionProvider';
+import type { TimelineFlow } from '@/types/timelineBuilder.types';
 
 export function createSendMessageHandler(
   set: (partial: Partial<ChatState> | ((state: ChatState) => Partial<ChatState>)) => void,
@@ -18,7 +21,7 @@ export function createSendMessageHandler(
 
     if (!message.trim()) return;
 
-    const { selectedOffer, currentIntent, currentQuestionId } = state;
+    const { selectedOffer, currentIntent, currentQuestionId, flowQuestions } = state;
 
     // Validate state
     if (!selectedOffer || !currentIntent) {
@@ -38,9 +41,13 @@ export function createSendMessageHandler(
     try {
       console.log('📞 Calling /api/chat/smart...');
 
-      // Get current question from unified registry
+      // Get questions from store and filter to only those linked to phases
+      const allQuestions = flowQuestions[currentIntent as TimelineFlow] || [];
+      const questions = getBotQuestions(allQuestions);
+
+      // Get current question from stored questions
       const currentQuestion = currentQuestionId
-        ? getQuestion(selectedOffer, currentIntent, currentQuestionId)
+        ? getQuestionById(questions, currentQuestionId)
         : null;
 
       console.log('[SendMessage] Current question:', currentQuestion?.id);
@@ -87,13 +94,29 @@ export function createSendMessageHandler(
       const updatedState = get();
       console.log('📊 userInput after save:', updatedState.userInput);
 
-      // Check completion using unified system
-      const isNowComplete = isComplete(selectedOffer, currentIntent, updatedState.userInput);
+      // Check completion using stored questions
+      const isNowComplete = isFlowComplete(questions, updatedState.userInput);
       console.log('🎯 isNowComplete:', isNowComplete);
 
-      if (isNowComplete) {
-        console.log('🎉 FLOW COMPLETE!');
+      // Get next question from stored questions
+      const nextQuestion = currentQuestionId
+        ? getNextQuestion(questions, currentQuestionId)
+        : null;
+
+      // CRITICAL UX RULE: Contact modal MUST appear at the end of all questions
+      // Show contact modal when: flow is complete OR there's no next question
+      if (isNowComplete || !nextQuestion) {
+        console.log('🎉 FLOW COMPLETE! Showing contact modal for lead capture');
+        // Add a brief response before showing modal
+        const aiMsg: ChatMessage = {
+          role: 'assistant',
+          content: data.reply || 'Perfect! Let me get your contact info to send your personalized timeline.',
+          timestamp: new Date(),
+        };
+        set((s) => ({ messages: [...s.messages, aiMsg] }));
+
         set({
+          showContactModal: true,
           isComplete: true,
           shouldCelebrate: true,
           progress: 100,
@@ -101,61 +124,25 @@ export function createSendMessageHandler(
       } else {
         console.log('⏭️ Not complete, continuing...');
 
-        // Get next question from unified registry
-        const nextQuestion = currentQuestionId
-          ? getNextQuestion(selectedOffer, currentIntent, currentQuestionId)
-          : null;
+        // Add AI response with buttons if available
+        const aiMsg: ChatMessage = {
+          role: 'assistant',
+          content: data.reply || 'Got it!',
+          buttons: convertButtons(nextQuestion),
+          timestamp: new Date(),
+        };
+        set((s) => ({ messages: [...s.messages, aiMsg] }));
 
-        // Check if next question should trigger contact modal
-        if (nextQuestion?.triggersContactModal) {
-          console.log('📧 Next question triggers contact modal:', nextQuestion.id);
-          // Add a brief response before showing modal
-          const aiMsg: ChatMessage = {
-            role: 'assistant',
-            content: data.reply || 'Got it!',
-            timestamp: new Date(),
-          };
-          set((s) => ({ messages: [...s.messages, aiMsg] }));
+        // Update progress
+        const answeredKeys = new Set(Object.keys(updatedState.userInput));
+        const newProgress = calculateProgress(questions, answeredKeys);
+        set({ progress: newProgress });
 
-          set({
-            showContactModal: true,
-            currentQuestionId: nextQuestion.id,
-            currentNodeId: nextQuestion.id,
-          });
-          // Update progress
-          const newProgress = getProgress(selectedOffer, currentIntent, updatedState.userInput);
-          set({ progress: newProgress });
-        } else {
-          // Add AI response with buttons if available
-          const aiMsg: ChatMessage = {
-            role: 'assistant',
-            content: data.reply || 'Got it!',
-            buttons: nextQuestion?.buttons?.map(b => ({
-              id: b.id,
-              label: b.label,
-              value: b.value,
-            })) || data.nextQuestion?.buttons || [],
-            timestamp: new Date(),
-          };
-          set((s) => ({ messages: [...s.messages, aiMsg] }));
-
-          // Update progress
-          const newProgress = getProgress(selectedOffer, currentIntent, updatedState.userInput);
-          set({ progress: newProgress });
-
-          // Update current question
-          if (nextQuestion) {
-            set({
-              currentQuestionId: nextQuestion.id,
-              currentNodeId: nextQuestion.id, // Legacy
-            });
-          } else if (data.nextQuestion) {
-            set({
-              currentQuestionId: data.nextQuestion.id,
-              currentNodeId: data.nextQuestion.id, // Legacy
-            });
-          }
-        }
+        // Update current question
+        set({
+          currentQuestionId: nextQuestion.id,
+          currentNodeId: nextQuestion.id, // Legacy
+        });
       }
 
     } catch (error) {

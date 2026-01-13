@@ -20,6 +20,8 @@ interface ClientConfig {
   conversationFlows: Record<string, any>;
   colorConfig?: any; // ColorTheme
   qdrantCollectionName: string;
+  agentProfile?: any;
+  endingCTA?: any;
   isActive: boolean;
   onboardingCompletedAt: string;
   createdAt: string;

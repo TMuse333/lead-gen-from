@@ -23,7 +23,7 @@ const PRIORITY_COLORS = {
   low: '#22c55e',
 };
 
-export async function generateTimelinePDF(data: TimelineOutput): Promise<void> {
+export async function generateTimelinePDF(data: TimelineOutput, endingCTA?: { headshot?: string; displayName?: string; title?: string }): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -66,16 +66,101 @@ export async function generateTimelinePDF(data: TimelineOutput): Promise<void> {
     return lines.length * lineHeight;
   };
 
-  // ==================== HEADER ====================
-  // Title
+  // Helper to load and add image (only works in browser environment)
+  const addImageIfAvailable = async (imageUrl: string | undefined, x: number, y: number, width: number, height: number): Promise<boolean> => {
+    if (!imageUrl || typeof window === 'undefined' || typeof document === 'undefined') {
+      return false;
+    }
+    
+    try {
+      // Convert image URL to data URL (this works for same-origin images)
+      // For cross-origin images, you'd need a proxy or CORS-enabled server
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          resolve(false);
+        }, 5000); // 5 second timeout
+        
+        img.onload = () => {
+          clearTimeout(timeout);
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const dataUrl = canvas.toDataURL('image/png');
+              doc.addImage(dataUrl, 'PNG', x, y, width, height);
+              resolve(true);
+            } else {
+              resolve(false);
+            }
+          } catch (err) {
+            console.warn('Failed to add image to PDF:', err);
+            resolve(false);
+          }
+        };
+        img.onerror = () => {
+          clearTimeout(timeout);
+          resolve(false);
+        };
+        img.src = imageUrl;
+      });
+    } catch (err) {
+      console.warn('Failed to load image for PDF:', err);
+      return false;
+    }
+  };
+
+  // ==================== HEADER WITH HEADSHOT ====================
+  // Agent headshot (if available) - positioned on the right side
+  const headshotUrl = endingCTA?.headshot || data.agentInfo?.photo;
+  const headshotSize = 20; // 20mm diameter
+  const headshotX = pageWidth - margin - headshotSize;
+  const headshotY = yPosition;
+  
+  if (headshotUrl && typeof window !== 'undefined') {
+    // Only try to add image in browser environment
+    const imageAdded = await addImageIfAvailable(headshotUrl, headshotX, headshotY, headshotSize, headshotSize);
+    if (imageAdded) {
+      // Draw circle border around headshot
+      doc.setDrawColor(COLORS.primary);
+      doc.setLineWidth(0.5);
+      doc.circle(headshotX + headshotSize / 2, headshotY + headshotSize / 2, headshotSize / 2, 'D');
+    }
+  }
+
+  // Title (left side, with space for headshot)
+  const titleWidth = headshotUrl ? contentWidth - headshotSize - 5 : contentWidth;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(24);
   doc.setTextColor(COLORS.primary);
-  const titleLines = doc.splitTextToSize(data.title, contentWidth);
+  const titleLines = doc.splitTextToSize(data.title, titleWidth);
   titleLines.forEach((line: string, index: number) => {
     doc.text(line, margin, yPosition + index * 10);
   });
-  yPosition += titleLines.length * 10 + 5;
+  yPosition += Math.max(titleLines.length * 10, headshotSize) + 5;
+  
+  // Agent name and title below headshot (if headshot was added)
+  if (headshotUrl && (endingCTA?.displayName || data.agentInfo?.name)) {
+    const agentName = endingCTA?.displayName || data.agentInfo?.name || '';
+    const agentTitle = endingCTA?.title || '';
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(COLORS.text);
+    doc.text(agentName, headshotX, yPosition, { align: 'right', maxWidth: headshotSize + 5 });
+    
+    if (agentTitle) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(COLORS.lightText);
+      doc.text(agentTitle, headshotX, yPosition + 5, { align: 'right', maxWidth: headshotSize + 5 });
+    }
+  }
 
   // Subtitle
   if (data.subtitle) {
@@ -255,6 +340,64 @@ export async function generateTimelinePDF(data: TimelineOutput): Promise<void> {
       doc.text(line, margin + 4, yPosition + 10 + index * 3.5);
     });
     yPosition += 24;
+  }
+
+  // ==================== AGENT INFO FOOTER ====================
+  if (headshotUrl || endingCTA?.displayName || data.agentInfo?.name) {
+    checkPageBreak(30);
+    
+    // Footer section with agent info
+    doc.setFillColor(COLORS.background);
+    doc.roundedRect(margin, yPosition, contentWidth, 25, 2, 2, 'F');
+    
+    const footerHeadshotSize = 18; // 18mm diameter
+    const footerHeadshotX = margin + 5;
+    const footerHeadshotY = yPosition + 3.5;
+    
+    if (headshotUrl && typeof window !== 'undefined') {
+      await addImageIfAvailable(headshotUrl, footerHeadshotX, footerHeadshotY, footerHeadshotSize, footerHeadshotSize);
+      // Draw circle border
+      doc.setDrawColor(COLORS.primary);
+      doc.setLineWidth(0.5);
+      doc.circle(footerHeadshotX + footerHeadshotSize / 2, footerHeadshotY + footerHeadshotSize / 2, footerHeadshotSize / 2, 'D');
+    }
+    
+    // Agent info text
+    const textStartX = margin + 5 + footerHeadshotSize + 5;
+    const textWidth = contentWidth - footerHeadshotSize - 15;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(COLORS.text);
+    const agentName = endingCTA?.displayName || data.agentInfo?.name || 'Your Agent';
+    doc.text(agentName, textStartX, yPosition + 8);
+    
+    if (endingCTA?.title || data.agentInfo?.company) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(COLORS.lightText);
+      const title = endingCTA?.title || data.agentInfo?.company || '';
+      doc.text(title, textStartX, yPosition + 12);
+    }
+    
+    // Contact info
+    if (endingCTA?.email || data.agentInfo?.email) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(COLORS.primary);
+      const email = endingCTA?.email || data.agentInfo?.email || '';
+      doc.text(email, textStartX, yPosition + 17);
+    }
+    
+    if (endingCTA?.phone || data.agentInfo?.phone) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(COLORS.primary);
+      const phone = endingCTA?.phone || data.agentInfo?.phone || '';
+      doc.text(phone, textStartX, yPosition + 21);
+    }
+    
+    yPosition += 30;
   }
 
   // ==================== FOOTER ====================

@@ -198,8 +198,8 @@ export function hasPlacementForLocation(
 }
 
 /**
- * Agent Advice Scenario interface
- * Represents an advice item retrieved from Qdrant
+ * Agent Advice Scenario interface (Tips/Advice)
+ * Represents a tip/advice item retrieved from Qdrant
  */
 export interface AgentAdviceScenario {
   id: string;
@@ -208,7 +208,7 @@ export interface AgentAdviceScenario {
   advice: string;
   tags: string[];
   type?: AdviceType; // Optional advice type
-  kind?: KnowledgeKind; // tip or story
+  kind?: KnowledgeKind; // tip or story (legacy - new stories use Story interface)
   applicableWhen?: {
     flow?: string[];
     /** Which offer types this advice applies to (empty = all offers) */
@@ -222,6 +222,68 @@ export interface AgentAdviceScenario {
   createdAt: Date;
   updatedAt?: Date;
   usageCount?: number;
+}
+
+// ==================== STORY TYPES (SEPARATED) ====================
+
+/**
+ * Story - Client success story with structured narrative
+ * Separated from tips/advice for cleaner data model
+ */
+export interface Story {
+  id: string;
+  agentId: string;
+  title: string;
+  /** Part 1: What was the client's situation/problem? */
+  situation: string;
+  /** Part 2: What did the agent do to help? */
+  action: string;
+  /** Part 3: What was the result/outcome? */
+  outcome: string;
+  /** Tags for categorization and matching */
+  tags: string[];
+  /** Which timeline phases this story should appear in */
+  placements?: AdvicePlacements;
+  /** Which flows this story applies to (buy/sell/browse) */
+  flows?: string[];
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Input for creating a new story
+ */
+export interface CreateStoryInput {
+  title: string;
+  situation: string;
+  action: string;
+  outcome: string;
+  tags?: string[];
+  placements?: AdvicePlacements;
+  flows?: string[];
+}
+
+/**
+ * Input for updating an existing story
+ */
+export interface UpdateStoryInput extends Partial<CreateStoryInput> {
+  id: string;
+}
+
+/**
+ * Story matched to a user's situation for display
+ */
+export interface MatchedStory {
+  id: string;
+  title: string;
+  situation: string;
+  action: string;
+  outcome: string;
+  tags?: string[];
+  matchReasons: string[];
+  clientType?: string;
+  location?: string;
+  budget?: string;
 }
 
 // ==================== STATIC STORY MAPPING TYPES ====================

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, MessageSquare, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { MessageBubble } from './messageBubble';
+import ChatExperienceSvg from './ChatExperienceSvg';
 import { DEFAULT_THEME } from '@/lib/colors/defaultTheme';
 import { injectColorTheme } from '@/lib/colors/colorUtils';
 import { determineTextColorForGradient } from '@/lib/colors/contrastUtils';
@@ -42,6 +43,7 @@ interface GameChatProps {
   toggleChat: () => void;
   closeChat: () => void;
   businessName?: string;
+  isContactModalOpen?: boolean;
 }
 
 export function GameChat({
@@ -60,11 +62,32 @@ export function GameChat({
   toggleChat,
   closeChat,
   businessName = 'AI Assistant',
+  isContactModalOpen = false,
 }: GameChatProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevCompletedRef = useRef(0);
   const [showImportantModal, setShowImportantModal] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Check if we're expecting text input (last assistant message has no buttons)
+  // Don't flash input when contact modal is open
+  const lastMessage = messages[messages.length - 1];
+  const expectsTextInput = lastMessage?.role === 'assistant' &&
+    (!lastMessage.buttons || lastMessage.buttons.length === 0) &&
+    !loading &&
+    !isContactModalOpen;
+
+  // Auto-focus input when expecting text response
+  useEffect(() => {
+    if (expectsTextInput && inputRef.current && !showImportantModal) {
+      // Small delay to ensure animation starts first
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [expectsTextInput, showImportantModal]);
 
   // Get current question from unified offer system
   const enabledOffers = useChatStore(selectEnabledOffers);
@@ -207,6 +230,18 @@ export function GameChat({
         <div className="flex-1 flex flex-col h-full">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-thumb-cyan-600/30">
+            {/* AI Chat Experience Header - shows only at start */}
+            {messages.length <= 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col items-center pb-4 mb-2 border-b border-cyan-500/20"
+              >
+                <ChatExperienceSvg width={280} height={100} />
+              </motion.div>
+            )}
+
             {messages.map((msg, i) => (
               <div key={`${msg.timestamp?.getTime()}-${i}`} className="space-y-4">
                 <MessageBubble role={msg.role} content={msg.content} index={i} />
@@ -305,25 +340,49 @@ export function GameChat({
               </div>
             ) : (
               <div className="flex gap-3">
-                <input
+                <motion.input
+                  ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !loading && handleSend()}
-                  placeholder="Type your message..."
-                  className="flex-1 px-5 py-3 border rounded-full focus:outline-none focus:ring-2 transition-all"
+                  placeholder={expectsTextInput ? "Type your answer here..." : "Type your message..."}
+                  className="flex-1 px-5 py-3 border-2 rounded-full focus:outline-none transition-all"
                   style={{
                     backgroundColor: 'rgba(var(--color-surface-rgb), 0.8)',
-                    borderColor: 'rgba(var(--color-primary-rgb), 0.5)',
                     color: 'var(--color-text)',
+                  }}
+                  animate={expectsTextInput ? {
+                    borderColor: [
+                      'rgba(var(--color-primary-rgb), 0.4)',
+                      'var(--color-primary)',
+                      'rgba(var(--color-primary-rgb), 0.4)',
+                    ],
+                    boxShadow: [
+                      '0 0 5px rgba(var(--color-primary-rgb), 0.2), 0 0 10px rgba(var(--color-primary-rgb), 0.1)',
+                      '0 0 15px rgba(var(--color-primary-rgb), 0.5), 0 0 30px rgba(var(--color-primary-rgb), 0.3), 0 0 45px rgba(var(--color-primary-rgb), 0.15)',
+                      '0 0 5px rgba(var(--color-primary-rgb), 0.2), 0 0 10px rgba(var(--color-primary-rgb), 0.1)',
+                    ],
+                  } : {
+                    borderColor: 'rgba(var(--color-primary-rgb), 0.5)',
+                    boxShadow: '0 0 0 0 rgba(var(--color-primary-rgb), 0)',
+                  }}
+                  transition={expectsTextInput ? {
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  } : {
+                    duration: 0.2,
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = 'var(--color-primary)';
-                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(var(--color-primary-rgb), 0.3)';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--color-primary-rgb), 0.3)';
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(var(--color-primary-rgb), 0.5)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    if (!expectsTextInput) {
+                      e.currentTarget.style.borderColor = 'rgba(var(--color-primary-rgb), 0.5)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
                   }}
                   disabled={loading || !!(shouldShowModal && showImportantModal)}
                 />

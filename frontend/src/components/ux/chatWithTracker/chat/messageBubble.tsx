@@ -11,6 +11,77 @@ interface MessageBubbleProps {
   index: number;
 }
 
+/**
+ * Simple markdown renderer for chat messages
+ * Supports: **bold**, bullet points (• and -), line breaks
+ */
+function renderMarkdown(content: string, isUser: boolean): React.ReactNode {
+  const lines = content.split('\n');
+
+  return lines.map((line, lineIndex) => {
+    // Process bold text (**text**)
+    const processLine = (text: string): React.ReactNode[] => {
+      const parts: React.ReactNode[] = [];
+      let remaining = text;
+      let keyIndex = 0;
+
+      while (remaining.length > 0) {
+        const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+
+        if (boldMatch && boldMatch.index !== undefined) {
+          // Add text before bold
+          if (boldMatch.index > 0) {
+            parts.push(remaining.slice(0, boldMatch.index));
+          }
+          // Add bold text
+          parts.push(
+            <strong key={`bold-${lineIndex}-${keyIndex++}`} className="font-semibold">
+              {boldMatch[1]}
+            </strong>
+          );
+          remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
+        } else {
+          parts.push(remaining);
+          break;
+        }
+      }
+
+      return parts;
+    };
+
+    // Check if line is a bullet point
+    const bulletMatch = line.match(/^(\s*)(•|-)\s+(.*)$/);
+
+    if (bulletMatch) {
+      const [, indent, , bulletContent] = bulletMatch;
+      const indentLevel = Math.floor(indent.length / 2);
+
+      return (
+        <div
+          key={lineIndex}
+          className="flex items-start gap-2"
+          style={{ paddingLeft: `${indentLevel * 16}px` }}
+        >
+          <span className={`flex-shrink-0 mt-1 ${isUser ? 'opacity-90' : 'text-cyan-500'}`}>•</span>
+          <span>{processLine(bulletContent)}</span>
+        </div>
+      );
+    }
+
+    // Empty line becomes spacing
+    if (line.trim() === '') {
+      return <div key={lineIndex} className="h-2" />;
+    }
+
+    // Regular line
+    return (
+      <div key={lineIndex}>
+        {processLine(line)}
+      </div>
+    );
+  });
+}
+
 export function MessageBubble({ role, content, index }: MessageBubbleProps) {
   const isUser = role === 'user';
   
@@ -83,7 +154,9 @@ export function MessageBubble({ role, content, index }: MessageBubbleProps) {
           />
         )}
 
-        <p className="text-sm leading-relaxed relative z-10">{content}</p>
+        <div className="text-sm leading-relaxed relative z-10 space-y-1">
+          {renderMarkdown(content, isUser)}
+        </div>
 
         {/* Sparkle for assistant */}
         {!isUser && (

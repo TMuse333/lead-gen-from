@@ -4,18 +4,16 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import Step1BusinessSetup from "@/components/onboarding/steps/step1BusinessSetup";
-import Step2Offers from "@/components/onboarding/steps/step2Offers";
-// Step3ConversationFlow removed - offers now dictate questions via intent system
-import Step3KnowledgeBase from "@/components/onboarding/steps/step4KnowledgeBase";
-import Step4ColorConfig from "@/components/onboarding/steps/step5ColorConfig";
-import Step5Complete from "@/components/onboarding/steps/step5Complete";
+import Step1BasicInfo from "@/components/onboarding/steps/step1BasicInfo";
+import Step2Complete from "@/components/onboarding/steps/step2Complete";
+import WelcomeScreen from "@/components/onboarding/WelcomeScreen";
 import { useOnboardingStore } from "@/stores/onboardingStore/onboarding.store";
 import ResumeModal from "@/components/onboarding/ResumeModal";
 import { detectIncompleteOnboarding, getOnboardingProgressSummary } from "@/lib/onboarding/detectIncomplete";
 
-// Total steps reduced from 6 to 5 (removed conversation flow configuration)
-const TOTAL_STEPS = 5;
+// Ultra-simplified onboarding: 2 steps (Basic Info, Complete)
+// Step 0 = Welcome screen (not counted in progress)
+const TOTAL_STEPS = 2;
 
 export default function OnboardingPage() {
   const { data: session, status } = useSession();
@@ -35,7 +33,7 @@ export default function OnboardingPage() {
       const stepParam = urlParams.get('step');
       if (stepParam) {
         const stepNum = parseInt(stepParam, 10);
-        if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= TOTAL_STEPS) {
+        if (!isNaN(stepNum) && stepNum >= 0 && stepNum <= TOTAL_STEPS) {
           console.log('🟢 [OnboardingPage] Setting step from URL param:', stepNum);
           setCurrentStep(stepNum);
         }
@@ -121,7 +119,12 @@ export default function OnboardingPage() {
     }
     setShowResumeModal(false);
     setIncompleteData(null);
-    useOnboardingStore.getState().setCurrentStep(1);
+    useOnboardingStore.getState().setCurrentStep(0); // Go to welcome screen
+  };
+
+  // Handle starting onboarding from welcome screen
+  const handleStartOnboarding = () => {
+    setCurrentStep(1);
   };
 
   // Show loading while checking auth or onboarding status
@@ -156,31 +159,31 @@ export default function OnboardingPage() {
 
       <div className="min-h-screen bg-gradient-to-br from-[#0a1525] via-[#0f1b2e] to-[#0a1525]">
         <div className="max-w-4xl mx-auto px-4 py-12">
-          {/* Progress Indicator */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-cyan-200">
-                Step {currentStep} of {TOTAL_STEPS}
-              </span>
-              <span className="text-sm text-cyan-200/70">
-                {Math.round((currentStep / TOTAL_STEPS) * 100)}% Complete
-              </span>
+          {/* Progress Indicator - Hidden on welcome screen */}
+          {currentStep > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-cyan-200">
+                  Step {currentStep} of {TOTAL_STEPS}
+                </span>
+                <span className="text-sm text-cyan-200/70">
+                  {Math.round((currentStep / TOTAL_STEPS) * 100)}% Complete
+                </span>
+              </div>
+              <div className="w-full bg-slate-700/50 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-slate-700/50 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
-              />
-            </div>
-          </div>
+          )}
 
-          {/* Step Content - Simplified flow (no conversation configuration) */}
+          {/* Step Content */}
           <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-8 shadow-2xl">
-            {currentStep === 1 && <Step1BusinessSetup />}
-            {currentStep === 2 && <Step2Offers />}
-            {currentStep === 3 && <Step3KnowledgeBase />}
-            {currentStep === 4 && <Step4ColorConfig />}
-            {currentStep === 5 && <Step5Complete />}
+            {currentStep === 0 && <WelcomeScreen onStart={handleStartOnboarding} />}
+            {currentStep === 1 && <Step1BasicInfo />}
+            {currentStep === 2 && <Step2Complete />}
           </div>
         </div>
       </div>

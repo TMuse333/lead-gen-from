@@ -25,6 +25,7 @@ import { getQuestionCount, getQuestion, type OfferType } from '@/lib/offers/unif
 import { ContactCollectionModal, ContactRetriggerButton, type ContactData } from './modals/ContactCollectionModal';
 import { GenerationLoadingOverlay, GENERATION_STEPS } from './components/GenerationLoadingOverlay';
 import { useClientSideTimeline } from '@/hooks/offers/useClientSideTimeline';
+import { DynamicInsights } from './tracker/DynamicInsights';
 
 // Analytics tracking for contact collection
 interface ContactAnalytics {
@@ -45,6 +46,8 @@ interface ClientConfig {
   conversationFlows: Record<string, any>;
   colorConfig?: any; // ColorTheme
   qdrantCollectionName: string;
+  agentProfile?: any;
+  endingCTA?: any;
   isActive: boolean;
   onboardingCompletedAt: string;
   createdAt: string;
@@ -82,12 +85,17 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   const storeShowContactModal = useChatStore(selectShowContactModal);
   const setStoreShowContactModal = useChatStore((s) => s.setShowContactModal);
 
+  // Flow questions and current question for insights
+  const flowQuestions = useChatStore((s) => s.flowQuestions);
+  const currentQuestionId = useChatStore((s) => s.currentQuestionId);
+
   // Local state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [hasSkippedContact, setHasSkippedContact] = useState(false);
-  const [contactMessageSent, setContactMessageSent] = useState(false);
+  const [lastAnswer, setLastAnswer] = useState<{ key: string; value: string } | null>(null);
+  const prevUserInputRef = useRef<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState<string>('config');
   const [generationPercent, setGenerationPercent] = useState<number>(0);
@@ -124,9 +132,19 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
       const theme = getTheme(clientConfig.colorConfig);
       injectColorTheme(theme);
 
-      // Store color theme for results page
-      if (typeof window !== 'undefined' && clientConfig.colorConfig) {
-        localStorage.setItem('colorThemeCache', JSON.stringify(clientConfig.colorConfig));
+      // Store color theme for results page (always save the computed theme)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('colorThemeCache', JSON.stringify(theme));
+
+        // Store endingCTA config for results page
+        if (clientConfig.endingCTA) {
+          localStorage.setItem('endingCTACache', JSON.stringify(clientConfig.endingCTA));
+        }
+
+        // Store agentProfile for results page
+        if (clientConfig.agentProfile) {
+          localStorage.setItem('agentProfileCache', JSON.stringify(clientConfig.agentProfile));
+        }
       }
 
       clientConfigLoadedRef.current = true;
@@ -156,33 +174,47 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
   const completedSteps = Object.keys(userInput).length;
   const currentStep = completedSteps < totalSteps ? completedSteps : totalSteps - 1;
 
-  // Add a bot message asking for contact info
-  const addContactRequestMessage = useCallback(() => {
-    if (contactMessageSent) return;
+  // Get custom questions for current intent (from MongoDB)
+  const customQuestions = currentIntent
+    ? flowQuestions[currentIntent as 'buy' | 'sell' | 'browse'] || []
+    : [];
 
-    const { addMessage } = useChatStore.getState();
-    addMessage({
-      role: 'assistant',
-      content: "Great job answering all the questions! 🎉 Before I generate your personalized results, I just need a few quick details so we can connect you with the right expert.",
-      timestamp: new Date(),
-    });
-    setContactMessageSent(true);
-  }, [contactMessageSent]);
+  // Calculate total questions from MongoDB or fallback to static
+  const totalQuestions = customQuestions.length > 0
+    ? customQuestions.filter(q => q.mappingKey).length
+    : totalSteps;
+
+  // Get current phase ID from current question
+  const currentPhaseId = currentQuestionId
+    ? customQuestions.find(q => q.id === currentQuestionId)?.linkedPhaseId
+    : undefined;
+
+  // Track last answer for DynamicInsights
+  useEffect(() => {
+    const prevInput = prevUserInputRef.current;
+    const currentKeys = Object.keys(userInput);
+    const prevKeys = Object.keys(prevInput);
+
+    // Find the new key that was added
+    const newKey = currentKeys.find(k => !prevKeys.includes(k) || prevInput[k] !== userInput[k]);
+
+    if (newKey && userInput[newKey]) {
+      setLastAnswer({ key: newKey, value: userInput[newKey] });
+    }
+
+    prevUserInputRef.current = { ...userInput };
+  }, [userInput]);
 
   // Watch for store's showContactModal flag (triggered when reaching a question with triggersContactModal)
   // This is the NEW flow - modal shows BEFORE isComplete, when the email question is reached
   useEffect(() => {
     if (storeShowContactModal && !showContactModal && !hasSkippedContact) {
-      // Add the bot message first
-      addContactRequestMessage();
-      // Small delay to let message render, then show modal
-      setTimeout(() => {
-        setShowContactModal(true);
-        // Track analytics - first attempt
-        contactAnalyticsRef.current.firstAttemptShown = true;
-      }, 500);
+      // Show modal directly without adding a chat message
+      setShowContactModal(true);
+      // Track analytics - first attempt
+      contactAnalyticsRef.current.firstAttemptShown = true;
     }
-  }, [storeShowContactModal, showContactModal, hasSkippedContact, addContactRequestMessage]);
+  }, [storeShowContactModal, showContactModal, hasSkippedContact]);
 
   // Show contact modal when chat is complete
   // Use intent (new system) with flow as fallback (legacy)
@@ -224,16 +256,12 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
         phone: userInput.contactPhone || '',
       });
     } else {
-      // Add the bot message first
-      addContactRequestMessage();
-      // Small delay to let message render, then show modal
-      setTimeout(() => {
-        setShowContactModal(true);
-        // Track analytics - first attempt
-        contactAnalyticsRef.current.firstAttemptShown = true;
-      }, 800);
+      // Show modal directly without adding a chat message
+      setShowContactModal(true);
+      // Track analytics - first attempt
+      contactAnalyticsRef.current.firstAttemptShown = true;
     }
-  }, [isComplete, currentIntent, currentFlow, effectiveIntent, selectedOffer, userInput, isGenerating, showContactModal, hasSkippedContact, addContactRequestMessage]);
+  }, [isComplete, currentIntent, currentFlow, effectiveIntent, selectedOffer, userInput, isGenerating, showContactModal, hasSkippedContact]);
 
   // Handle contact submission from modal
   const handleContactSubmit = useCallback((contact: ContactData) => {
@@ -249,7 +277,7 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
     }
 
     // Add contact info to userInput using addAnswer for each field
-    const { addAnswer, setComplete } = useChatStore.getState();
+    const { addAnswer, setComplete, userInput: currentUserInput, conversationId: currentConversationId } = useChatStore.getState();
     addAnswer('contactName', contact.name);
     addAnswer('contactEmail', contact.email);
     if (contact.phone) {
@@ -261,8 +289,31 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
     // Mark as complete since contact was the final step
     setComplete(true);
 
+    // Send email notification to agent/owner (fire and forget - don't block generation)
+    const clientId = clientConfig?.qdrantCollectionName || clientConfig?.businessName;
+    if (clientId) {
+      fetch('/api/notify-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          lead: {
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+          },
+          userInput: currentUserInput,
+          flow: currentIntent || currentFlow,
+          conversationId: currentConversationId,
+        }),
+      }).catch((err) => {
+        // Log but don't fail - email notification is non-critical
+        console.error('Failed to send lead notification:', err);
+      });
+    }
+
     startGeneration(contact);
-  }, [setStoreShowContactModal]);
+  }, [setStoreShowContactModal, clientConfig, currentIntent, currentFlow]);
 
   // Handle skip from contact modal
   const handleContactSkip = useCallback(() => {
@@ -539,6 +590,7 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
               toggleChat={toggleChat}
               closeChat={closeChat}
               businessName={businessName}
+              isContactModalOpen={showContactModal}
             />
           </div>
 
@@ -570,6 +622,20 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
                   {progress}%
                 </span>
               </div>
+            </div>
+
+            {/* Dynamic Insights - Story counts, milestones, encouragements */}
+            <div className="px-4 pt-4">
+              <DynamicInsights
+                clientId={clientConfig?.businessName || null}
+                currentIntent={currentIntent}
+                progress={progress}
+                answeredCount={Object.keys(userInput).length}
+                totalQuestions={totalQuestions}
+                lastAnswerKey={lastAnswer?.key}
+                lastAnswerValue={lastAnswer?.value}
+                currentPhaseId={currentPhaseId}
+              />
             </div>
 
             {/* Collected Info */}

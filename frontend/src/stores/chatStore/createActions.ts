@@ -1,10 +1,11 @@
-// stores/chatStore/createActions.ts - UNIFIED OFFER SYSTEM
+// stores/chatStore/createActions.ts - MONGODB QUESTIONS (NO FALLBACKS)
 import { ChatMessage, ChatStateActions, ChatState, Intent, OfferType } from './types';
 import { LlmOutput } from '@/types/componentSchema';
 import { GenerationDebugInfo } from './types';
 import { createButtonClickHandler } from './actions/buttonClickHandler';
 import { createSendMessageHandler } from './actions/sendMessageHandler';
-import { getQuestionCount } from '@/lib/offers/unified';
+import { fetchQuestionsForFlow } from '@/lib/chat/questionProvider';
+import type { TimelineFlow, CustomQuestion } from '@/types/timelineBuilder.types';
 
 export function createActions(
   set: (partial: Partial<ChatState> | ((state: ChatState) => Partial<ChatState>)) => void,
@@ -65,15 +66,38 @@ export function createActions(
         const newSkippedFields = new Set(state.skippedFields);
         newSkippedFields.delete(key);
 
-        // Calculate progress using unified offer system
-        let totalQuestions = 6; // Default fallback
-        if (state.selectedOffer && state.currentIntent) {
-          totalQuestions = getQuestionCount(state.selectedOffer, state.currentIntent);
+        // Calculate progress using questions from MongoDB (single source of truth)
+        let totalQuestions = 1; // Minimum to avoid division by zero
+        let validMappingKeys: Set<string> = new Set();
+
+        if (state.currentIntent) {
+          // Use questions loaded from MongoDB - NO FALLBACK to hardcoded
+          const customQuestions = state.flowQuestions[state.currentIntent as TimelineFlow];
+          if (customQuestions && customQuestions.length > 0) {
+            // Get all valid mappingKeys from questions (use id as fallback)
+            validMappingKeys = new Set(
+              customQuestions.map(q => q.mappingKey || q.id).filter(Boolean) as string[]
+            );
+            totalQuestions = validMappingKeys.size || 1;
+          } else {
+            // Questions not loaded yet - keep progress at 0 until they load
+            console.warn('[ChatStore] Questions not loaded from MongoDB yet');
+          }
         }
 
-        const progress = Math.round(
-          (Object.keys(newUserInput).length / totalQuestions) * 100
-        );
+        // Count only answers that match actual question mappingKeys
+        // Exclude metadata like 'intent', 'flow', 'contactName', 'contactEmail', etc.
+        const metadataKeys = new Set(['intent', 'flow', 'contactName', 'contactEmail', 'contactPhone', 'email']);
+        const answeredCount = Object.keys(newUserInput).filter(k => {
+          // If we have valid mappingKeys from MongoDB, only count those
+          if (validMappingKeys.size > 0) {
+            return validMappingKeys.has(k);
+          }
+          // Otherwise, exclude known metadata keys
+          return !metadataKeys.has(k);
+        }).length;
+
+        const progress = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
 
         console.log(`[ChatStore] Answer added → ${key}: "${value}"`);
         console.log(`[ChatStore] Progress: ${progress}%`);
@@ -257,6 +281,46 @@ export function createActions(
     },
 
     clearLlmOutput: () => set({ llmOutput: null, debugInfo: null }),
+
+    // ==================== QUESTION ACTIONS ====================
+    loadQuestionsForFlow: async (flow: TimelineFlow, clientId?: string) => {
+      try {
+        const questions = await fetchQuestionsForFlow(flow, clientId);
+        set((state) => ({
+          flowQuestions: {
+            ...state.flowQuestions,
+            [flow]: questions,
+          },
+        }));
+        console.log(`[ChatStore] Loaded ${questions.length} questions for ${flow} flow`);
+      } catch (error) {
+        console.error(`[ChatStore] Failed to load questions for ${flow}:`, error);
+      }
+    },
+
+    loadAllQuestions: async (clientId?: string) => {
+      const flows: TimelineFlow[] = ['buy', 'sell', 'browse'];
+      await Promise.all(
+        flows.map(flow => fetchQuestionsForFlow(flow, clientId))
+      ).then((results) => {
+        const flowQuestions: Partial<Record<TimelineFlow, CustomQuestion[]>> = {};
+        flows.forEach((flow, i) => {
+          flowQuestions[flow] = results[i];
+        });
+        set({ flowQuestions, questionsLoaded: true });
+        console.log('[ChatStore] All questions loaded');
+      }).catch((error) => {
+        console.error('[ChatStore] Failed to load questions:', error);
+        set({ questionsLoaded: true }); // Mark as loaded even on error to prevent infinite loops
+      });
+    },
+
+    getQuestionsForCurrentIntent: () => {
+      const state = get();
+      const intent = state.currentIntent as TimelineFlow | null;
+      if (!intent) return [];
+      return state.flowQuestions[intent] || [];
+    },
 
     // ==================== RESET ====================
     reset: async () => {

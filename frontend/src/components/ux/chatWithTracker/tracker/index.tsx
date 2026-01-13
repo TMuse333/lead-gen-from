@@ -19,12 +19,14 @@ const selectCurrentInsight = (state: ChatState) => state.currentInsight || '';
 const selectDbActivity = (state: ChatState) => state.dbActivity || '';
 const selectSelectedOffer = (state: ChatState) => state.selectedOffer;
 const selectCurrentIntent = (state: ChatState) => state.currentIntent;
+const selectFlowQuestions = (state: ChatState) => state.flowQuestions;
 
 export default function AnalysisTracker() {
   const userInput = useChatStore(selectUserInput);
   const progress = useChatStore(selectProgress);
   const selectedOffer = useChatStore(selectSelectedOffer);
   const currentIntent = useChatStore(selectCurrentIntent);
+  const flowQuestions = useChatStore(selectFlowQuestions);
   const currentInsightFromStore = useChatStore(selectCurrentInsight);
   const dbActivityFromStore = useChatStore(selectDbActivity);
 
@@ -34,7 +36,12 @@ export default function AnalysisTracker() {
   const answersArray = Object.entries(userInput);
   const isComplete = progress >= 100;
 
-  // Get offer-specific tracking config
+  // Get custom questions from MongoDB if available
+  const customQuestions = currentIntent
+    ? flowQuestions[currentIntent as 'buy' | 'sell' | 'browse'] || []
+    : [];
+
+  // Get offer-specific tracking config (fallback for styling)
   const tracking = selectedOffer ? getTrackingConfig(selectedOffer) : null;
   const color = tracking?.color || '#3b82f6'; // Default blue
 
@@ -50,10 +57,29 @@ export default function AnalysisTracker() {
   }, [dbActivityFromStore]);
 
   const formatKey = (key: string): string => {
-    // Use tracking field label if available
+    // First: Try to use custom question label from MongoDB
+    const customQuestion = customQuestions.find(q => q.mappingKey === key);
+    if (customQuestion?.label) {
+      return customQuestion.label;
+    }
+
+    // Second: Try to extract a short label from the question text
+    if (customQuestion?.question) {
+      // Take first part of question (before ? or first 30 chars)
+      const questionText = customQuestion.question;
+      const shortText = questionText.split('?')[0].trim();
+      if (shortText.length <= 40) {
+        return shortText;
+      }
+      return shortText.substring(0, 37) + '...';
+    }
+
+    // Third: Fall back to static tracking field label
     if (tracking?.fields[key]?.label) {
       return tracking.fields[key].label;
     }
+
+    // Fourth: Format the key itself (camelCase to Title Case)
     return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
   };
 

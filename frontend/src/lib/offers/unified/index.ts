@@ -147,22 +147,8 @@ export { getRegistryStatus, logRegistryStatus } from './registry';
 // Import offers to register them
 import './offers';
 
-// Re-export individual offers
-export {
-  TIMELINE_OFFER,
-  HOME_ESTIMATE_OFFER,
-  PDF_OFFER,
-  VIDEO_OFFER,
-  LANDING_PAGE_OFFER,
-} from './offers';
+// Re-export individual offers (only timeline is active)
+export { TIMELINE_OFFER } from './offers';
 
-// Re-export output types
-export type {
-  TimelineOutput,
-  TimelinePhase,
-  UserSituation,
-  HomeEstimateOutput,
-  PdfOutput,
-  VideoOutput,
-  LandingPageOutput,
-} from './offers';
+// Re-export output types (only timeline is active)
+export type { TimelineOutput, TimelinePhase, UserSituation } from './offers';

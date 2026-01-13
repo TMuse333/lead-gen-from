@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, Home,
-Eye, ExternalLink, Menu, X, Users, Gift, Code } from 'lucide-react';
+Eye, ExternalLink, Menu, X, Users, Play, MessageSquareHeart } from 'lucide-react';
 import logo from '../../../../../public/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -28,33 +28,38 @@ const SECTION_GROUPS: SectionGroup[] = [
     title: 'Overview',
     sections: [
       {
-        id: 'overview',
-        label: 'Overview',
+        id: 'home',
+        label: 'Home',
         icon: Home,
-        description: 'Getting started guides and performance analytics'
+        description: 'Setup guide and quick stats'
       }
     ]
   },
   {
-    title: 'Core Features',
+    title: 'Setup',
     sections: [
       {
-        id: 'offers',
-        label: 'Offers',
-        icon: Gift,
-        description: 'Configure and manage your offer generation settings'
+        id: 'stories',
+        label: 'Stories',
+        icon: BookOpen,
+        description: 'Add client stories and expert advice'
       },
+      {
+        id: 'timeline',
+        label: 'Timeline',
+        icon: Play,
+        description: 'Configure your chatbot timeline'
+      }
+    ]
+  },
+  {
+    title: 'Activity',
+    sections: [
       {
         id: 'leads',
         label: 'Leads',
         icon: Users,
-        description: 'View all leads and their generated offers'
-      },
-      {
-        id: 'my-conversations',
-        label: 'My Conversations',
-        icon: MessageSquare,
-        description: 'View all your chatbot interactions and generated offers'
+        description: 'View leads and conversations'
       }
     ]
   },
@@ -65,30 +70,18 @@ const SECTION_GROUPS: SectionGroup[] = [
         id: 'settings',
         label: 'Settings',
         icon: Settings,
-        description: 'Bot configuration, colors, and usage tracking'
+        description: 'Profile, branding, and preferences'
       }
     ]
   },
   {
-    title: 'Knowledge Base',
+    title: 'Support',
     sections: [
       {
-        id: 'knowledge-base',
-        label: 'Knowledge Base',
-        icon: BookOpen,
-        description: 'Manage advice content, uploads, and client situations'
-      }
-    ]
-  },
-  {
-    title: 'Advanced',
-    sections: [
-      {
-        id: 'llm-routes',
-        label: 'LLM Routes',
-        icon: Code,
-        href: '/dashboard/llm-routes',
-        description: 'Visual overview of all API routes that use LLM services'
+        id: 'feedback',
+        label: 'Feedback',
+        icon: MessageSquareHeart,
+        description: 'Help us improve with your feedback'
       }
     ]
   }
@@ -106,30 +99,25 @@ function DashboardSidebarContent() {
   
   // Determine active section based on pathname
   const getActiveSection = (): string => {
-    // Check if we're on LLM routes page
-    if (pathname === '/dashboard/llm-routes') {
-      return 'llm-routes';
-    }
-    
     // Check if we're on conversation detail route
     const conversationMatch = pathname.match(/\/dashboard\/conversations\/([^/]+)/);
     if (conversationMatch) {
-      return 'my-conversations'; // Highlight "My Conversations" when viewing details
+      return 'leads'; // Highlight "Leads" when viewing conversation details
     }
 
-    // Check if we're on offer editor route
+    // Check if we're on offer editor route (legacy - redirect to timeline)
     const offerMatch = pathname.match(/\/dashboard\/offers\/([^/]+)/);
     if (offerMatch) {
-      return 'offers'; // Highlight "Offers" when editing
+      return 'timeline'; // Highlight "Timeline" when on offer editor
     }
 
     // Check if we're on main dashboard
     if (pathname === '/dashboard') {
       const section = searchParams.get('section');
-      return section || 'overview'; // Default to overview
+      return section || 'home'; // Default to home
     }
 
-    return 'overview';
+    return 'home';
   };
   
   const activeSection = getActiveSection();

@@ -6,75 +6,55 @@
 import { ChatStateData, LlmResultState, ChatMessage } from './types';
 import { getOffer, type OfferType } from '@/lib/offers/unified';
 
-// Offer labels for display
-const OFFER_LABELS: Record<string, string> = {
-  'real-estate-timeline': 'personalized timeline',
-  'pdf': 'custom property report',
-  'landingPage': 'property landing page',
-  'video': 'personalized video walkthrough',
-  'home-estimate': 'home value estimate',
-  'custom': 'custom offer',
-};
+// MVP: Only timeline offer is configured
+const MVP_OFFER: OfferType = 'real-estate-timeline';
 
 /**
- * Get initial message based on available offers
+ * Timeline preview teaser - shows what the user will get
+ */
+const TIMELINE_PREVIEW = `
+**Here's a sneak peek of what you'll get:**
+
+📋 **Your Personalized Timeline**
+• Step-by-step phases tailored to YOUR situation
+• Actionable tasks with priorities for each phase
+• Expert advice based on your location, budget & timeline
+• Estimated timeframes adjusted to your goals
+
+_These estimates are based on typical experiences with similar clients. Your agent will provide personalized guidance for your specific situation._
+
+Just answer a few quick questions and I'll generate your custom roadmap!
+`;
+
+/**
+ * Get initial message with timeline preview
  */
 export function getInitialMessage(): ChatMessage {
   let businessName = '';
-  let selectedOffers: OfferType[] = [];
 
   if (typeof window !== 'undefined') {
     try {
       businessName = sessionStorage.getItem('businessName') || '';
-      const offersJson = sessionStorage.getItem('selectedOffers');
-      if (offersJson) {
-        selectedOffers = JSON.parse(offersJson);
-      }
     } catch (error) {
       console.warn('Could not load client config from session:', error);
     }
   }
 
-  // Build greeting
+  // Build greeting with preview
   let content = businessName
     ? `Hello! I'm ${businessName}'s AI assistant. `
     : "Hi! I'm your AI real estate assistant. ";
 
-  content += "I can create personalized content based on your situation.";
-
-  // If offers are configured, show them as buttons
-  if (selectedOffers.length > 0) {
-    content += "\n\n**What would you like me to create for you?**";
-
-    const offerButtons = selectedOffers.map((offerType) => {
-      const offer = getOffer(offerType);
-      const label = offer?.label || OFFER_LABELS[offerType] || offerType;
-      const icon = offer?.icon || '✨';
-
-      return {
-        id: offerType,
-        label: `${icon} ${label.charAt(0).toUpperCase() + label.slice(1)}`,
-        value: offerType,
-      };
-    });
-
-    return {
-      role: 'assistant',
-      content,
-      buttons: offerButtons,
-      timestamp: new Date(),
-    };
-  }
-
-  // Fallback: show intent buttons if no offers configured
-  content += "\n\n**How can I help you today?**";
+  content += "I can generate a personalized real estate timeline based on your goals.";
+  content += TIMELINE_PREVIEW;
+  content += "\n**Are you looking to buy, sell, or just exploring?**";
 
   return {
     role: 'assistant',
     content,
     buttons: [
-      { id: 'sell', label: '🏠 I want to sell my home', value: 'sell' },
       { id: 'buy', label: '🔑 I\'m looking to buy', value: 'buy' },
+      { id: 'sell', label: '🏠 I want to sell my home', value: 'sell' },
       { id: 'browse', label: '👀 Just browsing the market', value: 'browse' },
     ],
     timestamp: new Date(),
@@ -108,6 +88,10 @@ export const initialChatState: ChatStateData = {
 
   // Conversation tracking
   conversationId: null,
+
+  // Questions (fetched from MongoDB)
+  flowQuestions: {},
+  questionsLoaded: false,
 
   // Legacy (backwards compatibility)
   currentFlow: null,

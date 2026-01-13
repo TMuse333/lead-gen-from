@@ -48,6 +48,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Debug: Log custom phases from MongoDB
+    console.log('\n' + '='.repeat(60));
+    console.log('📡 [offer-config API] Fetching config for:', clientId || 'authenticated user');
+    console.log('='.repeat(60));
+    console.log('customPhases in MongoDB:', config.customPhases ? 'EXISTS' : 'NOT FOUND');
+
+    if (config.customPhases) {
+      Object.entries(config.customPhases).forEach(([flow, phases]: [string, any]) => {
+        console.log(`\n  Flow "${flow}": ${Array.isArray(phases) ? phases.length : 0} phases`);
+        if (Array.isArray(phases)) {
+          phases.forEach((phase: any, i: number) => {
+            console.log(`    Phase ${i + 1}: ${phase.name}`);
+            if (phase.actionableSteps) {
+              phase.actionableSteps.forEach((step: any) => {
+                const hasAdvice = step.inlineExperience ? '✅' : '❌';
+                console.log(`      ${hasAdvice} Step: "${step.title}" - inlineExperience: ${step.inlineExperience ? 'SET' : 'NOT SET'}`);
+              });
+            }
+          });
+        }
+      });
+    }
+
     // Return only what's needed for client-side generation
     return NextResponse.json({
       success: true,
@@ -58,6 +81,7 @@ export async function GET(request: NextRequest) {
         selectedOffers: config.selectedOffers || [],
         qdrantCollectionName: config.qdrantCollectionName,
         colorConfig: config.colorConfig || null,
+        customPhases: config.customPhases || null, // Custom phase configurations
       },
     });
   } catch (error) {

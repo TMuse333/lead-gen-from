@@ -13,6 +13,7 @@ import type {
   ActionItem,
 } from '@/lib/offers/definitions/timeline/timeline-types';
 import type { StoriesByPhase, StoryMappings } from '@/types/advice.types';
+import type { FlowPhaseConfigs } from '@/types/timelineBuilder.types';
 
 // Default disclaimer
 const DEFAULT_DISCLAIMER = `This timeline is a general guide based on typical real estate transactions.
@@ -26,6 +27,7 @@ export interface OfferConfig {
   selectedOffers: string[];
   qdrantCollectionName: string;
   colorConfig: any | null;
+  customPhases?: FlowPhaseConfigs; // Custom phase configurations
 }
 
 export interface GenerateTimelineInput {
@@ -124,7 +126,9 @@ export function useClientSideTimeline() {
       };
 
       // 2. Generate timeline using static templates (pure function, no network)
-      const generatedTimeline = generateFastTimeline(timelineInput);
+      // Use custom phases if available for this flow
+      const customPhasesForFlow = config.customPhases?.[flow];
+      const generatedTimeline = generateFastTimeline(timelineInput, customPhasesForFlow);
 
       // 3. Fetch stories by ID (simple lookup, no embeddings)
       const storiesByPhase = await fetchStories(

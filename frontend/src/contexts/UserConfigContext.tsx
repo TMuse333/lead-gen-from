@@ -2,10 +2,16 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useSession } from "next-auth/react";
+import type { EndingCTAConfig } from "@/lib/mongodb/models/clientConfig";
 
 interface UserConfig {
   id: string;
   userId: string;
+  // Agent profile
+  agentFirstName?: string;
+  agentLastName?: string;
+  notificationEmail?: string;
+  // Business
   businessName: string;
   industry: string;
   dataCollection: string[];
@@ -23,6 +29,7 @@ interface UserConfig {
     source: string;
   }>;
   qdrantCollectionName: string;
+  endingCTA?: EndingCTAConfig;
   isActive: boolean;
   onboardingCompletedAt: string;
   createdAt: string;

@@ -7,7 +7,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, Maximize2, Minimize2, Monitor, Smartphone } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Eye,
+  Maximize2,
+  Minimize2,
+  Monitor,
+  Smartphone,
+  ChevronDown,
+  Lightbulb,
+  BookOpen,
+  CheckSquare,
+  Sparkles,
+} from 'lucide-react';
 import type { OfferDefinition } from '@/lib/offers/core/types';
 import { TimelineLandingPage } from '@/components/ux/resultsComponents/timeline/TimelineLandingPage';
 import type { TimelineOutput } from '@/lib/offers/definitions/timeline/timeline-types';
@@ -180,7 +192,7 @@ const SAMPLE_STORIES_BY_PHASE: Record<string, MatchedStory[]> = {
       id: 'story-1',
       title: 'The Murphys\' Pre-Approval Journey',
       situation: 'First-time buyers relocating from Toronto to Halifax, unsure about the Nova Scotia market and financing options.',
-      whatTheyDid: 'We connected them with a local mortgage broker who explained NS-specific programs like the down payment assistance. They got pre-approved for $450K within a week.',
+      action: 'We connected them with a local mortgage broker who explained NS-specific programs like the down payment assistance. They got pre-approved for $450K within a week.',
       outcome: 'Saved $8,000 through first-time buyer programs and felt confident knowing their exact budget before starting the search.',
       clientType: 'First-time buyer',
       location: 'Halifax, NS',
@@ -193,7 +205,7 @@ const SAMPLE_STORIES_BY_PHASE: Record<string, MatchedStory[]> = {
       id: 'story-2',
       title: 'Finding Hidden Gems in Dartmouth',
       situation: 'Young couple wanted to be near downtown Halifax but couldn\'t afford South End prices.',
-      whatTheyDid: 'We explored Dartmouth\'s waterfront and showed them the ferry commute. They found a beautiful home with harbour views for $80K less than Halifax equivalent.',
+      action: 'We explored Dartmouth\'s waterfront and showed them the ferry commute. They found a beautiful home with harbour views for $80K less than Halifax equivalent.',
       outcome: 'Purchased a renovated 3-bedroom in Dartmouth with a 12-minute ferry commute - they love it!',
       clientType: 'Young professionals',
       location: 'Dartmouth, NS',
@@ -206,7 +218,7 @@ const SAMPLE_STORIES_BY_PHASE: Record<string, MatchedStory[]> = {
       id: 'story-3',
       title: 'Navigating the Nova Scotia Closing Process',
       situation: 'Buyers from Ontario were confused about closing at a lawyer\'s office instead of a title company.',
-      whatTheyDid: 'We connected them with a real estate lawyer early and walked them through the NS process, including land transfer tax calculations.',
+      action: 'We connected them with a real estate lawyer early and walked them through the NS process, including land transfer tax calculations.',
       outcome: 'Smooth closing with no surprises - they were grateful for the guidance on what makes NS different.',
       clientType: 'Out-of-province buyers',
       location: 'Halifax, NS',
@@ -217,11 +229,134 @@ const SAMPLE_STORIES_BY_PHASE: Record<string, MatchedStory[]> = {
 
 type ViewMode = 'desktop' | 'mobile';
 
+// ============================================================
+// Step Advice Accordion Component (Demo)
+// Shows how extra step-level advice appears below a step card
+// ============================================================
+
+interface StepAdvice {
+  stepTitle: string;
+  tip?: string;
+  story?: {
+    situation: string;
+    action: string;
+    outcome: string;
+  };
+}
+
+interface StepAdviceAccordionProps {
+  advice: StepAdvice;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+function StepAdviceAccordion({ advice, isOpen, onToggle }: StepAdviceAccordionProps) {
+  const hasContent = advice.tip || advice.story;
+  if (!hasContent) return null;
+
+  return (
+    <div className="border-l-2 border-purple-500/30 ml-4 pl-4">
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors py-1"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        <span>Extra insights for this step</span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="py-3 space-y-3">
+              {/* Tip */}
+              {advice.tip && (
+                <div className="flex items-start gap-2 bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                  <div className="p-1.5 bg-cyan-100 rounded-lg flex-shrink-0">
+                    <Lightbulb className="w-4 h-4 text-cyan-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-cyan-700 uppercase tracking-wide mb-1">
+                      Pro Tip
+                    </p>
+                    <p className="text-sm text-gray-700">{advice.tip}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Story */}
+              {advice.story && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-1.5 bg-amber-100 rounded-lg">
+                      <BookOpen className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                      Related Story
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-gray-600">
+                      <span className="text-amber-600 font-medium">Situation:</span> {advice.story.situation}
+                    </p>
+                    <p className="text-gray-600">
+                      <span className="text-amber-600 font-medium">What I did:</span> {advice.story.action}
+                    </p>
+                    <div className="bg-green-50 border border-green-200 rounded p-2 mt-2">
+                      <p className="text-green-800 text-sm">
+                        <span className="font-medium">Result:</span> {advice.story.outcome}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Sample step-level advice for demo
+const SAMPLE_STEP_ADVICE: Record<string, StepAdvice> = {
+  'get-pre-approved': {
+    stepTitle: 'Get pre-approved for a mortgage',
+    tip: 'Shop around with at least 3 lenders. Credit unions in Nova Scotia often have better rates than big banks, and multiple inquiries within 14 days count as one for your credit score.',
+    story: {
+      situation: 'A client was nervous about pre-approval affecting their credit score and kept delaying.',
+      action: 'I explained the 14-day shopping window and connected them with two local credit unions and one bank. They compared offers side-by-side.',
+      outcome: 'Saved $12,000 over the life of their mortgage by getting a 0.3% lower rate from a credit union.',
+    },
+  },
+  'schedule-inspection': {
+    stepTitle: 'Schedule home inspection',
+    tip: 'In Halifax, always ask about oil tanks, knob-and-tube wiring, and vermiculite insulation. These are common in older homes and can affect insurance.',
+  },
+  'negotiate-repairs': {
+    stepTitle: 'Negotiate repairs if needed',
+    story: {
+      situation: 'Inspection revealed the roof needed replacement within 2 years.',
+      action: 'Instead of asking for repairs, we negotiated a $15,000 price reduction so the buyers could choose their own contractor.',
+      outcome: 'Buyers got the house at a fair price and replaced the roof 6 months later with a contractor they trusted.',
+    },
+  },
+};
+
 export function OutputTab({ definition, agentName }: OutputTabProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
   const [agentCredentials, setAgentCredentials] = useState<AgentCredentials>(SAMPLE_AGENT_CREDENTIALS);
   const [displayAgentName, setDisplayAgentName] = useState(agentName || 'Atlantic Realty Group');
+  const [expandedStepAdvice, setExpandedStepAdvice] = useState<string | null>(null);
 
   // Fetch user's agent profile from config
   useEffect(() => {
@@ -380,6 +515,98 @@ export function OutputTab({ definition, agentName }: OutputTabProps) {
           <div className="text-purple-400 text-xs font-semibold uppercase tracking-wide mb-1">Agent Profile</div>
           <div className="text-slate-200 text-sm">Your expertise highlighted</div>
         </div>
+      </div>
+
+      {/* Step-Level Advice Demo Section */}
+      <div className="bg-gradient-to-br from-purple-500/10 to-slate-800/50 border border-purple-500/30 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-purple-400" />
+          <h4 className="text-lg font-semibold text-slate-100">Step-Level Advice (Demo)</h4>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
+          <p className="text-slate-300 text-sm mb-3">
+            Each phase automatically shows <span className="text-emerald-400 font-medium">1 tip + 1 story</span> matched
+            to the client&apos;s situation. If you add extra advice to specific steps in the Setup Wizard, it appears
+            in an expandable accordion like this:
+          </p>
+
+          {/* Demo: Sample step cards with expandable advice */}
+          <div className="bg-white rounded-lg p-4 space-y-4">
+            {/* Sample Phase Header */}
+            <div className="border-b border-gray-200 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs font-medium rounded">
+                  Phase 1
+                </span>
+                <span className="text-xs text-gray-500">Week 1-2</span>
+              </div>
+              <h5 className="text-lg font-semibold text-gray-900">Financial Preparation</h5>
+            </div>
+
+            {/* Demo Steps */}
+            <div className="space-y-3">
+              {/* Step 1 - With extra advice */}
+              <div className="space-y-1">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded border-2 border-red-400 bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckSquare className="w-3 h-3 text-red-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-800 font-medium">Get pre-approved for a mortgage</p>
+                    <p className="text-gray-500 text-sm">3-5 days</p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded">High</span>
+                </div>
+                <StepAdviceAccordion
+                  advice={SAMPLE_STEP_ADVICE['get-pre-approved']}
+                  isOpen={expandedStepAdvice === 'get-pre-approved'}
+                  onToggle={() => setExpandedStepAdvice(
+                    expandedStepAdvice === 'get-pre-approved' ? null : 'get-pre-approved'
+                  )}
+                />
+              </div>
+
+              {/* Step 2 - No extra advice (normal step) */}
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded border-2 border-red-400 bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <CheckSquare className="w-3 h-3 text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-800 font-medium">Check your credit score</p>
+                  <p className="text-gray-500 text-sm">1 hour</p>
+                </div>
+                <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded">High</span>
+              </div>
+
+              {/* Step 3 - With tip only */}
+              <div className="space-y-1">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded border-2 border-yellow-400 bg-yellow-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckSquare className="w-3 h-3 text-yellow-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-800 font-medium">Schedule home inspection</p>
+                    <p className="text-gray-500 text-sm">3-4 hours</p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded">Medium</span>
+                </div>
+                <StepAdviceAccordion
+                  advice={SAMPLE_STEP_ADVICE['schedule-inspection']}
+                  isOpen={expandedStepAdvice === 'schedule-inspection'}
+                  onToggle={() => setExpandedStepAdvice(
+                    expandedStepAdvice === 'schedule-inspection' ? null : 'schedule-inspection'
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-slate-500 text-xs">
+          <strong className="text-slate-400">Note:</strong> Most steps don&apos;t need extra advice—the phase-level
+          1 tip + 1 story covers it. Use step-level advice for critical steps where you have specific insights.
+        </p>
       </div>
 
       {/* Preview container */}

@@ -7,6 +7,7 @@ import { ensureUserCollection } from '@/lib/qdrant/userCollections';
 import { qdrant } from '@/lib/qdrant/client';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import type { ClientConfigDocument } from '@/lib/mongodb/models/clientConfig';
+import { generateAllDefaultQuestions } from '@/lib/mongodb/seedQuestions';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -28,9 +29,17 @@ export async function POST(request: NextRequest) {
 
     // 2. Get onboarding data from request body
     const onboardingData = await request.json();
-    
+
     const {
+      // New simplified fields
+      agentFirstName,
+      agentLastName,
+      agentEmail,
+      agentPhone,
       businessName,
+      wizardSkipped,
+      wizardCompleted,
+      // Legacy fields (still supported)
       industry,
       dataCollection,
       customDataCollection,
@@ -42,13 +51,17 @@ export async function POST(request: NextRequest) {
       colorConfig,
     } = onboardingData;
 
-    // Validate required fields
-    if (!businessName || !selectedIntentions.length || !selectedOffers.length) {
+    // Validate required fields (now just businessName and agentFirstName are truly required)
+    if (!businessName || !agentFirstName) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: businessName and agentFirstName are required' },
         { status: 400 }
       );
     }
+
+    // Auto-set intentions and offers if not provided (new simplified onboarding)
+    const finalIntentions = selectedIntentions?.length ? selectedIntentions : ['buy', 'sell', 'browse'];
+    const finalOffers = selectedOffers?.length ? selectedOffers : ['real-estate-timeline'];
 
     // 3. Create Qdrant collection
     const collectionName = await ensureUserCollection(businessName);
@@ -147,20 +160,48 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Save configuration to MongoDB
-    
+
+    // Generate default questions for all flows (MongoDB is single source of truth)
+    const defaultQuestions = generateAllDefaultQuestions();
+
+    // Build agent full name
+    const agentFullName = agentLastName ? `${agentFirstName} ${agentLastName}` : agentFirstName;
+
     const clientConfig: ClientConfigDocument = {
       userId,
       businessName,
+      // New agent profile fields
+      agentFirstName,
+      agentLastName: agentLastName || undefined,
+      notificationEmail: agentEmail, // For lead notifications
+      // Legacy/optional fields
       industry: industry || 'real-estate',
-      dataCollection: dataCollection || [],
+      dataCollection: dataCollection?.length ? dataCollection : ['email', 'phone'], // Default if not set
       customDataCollection,
-      selectedIntentions,
-      selectedOffers,
+      selectedIntentions: finalIntentions,
+      selectedOffers: finalOffers,
       customOffer,
       conversationFlows: conversationFlows || {},
-      knowledgeBaseItems: knowledgeBaseItems || [],
+      knowledgeBaseItems: knowledgeBaseItems || [], // Empty array is OK now
       colorConfig: colorConfig || undefined, // Optional: use default if not provided
+      customQuestions: defaultQuestions, // Auto-seed with default questions
       qdrantCollectionName: collectionName,
+      // Agent profile for settings page and display
+      agentProfile: {
+        name: agentFullName,
+        email: agentEmail,
+        phone: agentPhone || undefined,
+        company: businessName,
+        yearsExperience: 0, // User can fill in later via settings
+      },
+      // Ending CTA pre-populated with agent info
+      endingCTA: {
+        displayName: agentFullName,
+        email: agentEmail,
+        phone: agentPhone || undefined,
+        style: 'questions-form',
+        responseTimeText: 'I typically respond within 24 hours',
+      },
       isActive: true,
       onboardingCompletedAt: new Date(),
       createdAt: new Date(),
@@ -168,24 +209,34 @@ export async function POST(request: NextRequest) {
     };
 
     const collection = await getClientConfigsCollection();
-    
+
     // Check if config already exists (update) or create new
     const existing = await collection.findOne({ userId });
-    
+
     if (existing) {
       // Update existing config (exclude _id from update)
-      const { _id, ...updateData } = clientConfig;
+      // Preserve existing customQuestions if they have any content
+      const { _id, customQuestions: newQuestions, ...updateData } = clientConfig;
+
+      // Only overwrite questions if existing ones are empty/missing
+      const hasExistingQuestions =
+        (existing.customQuestions?.buy?.length || 0) > 0 ||
+        (existing.customQuestions?.sell?.length || 0) > 0 ||
+        (existing.customQuestions?.browse?.length || 0) > 0;
+
       await collection.updateOne(
         { userId },
         {
           $set: {
             ...updateData,
+            // Only seed questions if none exist
+            ...(hasExistingQuestions ? {} : { customQuestions: newQuestions }),
             updatedAt: new Date(),
           },
         }
       );
     } else {
-      // Create new config
+      // Create new config with seeded questions
       await collection.insertOne(clientConfig);
     }
 

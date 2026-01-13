@@ -4,12 +4,12 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import HomeDashboard from '../home/HomeDashboard';
 import LeadsDashboard from '../leads/leadsDashboard';
-import OffersDashboard from '../offers/OffersDashboard';
-import ConversationsDashboard from '../conversations/ConversationsDashboard';
 import SettingsDashboard from '../settings/SettingsDashboard';
 import KnowledgeBaseDashboard from '../knowledgeBase/KnowledgeBaseDashboard';
-import OverviewDashboard from '../overviewDashboard/OverviewDashboard';
+import TimelineDashboard from '../timeline/TimelineDashboard';
+import FeedbackDashboard from '../feedback/FeedbackDashboard';
 
 // Define user dashboard sections (matching DashboardSidebar)
 interface DashboardSection {
@@ -20,45 +20,47 @@ interface DashboardSection {
 }
 
 const USER_SECTIONS: DashboardSection[] = [
-  // Overview (merged: Getting Started + Analytics)
+  // Home - Guide and quick stats
   {
-    id: 'overview',
-    label: 'Overview',
-    component: OverviewDashboard,
-    description: 'Getting started guides and performance analytics'
+    id: 'home',
+    label: 'Home',
+    component: HomeDashboard,
+    description: 'Setup guide and quick stats'
   },
-  // Core Features
+  // Stories - Knowledge base content
   {
-    id: 'offers',
-    label: 'Offers',
-    component: OffersDashboard,
-    description: 'Configure and manage your offer generation settings'
+    id: 'stories',
+    label: 'Stories',
+    component: KnowledgeBaseDashboard,
+    description: 'Add client stories and expert advice'
   },
+  // Timeline - Direct timeline configuration
+  {
+    id: 'timeline',
+    label: 'Timeline',
+    component: TimelineDashboard,
+    description: 'Configure your chatbot timeline'
+  },
+  // Leads - Combined leads and conversations
   {
     id: 'leads',
     label: 'Leads',
     component: LeadsDashboard,
-    description: 'View all leads and their generated offers'
+    description: 'View leads and conversations'
   },
-  {
-    id: 'my-conversations',
-    label: 'My Conversations',
-    component: ConversationsDashboard,
-    description: 'View all your chatbot interactions and generated offers'
-  },
-  // Configuration
+  // Settings - Profile, branding, preferences
   {
     id: 'settings',
     label: 'Settings',
     component: SettingsDashboard,
-    description: 'Bot configuration, colors, and usage tracking'
+    description: 'Profile, branding, and preferences'
   },
-  // Knowledge Base (merged into single section with tabs)
+  // Feedback - MVP feedback collection
   {
-    id: 'knowledge-base',
-    label: 'Knowledge Base',
-    component: KnowledgeBaseDashboard,
-    description: 'Manage advice content, uploads, and client situations'
+    id: 'feedback',
+    label: 'Feedback',
+    component: FeedbackDashboard,
+    description: 'Help us improve with your feedback'
   }
 ];
 
@@ -66,8 +68,8 @@ function UserDashboardContent() {
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get('section');
   
-  // Determine active section (default to 'overview' if not specified)
-  const activeSection = sectionParam || 'overview';
+  // Determine active section (default to 'home' if not specified)
+  const activeSection = sectionParam || 'home';
 
   const currentSection = USER_SECTIONS.find(s => s.id === activeSection);
   const ActiveComponent = currentSection?.component;

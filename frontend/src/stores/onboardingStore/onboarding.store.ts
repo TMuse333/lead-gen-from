@@ -1,32 +1,35 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ConversationFlow } from '@/stores/conversationConfig/conversation.store';
 import type { ColorTheme } from '@/lib/colors/defaultTheme';
 import { DEFAULT_THEME } from '@/lib/colors/defaultTheme';
-import type { AdviceType } from '@/types/advice.types';
-import { DEFAULT_ADVICE_TYPE } from '@/types/advice.types';
 
+// Keep these types exported for backwards compatibility
 export type DataCollectionType = 'email' | 'phone' | 'propertyAddress' | 'custom';
 export type FlowIntention = 'buy' | 'sell' | 'browse';
 export type OfferType = 'pdf' | 'landingPage' | 'video' | 'home-estimate' | 'custom' | 'real-estate-timeline';
 
 export interface OnboardingState {
-  // Step 1: Business Info & Setup
+  // Step 1: Basic Info (NEW - simplified)
+  agentFirstName: string;
+  agentLastName: string;
+  agentEmail: string;
+  agentPhone: string;
   businessName: string;
+
+  // Auto-set values (no longer user-selected)
   industry: string;
+  selectedIntentions: FlowIntention[]; // Auto-set to all 3
+  selectedOffers: OfferType[]; // Auto-set to timeline only
+
+  // Step 2: Wizard state
+  wizardSkipped: boolean;
+  wizardCompleted: boolean;
+
+  // Legacy fields (kept for backwards compatibility with existing configs)
   dataCollection: DataCollectionType[];
   customDataCollection: string;
-  selectedIntentions: FlowIntention[];
-  
-  // Step 2: Offers
-  selectedOffers: OfferType[];
   customOffer: string;
-  offerFlowMap: Record<OfferType, FlowIntention[]>; // Which flows each offer applies to
-  
-  // Step 3: Conversation Flows
-  conversationFlows: Record<string, ConversationFlow>; // keyed by flow type (buy/sell/browse)
-  
-  // Step 4: Knowledge Base
+  offerFlowMap: Record<OfferType, FlowIntention[]>;
   knowledgeBaseItems: Array<{
     id: string;
     title: string;
@@ -34,18 +37,30 @@ export interface OnboardingState {
     flows: string[];
     tags: string[];
     source: 'manual' | 'questions' | 'document';
-    type?: AdviceType; // Optional advice type (defaults to 'general-advice')
   }>;
-  
-  // Step 5: Color Configuration
   colorConfig: ColorTheme;
-  
+
   // Flow state
   currentStep: number;
   completedSteps: number[];
-  
-  // Actions
+
+  // Actions - Step 1
+  setAgentFirstName: (name: string) => void;
+  setAgentLastName: (name: string) => void;
+  setAgentEmail: (email: string) => void;
+  setAgentPhone: (phone: string) => void;
   setBusinessName: (name: string) => void;
+
+  // Actions - Step 2
+  setWizardSkipped: (skipped: boolean) => void;
+  setWizardCompleted: (completed: boolean) => void;
+
+  // Actions - Flow control
+  setCurrentStep: (step: number) => void;
+  markStepComplete: (step: number) => void;
+  reset: () => void;
+
+  // Legacy actions (kept for backwards compatibility)
   setIndustry: (industry: string) => void;
   setDataCollection: (types: DataCollectionType[]) => void;
   setCustomDataCollection: (value: string) => void;
@@ -53,38 +68,38 @@ export interface OnboardingState {
   setSelectedOffers: (offers: OfferType[]) => void;
   setCustomOffer: (offer: string) => void;
   setOfferFlowMap: (offer: OfferType, flows: FlowIntention[]) => void;
-  setConversationFlows: (flows: Record<string, ConversationFlow>) => void;
-  addConversationFlow: (flow: ConversationFlow) => void;
-  updateConversationFlow: (flowType: string, flow: Partial<ConversationFlow>) => void;
   addKnowledgeBaseItem: (item: Omit<OnboardingState['knowledgeBaseItems'][0], 'id'>) => void;
   removeKnowledgeBaseItem: (id: string) => void;
   setColorConfig: (theme: ColorTheme) => void;
-  setCurrentStep: (step: number) => void;
-  markStepComplete: (step: number) => void;
-  reset: () => void;
 }
 
 const initialState = {
+  // Step 1: Basic Info
+  agentFirstName: '',
+  agentLastName: '',
+  agentEmail: '',
+  agentPhone: '',
   businessName: '',
+
+  // Auto-set values
   industry: 'real-estate',
-  dataCollection: [] as DataCollectionType[],
+  selectedIntentions: ['buy', 'sell', 'browse'] as FlowIntention[], // All 3 enabled
+  selectedOffers: ['real-estate-timeline'] as OfferType[], // Timeline only
+
+  // Step 2: Wizard state
+  wizardSkipped: false,
+  wizardCompleted: false,
+
+  // Legacy fields (defaults)
+  dataCollection: ['email', 'phone'] as DataCollectionType[], // Predefined
   customDataCollection: '',
-  selectedIntentions: [] as FlowIntention[],
-  selectedOffers: [] as OfferType[],
   customOffer: '',
   offerFlowMap: {} as Record<OfferType, FlowIntention[]>,
-  conversationFlows: {} as Record<string, ConversationFlow>,
-  knowledgeBaseItems: [] as Array<{
-    id: string;
-    title: string;
-    advice: string;
-    flows: string[];
-    tags: string[];
-    source: 'manual' | 'questions' | 'document';
-    type?: AdviceType;
-  }>,
+  knowledgeBaseItems: [] as OnboardingState['knowledgeBaseItems'],
   colorConfig: DEFAULT_THEME,
-  currentStep: 1,
+
+  // Flow state
+  currentStep: 0, // 0 = welcome screen, 1-3 = actual steps
   completedSteps: [] as number[],
 };
 
@@ -92,8 +107,29 @@ export const useOnboardingStore = create<OnboardingState>()(
   persist(
     (set) => ({
       ...initialState,
-      
+
+      // Step 1 actions
+      setAgentFirstName: (name) => set({ agentFirstName: name }),
+      setAgentLastName: (name) => set({ agentLastName: name }),
+      setAgentEmail: (email) => set({ agentEmail: email }),
+      setAgentPhone: (phone) => set({ agentPhone: phone }),
       setBusinessName: (name) => set({ businessName: name }),
+
+      // Step 2 actions
+      setWizardSkipped: (skipped) => set({ wizardSkipped: skipped }),
+      setWizardCompleted: (completed) => set({ wizardCompleted: completed }),
+
+      // Flow control actions
+      setCurrentStep: (step) => set({ currentStep: step }),
+      markStepComplete: (step) =>
+        set((state) => ({
+          completedSteps: state.completedSteps.includes(step)
+            ? state.completedSteps
+            : [...state.completedSteps, step],
+        })),
+      reset: () => set(initialState),
+
+      // Legacy actions (kept for backwards compatibility)
       setIndustry: (industry) => set({ industry }),
       setDataCollection: (types) => set({ dataCollection: types }),
       setCustomDataCollection: (value) => set({ customDataCollection: value }),
@@ -103,22 +139,6 @@ export const useOnboardingStore = create<OnboardingState>()(
       setOfferFlowMap: (offer, flows) => set((state) => ({
         offerFlowMap: { ...state.offerFlowMap, [offer]: flows },
       })),
-      setConversationFlows: (flows) => set({ conversationFlows: flows }),
-      addConversationFlow: (flow) =>
-        set((state) => ({
-          conversationFlows: { ...state.conversationFlows, [flow.type]: flow },
-        })),
-      updateConversationFlow: (flowType, updates) =>
-        set((state) => {
-          const existing = state.conversationFlows[flowType];
-          if (!existing) return state;
-          return {
-            conversationFlows: {
-              ...state.conversationFlows,
-              [flowType]: { ...existing, ...updates },
-            },
-          };
-        }),
       addKnowledgeBaseItem: (item) =>
         set((state) => ({
           knowledgeBaseItems: [
@@ -131,18 +151,9 @@ export const useOnboardingStore = create<OnboardingState>()(
           knowledgeBaseItems: state.knowledgeBaseItems.filter((item) => item.id !== id),
         })),
       setColorConfig: (theme) => set({ colorConfig: theme }),
-      setCurrentStep: (step) => set({ currentStep: step }),
-      markStepComplete: (step) =>
-        set((state) => ({
-          completedSteps: state.completedSteps.includes(step)
-            ? state.completedSteps
-            : [...state.completedSteps, step],
-        })),
-      reset: () => set(initialState),
     }),
     {
       name: 'onboarding-storage',
     }
   )
 );
-

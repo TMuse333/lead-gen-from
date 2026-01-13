@@ -24,10 +24,13 @@ import {
 import { TimelineLandingPage } from "@/components/ux/resultsComponents/timeline";
 import type { TimelineOutput } from "@/lib/offers/definitions/timeline/timeline-types";
 import type { ColorTheme } from "@/lib/colors/defaultTheme";
+import type { EndingCTAConfig } from "@/lib/mongodb/models/clientConfig";
 
 const STORAGE_KEY = "llmResultsCache";
 const DEBUG_STORAGE_KEY = "llmDebugCache";
 const COLOR_THEME_KEY = "colorThemeCache";
+const ENDING_CTA_KEY = "endingCTACache";
+const AGENT_PROFILE_KEY = "agentProfileCache";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -36,6 +39,7 @@ export default function ResultsPage() {
   const [localDebugInfo, setLocalDebugInfo] = useState<GenerationDebugInfo | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme | null>(null);
+  const [endingCTA, setEndingCTA] = useState<EndingCTAConfig | null>(null);
 
   const llmOutput = useChatStore(selectLlmOutput);
   const isComplete = useChatStore(selectIsComplete);
@@ -123,9 +127,22 @@ export default function ResultsPage() {
       return null;
     };
 
+    const loadEndingCTAFromCache = (): EndingCTAConfig | null => {
+      try {
+        const cached = localStorage.getItem(ENDING_CTA_KEY);
+        if (!cached) return null;
+        const parsed = JSON.parse(cached);
+        return parsed as EndingCTAConfig;
+      } catch (err) {
+        // Failed to parse cached ending CTA
+      }
+      return null;
+    };
+
     const cached = loadFromCache();
     const cachedDebug = loadDebugFromCache();
     const cachedColorTheme = loadColorThemeFromCache();
+    const cachedEndingCTA = loadEndingCTAFromCache();
 
     if (cached) {
       setLlmOutput(cached);
@@ -138,6 +155,10 @@ export default function ResultsPage() {
 
     if (cachedColorTheme) {
       setColorTheme(cachedColorTheme);
+    }
+
+    if (cachedEndingCTA) {
+      setEndingCTA(cachedEndingCTA);
     }
   }, [setLlmOutput]);
   
@@ -185,6 +206,9 @@ export default function ResultsPage() {
     return () => {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(DEBUG_STORAGE_KEY);
+      localStorage.removeItem(ENDING_CTA_KEY);
+      localStorage.removeItem(AGENT_PROFILE_KEY);
+      // Note: colorThemeCache is intentionally not cleared as it may be needed for revisits
       // setLlmOutput(null); // clear Zustand store if needed
     };
   }, []);
@@ -317,9 +341,20 @@ export default function ResultsPage() {
     isValidOutputComponent(value)
   );
 
+  // Generate background style based on color theme
+  const mainBgStyle = colorTheme
+    ? {
+        background: `linear-gradient(to bottom right, ${colorTheme.background}, ${colorTheme.surface})`,
+        color: colorTheme.text,
+      }
+    : undefined;
+
   return (
     <ErrorBoundary>
-      <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
+      <main
+        className={`min-h-screen py-12 px-4 ${!colorTheme ? 'bg-gradient-to-br from-slate-50 to-blue-50' : ''}`}
+        style={mainBgStyle}
+      >
         <div className="max-w-5xl mx-auto space-y-8">
           {/* Main Generation Summary - Always show if debug info exists */}
           {localDebugInfo && (
@@ -354,6 +389,7 @@ export default function ResultsPage() {
                 data={timelineEntry[1] as unknown as TimelineOutput}
                 colorTheme={colorTheme || undefined}
                 storiesByPhase={storiesByPhase}
+                endingCTA={endingCTA || undefined}
               />
             </ErrorBoundary>
           )}

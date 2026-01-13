@@ -1,32 +1,23 @@
 // lib/offers/core/registry.ts
 /**
  * Central registry for all offer definitions
- * NOW POPULATED with all offer types!
+ * Currently only real-estate-timeline is active
  */
 
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { OfferDefinition, OfferRegistry } from './types';
 
-// Import all offer definitions
-import { PDF_OFFER_DEFINITION } from '../definitions/pdfOffer';
-import { LANDING_PAGE_OFFER_DEFINITION } from '../definitions/landingPageOffer';
-import { VIDEO_OFFER_DEFINITION } from '../definitions/videoOffer';
-import { HOME_ESTIMATE_OFFER_DEFINITION } from '../definitions/homeEstimateOffer';
-import { CUSTOM_OFFER_DEFINITION } from '../definitions/customOffer';
+// Import active offer definitions only
 import { REAL_ESTATE_TIMELINE_DEFINITION } from '../definitions/realEstateTimeline';
 
 // ==================== REGISTRY ====================
 
 /**
  * Global offer registry
- * NOW COMPLETE with all 6 offer definitions!
+ * Only real-estate-timeline is active for now
+ * Future offers (pdf, home-estimate, etc.) can be added when ready
  */
 export const OFFER_DEFINITIONS = {
-  'pdf': PDF_OFFER_DEFINITION,
-  'landingPage': LANDING_PAGE_OFFER_DEFINITION,
-  'video': VIDEO_OFFER_DEFINITION,
-  'home-estimate': HOME_ESTIMATE_OFFER_DEFINITION,
-  'custom': CUSTOM_OFFER_DEFINITION,
   'real-estate-timeline': REAL_ESTATE_TIMELINE_DEFINITION,
 } as unknown as OfferRegistry;
 
@@ -86,25 +77,21 @@ export function getAllOfferDefinitions(): Array<{
 }
 
 /**
- * Validate registry (ensure all offer types have definitions)
+ * Validate registry (ensure all active offer types have definitions)
  */
 export function validateRegistry(): {
   valid: boolean;
   missing: OfferType[];
   available: OfferType[];
 } {
-  const allOfferTypes: OfferType[] = [
-    'pdf',
-    'landingPage',
-    'video',
-    'home-estimate',
-    'custom',
+  // Only checking active offer types
+  const activeOfferTypes: OfferType[] = [
     'real-estate-timeline',
   ];
-  
+
   const available = getAvailableOfferTypes();
-  const missing = allOfferTypes.filter((type) => !hasOfferDefinition(type));
-  
+  const missing = activeOfferTypes.filter((type) => !hasOfferDefinition(type));
+
   return {
     valid: missing.length === 0,
     missing,
@@ -123,16 +110,12 @@ export function getRegistryStatus(): {
   missing: number;
   types: Array<{ type: OfferType; registered: boolean; version?: string }>;
 } {
-  const allTypes: OfferType[] = [
-    'pdf',
-    'landingPage',
-    'video',
-    'home-estimate',
-    'custom',
+  // Only checking active offer types
+  const activeTypes: OfferType[] = [
     'real-estate-timeline',
   ];
-  
-  const types = allTypes.map((type) => {
+
+  const types = activeTypes.map((type) => {
     const definition = OFFER_DEFINITIONS[type];
     return {
       type,
@@ -140,9 +123,9 @@ export function getRegistryStatus(): {
       version: definition?.version.version,
     };
   });
-  
+
   return {
-    totalTypes: allTypes.length,
+    totalTypes: activeTypes.length,
     registered: types.filter((t) => t.registered).length,
     missing: types.filter((t) => !t.registered).length,
     types,

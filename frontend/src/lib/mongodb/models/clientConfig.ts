@@ -6,6 +6,41 @@ import type { ConversationFlow } from '@/stores/conversationConfig/conversation.
 import type { DataCollectionType, FlowIntention, OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { ColorTheme } from '@/lib/colors/defaultTheme';
 import type { AdviceType, StoryMappings } from '@/types/advice.types';
+import type { FlowPhaseConfigs, FlowBotConfig, FlowQuestionConfigs } from '@/types/timelineBuilder.types';
+
+/**
+ * CTA Style options for the results page ending section
+ */
+export type CTAStyle =
+  | 'questions-form'    // Form to send questions + agent contact (default)
+  | 'contact-card'      // Just show agent contact info prominently
+  | 'calendly'          // Calendly booking embed
+  | 'minimal';          // Just download/share buttons
+
+/**
+ * Configuration for the ending CTA section on results page
+ */
+export interface EndingCTAConfig {
+  // Agent display info
+  headshot?: string;           // Vercel Blob URL for agent photo
+  displayName: string;         // How agent wants to be displayed
+  title?: string;              // e.g., "Real Estate Agent", "Realtor"
+  company?: string;            // Company/brokerage name
+
+  // Contact methods
+  email?: string;              // Agent's email
+  phone?: string;              // Agent's phone
+  calendlyUrl?: string;        // Calendly booking URL (for calendly style)
+
+  // CTA style selection
+  style: CTAStyle;
+
+  // Custom messaging
+  sectionTitle?: string;       // e.g., "Have Questions?" (default)
+  sectionSubtitle?: string;    // Custom subtitle text
+  customMessage?: string;      // Personal message from agent
+  responseTimeText?: string;   // e.g., "I typically respond within 24 hours"
+}
 
 /**
  * Client Configuration Document (stored in 'client_configs' collection)
@@ -16,7 +51,11 @@ export interface ClientConfigDocument {
   
   // User reference
   userId: string; // From NextAuth session
-  
+
+  // Agent Info (from simplified onboarding)
+  agentFirstName?: string;  // For bot personalization (casual contexts)
+  agentLastName?: string;   // For formal contexts (optional)
+
   // Step 1: Business Info
   businessName: string;
   industry: string;
@@ -70,6 +109,26 @@ export interface ClientConfigDocument {
   // Story Mappings (explicit phase-to-story linking)
   // Maps flow types to phase IDs to Qdrant story IDs
   storyMappings?: StoryMappings;
+
+  // Custom Phase Configurations (Timeline Builder)
+  // Allows agents to fully customize their timeline phases and steps
+  customPhases?: FlowPhaseConfigs;
+
+  // Bot Response Configuration
+  // Links chatbot questions to phases, steps, and personal advice
+  botResponseConfig?: FlowBotConfig;
+
+  // Custom Questions Configuration
+  // Allows agents to customize chatbot questions per flow
+  customQuestions?: FlowQuestionConfigs;
+
+  // Ending CTA Configuration
+  // Controls the "Questions?" section and CTA on the results page
+  endingCTA?: EndingCTAConfig;
+
+  // Lead Notification Settings
+  // Email address to receive notifications when new leads submit contact info
+  notificationEmail?: string;
 
   // Status
   isActive: boolean;

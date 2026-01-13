@@ -32,13 +32,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Return configuration (exclude sensitive data if needed)
+    // 3. Build agentProfile from available data sources
+    // If agentProfile is empty/missing but we have agentFirstName, construct it
+    let agentProfile = config.agentProfile;
+    if ((!agentProfile || !agentProfile.name) && config.agentFirstName) {
+      const fullName = config.agentLastName
+        ? `${config.agentFirstName} ${config.agentLastName}`
+        : config.agentFirstName;
+
+      agentProfile = {
+        name: fullName,
+        email: config.notificationEmail || config.endingCTA?.email,
+        phone: config.endingCTA?.phone,
+        company: config.businessName,
+        yearsExperience: 0,
+        ...agentProfile, // Preserve any existing fields
+      };
+    }
+
+    // 4. Return configuration (exclude sensitive data if needed)
     return NextResponse.json({
       success: true,
       config: {
         id: config._id?.toString(),
         userId: config.userId,
         businessName: config.businessName,
+        agentFirstName: config.agentFirstName,
+        agentLastName: config.agentLastName,
+        notificationEmail: config.notificationEmail,
         industry: config.industry,
         dataCollection: config.dataCollection,
         selectedIntentions: config.selectedIntentions,
@@ -48,7 +69,8 @@ export async function GET(request: NextRequest) {
         colorConfig: config.colorConfig,
         knowledgeBaseItems: config.knowledgeBaseItems,
         qdrantCollectionName: config.qdrantCollectionName,
-        agentProfile: config.agentProfile,
+        agentProfile,
+        endingCTA: config.endingCTA,
         isActive: config.isActive,
         onboardingCompletedAt: config.onboardingCompletedAt,
         createdAt: config.createdAt,
@@ -83,7 +105,7 @@ export async function PUT(request: NextRequest) {
 
     const userId = session.user.id;
     const body = await request.json();
-    const { selectedOffers, conversationFlows, agentProfile } = body;
+    const { selectedOffers, conversationFlows, agentProfile, endingCTA } = body;
 
     // 2. Get user's client configuration
     const collection = await getClientConfigsCollection();
@@ -119,6 +141,11 @@ export async function PUT(request: NextRequest) {
       updateFields.agentProfile = agentProfile;
     }
 
+    // Update endingCTA if provided
+    if (endingCTA && typeof endingCTA === 'object') {
+      updateFields.endingCTA = endingCTA;
+    }
+
     // 4. Apply updates
     if (Object.keys(updateFields).length > 1) { // More than just updatedAt
       await collection.updateOne(
@@ -148,6 +175,7 @@ export async function PUT(request: NextRequest) {
         knowledgeBaseItems: updatedConfig?.knowledgeBaseItems,
         qdrantCollectionName: updatedConfig?.qdrantCollectionName,
         agentProfile: updatedConfig?.agentProfile,
+        endingCTA: updatedConfig?.endingCTA,
         isActive: updatedConfig?.isActive,
         onboardingCompletedAt: updatedConfig?.onboardingCompletedAt,
         createdAt: updatedConfig?.createdAt,

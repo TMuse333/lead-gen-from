@@ -18,6 +18,7 @@ import {
   Loader2,
   CheckCircle2,
   X,
+  MessageCircle,
 } from 'lucide-react';
 
 export interface ContactData {
@@ -52,8 +53,8 @@ export function ContactCollectionModal({
   onSubmit,
   onSkip,
   businessName,
-  title = "One Last Step!",
-  subtitle = "Enter your contact info to unlock your personalized results",
+  title = "Great news!",
+  subtitle = "I have everything I need to create your personalized phase-by-phase analysis. Just need your contact info to send it over!",
   requiredFields = { name: true, email: true, phone: false },
   initialValues = {},
   allowSkip = true,
@@ -154,15 +155,22 @@ export function ContactCollectionModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md z-50"
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
             onClick={allowSkip ? handleSkip : undefined}
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.85, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{
+              type: 'spring',
+              damping: 25,
+              stiffness: 300,
+              duration: 0.5,
+            }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-700 relative">
@@ -180,40 +188,39 @@ export function ContactCollectionModal({
                 </button>
               )}
 
-              {/* Header with glow */}
-              <div className="relative bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 border-b border-slate-700 p-6 text-center overflow-hidden">
-                {/* Animated glow orbs */}
-                <div className="absolute top-0 left-1/4 w-32 h-32 bg-cyan-500/30 rounded-full blur-3xl animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-blue-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+              {/* Header with chat bubble style */}
+              <div className="relative bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 border-b border-slate-700 p-6 overflow-hidden">
+                {/* Subtle animated glow orbs */}
+                <div className="absolute top-0 left-1/4 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-                  className="relative inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full mb-4 shadow-lg shadow-cyan-500/30"
-                >
-                  <Sparkles className="h-8 w-8 text-white" />
-                  {/* Glow ring */}
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 animate-ping opacity-30" />
-                </motion.div>
+                {/* Bot avatar and message bubble style */}
+                <div className="relative flex items-start gap-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+                    className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30"
+                  >
+                    <MessageCircle className="h-6 w-6 text-white" />
+                  </motion.div>
 
-                <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="relative text-2xl font-bold text-white mb-2"
-                >
-                  {title}
-                </motion.h2>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="relative text-slate-300"
-                >
-                  {subtitle}
-                </motion.p>
+                  <div className="flex-1">
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="bg-slate-800/80 rounded-2xl rounded-tl-sm p-4 border border-slate-700/50"
+                    >
+                      <h2 className="text-xl font-semibold text-white mb-1.5">
+                        {title}
+                      </h2>
+                      <p className="text-slate-300 text-sm leading-relaxed">
+                        {subtitle}
+                      </p>
+                    </motion.div>
+                  </div>
+                </div>
               </div>
 
               {/* Form */}

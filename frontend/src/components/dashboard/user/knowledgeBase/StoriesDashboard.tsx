@@ -45,9 +45,15 @@ import { StoryImpactIntro, StoryBridge } from '@/components/svg/stories';
 interface Story {
   id: string;
   title: string;
-  advice: string;
+  // New structured fields
+  situation?: string;
+  action?: string;
+  outcome?: string;
+  // Legacy field (kept for backward compatibility)
+  advice?: string;
   tags: string[];
   kind: 'story';
+  flows?: string[];
   placements?: Record<string, string[]>;
   createdAt?: string;
 }
@@ -81,7 +87,13 @@ export default function StoriesDashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPopulating, setIsPopulating] = useState(false);
+  const [isPopulatingAndAssigning, setIsPopulatingAndAssigning] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [populateResult, setPopulateResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Check if we're in development mode
+  const isDev = process.env.NODE_ENV === 'development';
 
   // Intro slideshow state
   const [showIntro, setShowIntro] = useState(false);
@@ -190,28 +202,98 @@ export default function StoriesDashboard() {
     }
   };
 
-  // Parse story content
-  const parseStoryContent = (advice: string) => {
+  const handleClearAllStories = async () => {
+    setIsClearing(true);
+    setPopulateResult(null);
+    try {
+      const response = await fetch('/api/agent-advice/clear-all?kind=story', {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to clear stories');
+      }
+
+      setPopulateResult({ message: data.message, type: 'success' });
+      fetchStories();
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setPopulateResult(null), 5000);
+    } catch (err) {
+      setPopulateResult({
+        message: err instanceof Error ? err.message : 'Failed to clear stories',
+        type: 'error',
+      });
+    } finally {
+      setIsClearing(false);
+      setShowClearConfirm(false);
+    }
+  };
+
+  const handlePopulateAndAssign = async () => {
+    setIsPopulatingAndAssigning(true);
+    setPopulateResult(null);
+    try {
+      const response = await fetch('/api/agent-advice/populate-and-assign', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to populate and assign stories');
+      }
+
+      setPopulateResult({ message: data.message, type: 'success' });
+      fetchStories();
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setPopulateResult(null), 5000);
+    } catch (err) {
+      setPopulateResult({
+        message: err instanceof Error ? err.message : 'Failed to populate and assign stories',
+        type: 'error',
+      });
+    } finally {
+      setIsPopulatingAndAssigning(false);
+    }
+  };
+
+  // Get story content - prefers structured fields, falls back to parsing legacy
+  const getStoryContent = (story: Story) => {
+    // If structured fields exist, use them directly
+    if (story.situation || story.action || story.outcome) {
+      return {
+        situation: story.situation || '',
+        action: story.action || '',
+        outcome: story.outcome || '',
+      };
+    }
+
+    // Fall back to parsing legacy advice field
+    const advice = story.advice || '';
     if (!advice.includes('[CLIENT STORY]')) {
       return { raw: advice };
     }
 
     const lines = advice.split('\n');
     let situation = '';
-    let whatIDid = '';
+    let action = '';
     let outcome = '';
 
     for (const line of lines) {
       if (line.startsWith('Situation:')) {
         situation = line.replace('Situation:', '').trim();
       } else if (line.startsWith('What I did:')) {
-        whatIDid = line.replace('What I did:', '').trim();
+        action = line.replace('What I did:', '').trim();
       } else if (line.startsWith('Outcome:')) {
         outcome = line.replace('Outcome:', '').trim();
       }
     }
 
-    return { situation, whatIDid, outcome };
+    return { situation, action, outcome };
   };
 
   // Check if story has placements
@@ -227,9 +309,17 @@ export default function StoriesDashboard() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
+      // Search in title, structured fields, legacy advice, and tags
+      const searchableText = [
+        story.title,
+        story.situation,
+        story.action,
+        story.outcome,
+        story.advice,
+      ].filter(Boolean).join(' ').toLowerCase();
+
       const matches =
-        story.title.toLowerCase().includes(query) ||
-        story.advice.toLowerCase().includes(query) ||
+        searchableText.includes(query) ||
         story.tags.some((tag) => tag.toLowerCase().includes(query));
       if (!matches) return false;
     }
@@ -300,9 +390,25 @@ export default function StoriesDashboard() {
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
+          {/* Dev-only: Clear All Stories button */}
+          {isDev && stories.length > 0 && (
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              disabled={isClearing}
+              className="flex items-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors disabled:opacity-50"
+              title="Clear all stories (dev only)"
+            >
+              {isClearing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Clear All
+            </button>
+          )}
           <button
             onClick={handlePopulateSampleStories}
-            disabled={isPopulating}
+            disabled={isPopulating || isPopulatingAndAssigning}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
             title="Add sample real estate stories for testing"
           >
@@ -313,6 +419,25 @@ export default function StoriesDashboard() {
             )}
             {isPopulating ? 'Adding...' : 'Auto-Populate'}
           </button>
+          {/* Dev-only: Populate & Auto-Assign button */}
+          {isDev && (
+            <button
+              onClick={handlePopulateAndAssign}
+              disabled={isPopulating || isPopulatingAndAssigning}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
+              title="Add sample stories AND assign them to phases (dev only)"
+            >
+              {isPopulatingAndAssigning ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Wand2 className="w-4 h-4" />
+                  <MapPin className="w-4 h-4 -ml-1" />
+                </>
+              )}
+              {isPopulatingAndAssigning ? 'Setting up...' : 'Populate & Assign'}
+            </button>
+          )}
           <button
             onClick={() => {
               setEditingStory(null);
@@ -446,7 +571,7 @@ export default function StoriesDashboard() {
         <div className="space-y-4">
           {filteredStories.map((story) => {
             const isExpanded = expandedStories.has(story.id);
-            const parsed = parseStoryContent(story.advice);
+            const content = getStoryContent(story);
             const isAssigned = hasPlacement(story);
             const placementCount = story.placements
               ? Object.values(story.placements).flat().length
@@ -540,35 +665,35 @@ export default function StoriesDashboard() {
                 {isExpanded && (
                   <div className="px-4 pb-4 border-t border-slate-700/50">
                     <div className="pt-4 space-y-4">
-                      {'situation' in parsed ? (
+                      {'situation' in content ? (
                         <>
-                          {parsed.situation && (
+                          {content.situation && (
                             <div>
                               <div className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-1">
                                 Situation
                               </div>
-                              <div className="text-slate-300 text-sm">{parsed.situation}</div>
+                              <div className="text-slate-300 text-sm">{content.situation}</div>
                             </div>
                           )}
-                          {parsed.whatIDid && (
+                          {content.action && (
                             <div>
                               <div className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-1">
                                 What I Did
                               </div>
-                              <div className="text-slate-300 text-sm">{parsed.whatIDid}</div>
+                              <div className="text-slate-300 text-sm">{content.action}</div>
                             </div>
                           )}
-                          {parsed.outcome && (
+                          {content.outcome && (
                             <div>
                               <div className="text-xs font-medium text-amber-400 uppercase tracking-wide mb-1">
                                 Outcome
                               </div>
-                              <div className="text-slate-300 text-sm">{parsed.outcome}</div>
+                              <div className="text-slate-300 text-sm">{content.outcome}</div>
                             </div>
                           )}
                         </>
                       ) : (
-                        <div className="text-slate-300 text-sm whitespace-pre-wrap">{parsed.raw}</div>
+                        <div className="text-slate-300 text-sm whitespace-pre-wrap">{content.raw}</div>
                       )}
 
                       {/* Current Placements */}
@@ -659,6 +784,42 @@ export default function StoriesDashboard() {
               >
                 {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear All Stories Confirmation (Dev Only) */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowClearConfirm(false)} />
+          <div className="relative bg-slate-800 rounded-xl border border-red-500/30 shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-red-400 mb-2">Clear All Stories?</h3>
+            <p className="text-slate-400 mb-4">
+              This will permanently delete all <span className="text-red-400 font-bold">{stories.length}</span> stories
+              from your knowledge base. This action cannot be undone.
+            </p>
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
+              <p className="text-sm text-red-300">
+                <strong>Dev Mode Only:</strong> This button is only visible in development mode
+                for testing purposes.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearAllStories}
+                disabled={isClearing}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg"
+              >
+                {isClearing && <Loader2 className="w-4 h-4 animate-spin" />}
+                Yes, Clear All
               </button>
             </div>
           </div>

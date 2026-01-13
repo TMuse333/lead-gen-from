@@ -1,26 +1,28 @@
 // frontend/src/components/dashboard/user/offers/OfferEditor.tsx
 /**
  * Main Offer Editor Component
- * Complete tabbed interface for editing offer configurations
+ * Simplified tabbed interface with unified Offer Builder
  */
 
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  FileText,
-  ClipboardList,
-  FileCode,
   Eye,
   Settings,
-  Play,
   BarChart3,
   ArrowLeft,
   Loader2,
   AlertCircle,
   CheckCircle2,
+  GitBranch,
   BookOpen,
+  Wand2,
+  MessageSquare,
+  Image,
+  Award,
 } from 'lucide-react';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { EditorTab } from '@/types/offers/offerCustomization.types';
@@ -28,24 +30,29 @@ import type { GenerationMetadata } from '@/lib/offers/core/types';
 import { useOfferEditor } from '@/hooks/offers/useOfferEditor';
 import { useOfferCustomizations } from '@/hooks/offers/useOfferCustomizations';
 import { useUserConfig } from '@/contexts/UserConfigContext';
-import { OverviewTab } from './tabs/OverviewTab';
-import { InputsTab } from './tabs/InputsTab';
-import { PromptTab } from './tabs/PromptTab';
-import { OutputTab } from './tabs/OutputTab';
 import { SettingsTab } from './tabs/SettingsTab';
-import { TestTab } from './tabs/TestTab';
 import { AnalyticsTab } from './tabs/AnalyticsTab';
-import { KnowledgeTab } from './tabs/KnowledgeTab';
+import { UnifiedOfferBuilder } from './tabs/UnifiedOfferBuilder';
+import { SummaryTab } from './tabs/SummaryTab';
+import { LivePreviewTab } from './tabs/LivePreviewTab';
+import { InstructionsTab } from './tabs/InstructionsTab';
+import { EndingCTATab } from './tabs/EndingCTATab';
+import { HeroSectionTab } from './tabs/HeroSectionTab';
+import { AgentStatsTab } from './tabs/AgentStatsTab';
+import type { EndingCTAConfig } from '@/lib/mongodb/models/clientConfig';
+import type { AgentProfile } from '@/lib/userConfig/getUserConfig';
 
+// Tab structure - Instructions, Setup Wizard, Hero/CTA/Stats (personal touch), then Summary, Live Preview, Settings, Analytics
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: FileText },
-  { id: 'inputs', label: 'Input Requirements', icon: ClipboardList },
-  { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
-  { id: 'prompt', label: 'Prompt', icon: FileCode },
-  { id: 'output', label: 'Output Preview', icon: Eye },
-  { id: 'settings', label: 'Settings', icon: Settings },
-  { id: 'test', label: 'Test', icon: Play },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'instructions', label: 'Instructions', icon: BookOpen, highlight: true },
+  { id: 'setup-wizard', label: 'Setup Wizard', icon: Wand2, highlight: true },
+  { id: 'hero-section', label: 'Hero Section', icon: Image, highlight: true },
+  { id: 'ending-cta', label: 'Ending CTA', icon: MessageSquare, highlight: true },
+  { id: 'agent-stats', label: 'Agent Stats', icon: Award, highlight: false },
+  { id: 'summary', label: 'Summary', icon: GitBranch, highlight: false },
+  { id: 'live-preview', label: 'Live Preview', icon: Eye, highlight: false },
+  { id: 'settings', label: 'Settings', icon: Settings, highlight: false },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, highlight: false },
 ] as const;
 
 interface OfferEditorProps {
@@ -54,6 +61,28 @@ interface OfferEditorProps {
 }
 
 export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
+  const searchParams = useSearchParams();
+  const [showWizard, setShowWizard] = useState(false);
+  const [showTabHint, setShowTabHint] = useState(true);
+  const [showTabGlow, setShowTabGlow] = useState(true);
+  const [initialTabSet, setInitialTabSet] = useState(false);
+
+  // Hide hint and glow after user interacts or after timeout
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTabHint(false);
+    }, 5000); // Hint fades after 5 seconds
+
+    const glowTimer = setTimeout(() => {
+      setShowTabGlow(false);
+    }, 8000); // Glow fades after 8 seconds
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(glowTimer);
+    };
+  }, []);
+
   const {
     activeTab,
     setActiveTab,
@@ -82,6 +111,39 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
 
   const isLoading = editorLoading || dataLoading;
   const error = editorError || dataError;
+
+  // Read tab from URL params on initial load
+  useEffect(() => {
+    if (initialTabSet) return;
+
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['instructions', 'setup-wizard', 'summary', 'live-preview', 'hero-section', 'ending-cta', 'agent-stats', 'settings', 'analytics'];
+
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam as EditorTab);
+    } else if (!validTabs.includes(activeTab)) {
+      setActiveTab('instructions' as EditorTab);
+    }
+
+    setInitialTabSet(true);
+  }, [searchParams, activeTab, setActiveTab, initialTabSet]);
+
+  // Handle opening wizard from InstructionsTab
+  const handleOpenWizard = () => {
+    setActiveTab('setup-wizard' as EditorTab);
+    setShowWizard(true);
+    setShowTabHint(false);
+    setShowTabGlow(false);
+  };
+
+  // Handle tab click - dismiss hints
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId as EditorTab);
+    setShowTabHint(false);
+    if (tabId !== 'instructions') {
+      setShowTabGlow(false);
+    }
+  };
 
   const handleToggleEnabled = async (enabled: boolean) => {
     if (!definition) return;
@@ -135,6 +197,56 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
     setEditorLoading(false);
   };
 
+  const handleSaveEndingCTA = async (ctaConfig: EndingCTAConfig) => {
+    setEditorLoading(true);
+    setEditorError(null);
+
+    try {
+      const response = await fetch('/api/user/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endingCTA: ctaConfig }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save CTA configuration');
+      }
+
+      await refetchConfig();
+      setSuccess('CTA settings saved successfully');
+    } catch (err: any) {
+      setEditorError(err.message || 'Failed to save CTA configuration');
+      throw err; // Re-throw so EndingCTATab can handle it
+    } finally {
+      setEditorLoading(false);
+    }
+  };
+
+  const handleSaveAgentStats = async (agentProfile: AgentProfile) => {
+    setEditorLoading(true);
+    setEditorError(null);
+
+    try {
+      const response = await fetch('/api/user/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentProfile }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save agent stats');
+      }
+
+      await refetchConfig();
+      setSuccess('Agent stats saved successfully');
+    } catch (err: any) {
+      setEditorError(err.message || 'Failed to save agent stats');
+      throw err;
+    } finally {
+      setEditorLoading(false);
+    }
+  };
+
   const handleAddOrSaveOffer = async () => {
     if (!config) {
       setEditorError('Configuration not loaded');
@@ -145,13 +257,11 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
     setEditorError(null);
 
     try {
-      // Add offer to selectedOffers if not already present
       const currentOffers = config.selectedOffers || [];
       const updatedOffers = isOfferInConfig
-        ? currentOffers // Already in config, just save customizations
-        : [...currentOffers, offerType]; // Add to config
+        ? currentOffers
+        : [...currentOffers, offerType];
 
-      // Update user config
       const response = await fetch('/api/user/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -162,12 +272,10 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
         throw new Error('Failed to update configuration');
       }
 
-      // Save any customizations
       if (customization) {
         await saveCustomizations(customization);
       }
 
-      // Refetch config to update UI
       await refetchConfig();
 
       setSuccess(
@@ -207,6 +315,7 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
@@ -215,11 +324,12 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
           <div>
             <h1 className="text-2xl font-bold text-slate-100">{definition.label} Configuration</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Customize settings, test generation, and view analytics
+              Build your chatbot flow and customize the timeline
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Add/Save Button */}
           <button
             onClick={handleAddOrSaveOffer}
             disabled={isLoading}
@@ -247,6 +357,7 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
         </div>
       </div>
 
+      {/* Status Messages */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -269,20 +380,35 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
         </motion.div>
       )}
 
-      <div className="border-b border-slate-700">
+      {/* Tabs */}
+      <div className="border-b border-slate-700 relative">
         <div className="flex gap-1 overflow-x-auto">
-          {TABS.map((tab) => {
+          {TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const shouldGlow = showTabGlow && tab.highlight;
+
             return (
-              <button
+              <motion.button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as EditorTab)}
-                className={`px-4 py-3 flex items-center gap-2 whitespace-nowrap transition-colors relative ${
+                onClick={() => handleTabClick(tab.id)}
+                className={`px-4 py-3 flex items-center gap-2 whitespace-nowrap transition-all relative ${
                   isActive ? 'text-cyan-400' : 'text-slate-400 hover:text-slate-300'
                 }`}
+                animate={shouldGlow ? {
+                  boxShadow: [
+                    '0 0 0 0 rgba(6, 182, 212, 0)',
+                    '0 0 20px 2px rgba(6, 182, 212, 0.4)',
+                    '0 0 0 0 rgba(6, 182, 212, 0)',
+                  ],
+                } : {}}
+                transition={shouldGlow ? {
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: index * 0.3,
+                } : {}}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={`w-4 h-4 ${shouldGlow ? 'text-cyan-400' : ''}`} />
                 {tab.label}
                 {isActive && (
                   <motion.div
@@ -290,25 +416,67 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
                   />
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </div>
+
+        {/* Tab hint text */}
+        {showTabHint && (
+          <motion.p
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute -bottom-6 left-0 text-xs text-cyan-400/70 italic"
+            style={{
+              animation: 'fadeOut 5s forwards',
+            }}
+          >
+            Explore each tab to configure your chatbot: Instructions → Setup Wizard → Hero/CTA → Summary
+          </motion.p>
+        )}
       </div>
 
+      {/* Add spacing when hint is shown */}
+      {showTabHint && <div className="h-4" />}
+
+      {/* Main Content */}
       <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-6">
-        {activeTab === 'overview' && (
-          <OverviewTab
-            definition={definition}
-            customization={customization}
-            hasCustomizations={hasCustomizations}
-            onToggleEnabled={handleToggleEnabled}
+        {activeTab === 'instructions' && (
+          <InstructionsTab onOpenWizard={handleOpenWizard} />
+        )}
+        {activeTab === 'setup-wizard' && (
+          <UnifiedOfferBuilder
+            externalShowWizard={true}
+            onWizardClose={() => setActiveTab('summary' as EditorTab)}
+            wizardOnlyMode={true}
           />
         )}
-        {activeTab === 'inputs' && <InputsTab definition={definition} />}
-        {activeTab === 'knowledge' && <KnowledgeTab offerType={offerType} />}
-        {activeTab === 'prompt' && <PromptTab definition={definition} offerType={offerType} />}
-        {activeTab === 'output' && <OutputTab definition={definition} agentName={config?.businessName} />}
+        {activeTab === 'summary' && (
+          <SummaryTab />
+        )}
+        {activeTab === 'live-preview' && (
+          <LivePreviewTab />
+        )}
+        {activeTab === 'hero-section' && (
+          <HeroSectionTab
+            config={config?.endingCTA}
+            onSave={handleSaveEndingCTA}
+          />
+        )}
+        {activeTab === 'ending-cta' && (
+          <EndingCTATab
+            config={config?.endingCTA}
+            onSave={handleSaveEndingCTA}
+          />
+        )}
+        {activeTab === 'agent-stats' && (
+          <AgentStatsTab
+            agentProfile={config?.agentProfile}
+            onSave={handleSaveAgentStats}
+          />
+        )}
         {activeTab === 'settings' && (
           <SettingsTab
             definition={definition}
@@ -317,7 +485,6 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
             hasCustomizations={hasCustomizations}
           />
         )}
-        {activeTab === 'test' && <TestTab offerType={offerType} />}
         {activeTab === 'analytics' && <AnalyticsTab offerType={offerType} />}
       </div>
     </div>

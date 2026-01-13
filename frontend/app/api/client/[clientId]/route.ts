@@ -50,6 +50,8 @@ export async function GET(
         conversationFlows: config.conversationFlows,
         colorConfig: config.colorConfig,
         qdrantCollectionName: config.qdrantCollectionName,
+        agentProfile: config.agentProfile,
+        endingCTA: config.endingCTA,
         isActive: config.isActive,
         onboardingCompletedAt: config.onboardingCompletedAt,
         createdAt: config.createdAt,

@@ -130,11 +130,20 @@ export interface OfferTestResponse {
  * Editor tab IDs
  */
 export type EditorTab =
+  | 'instructions'
+  | 'setup-wizard'
+  | 'summary'
+  | 'live-preview'
+  | 'hero-section'
+  | 'ending-cta'
+  | 'settings'
+  | 'analytics'
+  // Legacy tabs (kept for backwards compatibility)
+  | 'timeline-builder'
+  | 'questions'
+  | 'bot-responses'
   | 'overview'
-  | 'inputs'
   | 'knowledge'
   | 'prompt'
   | 'output'
-  | 'settings'
-  | 'test'
-  | 'analytics';
+  | 'test';

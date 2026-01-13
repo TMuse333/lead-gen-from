@@ -44,20 +44,30 @@ export function ProgressIndicator({
   const borderStyle = hasCustomTheme ? { borderColor: `${colorTheme.primary}40` } : undefined;
   const primaryBgStyle = hasCustomTheme ? { backgroundColor: colorTheme.primary, borderColor: 'transparent', color: '#fff' } : undefined;
   const currentRingStyle = hasCustomTheme
-    ? { borderColor: `${colorTheme.primary}40`, color: colorTheme.primary, boxShadow: `0 0 0 2px white, 0 0 0 4px ${colorTheme.primary}` }
+    ? { borderColor: `${colorTheme.primary}40`, color: colorTheme.primary, backgroundColor: colorTheme.surface, boxShadow: `0 0 0 2px ${colorTheme.surface}, 0 0 0 4px ${colorTheme.primary}` }
+    : undefined;
+  const inactiveCircleStyle = hasCustomTheme
+    ? { backgroundColor: `${colorTheme.surface}`, borderColor: colorTheme.border, color: colorTheme.textSecondary }
     : undefined;
   const textAccentStyle = hasCustomTheme ? { color: colorTheme.primary } : undefined;
+  const textCompletedStyle = hasCustomTheme ? { color: colorTheme.text } : undefined;
+  const textInactiveStyle = hasCustomTheme ? { color: colorTheme.textSecondary } : undefined;
+
+  // Background style for custom theme
+  const bgStyle = hasCustomTheme
+    ? { backgroundColor: `${colorTheme.surface}f0`, borderColor: `${colorTheme.border}` }
+    : undefined;
 
   return (
     <div
       className={`
         ${sticky ? 'sticky top-0 z-10' : ''}
-        bg-white/95 backdrop-blur-sm
+        ${hasCustomTheme ? '' : 'bg-white/95'} backdrop-blur-sm
         border-b ${hasCustomTheme ? '' : borderColor}
         py-4 px-4 md:px-6
         overflow-x-auto
       `}
-      style={borderStyle}
+      style={hasCustomTheme ? bgStyle : borderStyle}
     >
       <div className="flex items-center justify-between min-w-max gap-2">
         {steps.map((step, idx) => {
@@ -70,16 +80,16 @@ export function ProgressIndicator({
             if (hasCustomTheme) {
               if (isCompleted) return primaryBgStyle;
               if (isCurrent) return currentRingStyle;
-              return undefined;
+              return inactiveCircleStyle;
             }
             return undefined;
           };
 
           const getCircleClass = () => {
             if (hasCustomTheme) {
-              if (isCompleted) return 'bg-transparent border-transparent text-white';
-              if (isCurrent) return 'bg-white';
-              return 'border-gray-300 text-gray-400 bg-gray-50';
+              if (isCompleted) return 'border-transparent';
+              if (isCurrent) return '';
+              return '';
             }
             if (isCompleted) return `${bgColor} border-transparent text-white`;
             if (isCurrent) return `${borderColor} ${accentColor} bg-white ring-2 ring-offset-2 ${accentColor.replace('text-', 'ring-')}`;
@@ -127,11 +137,14 @@ export function ProgressIndicator({
                     text-xs md:text-sm font-medium text-center max-w-[80px] md:max-w-[100px]
                     leading-tight line-clamp-2
                     ${hasCustomTheme
-                      ? isCurrent ? '' : isCompleted ? 'text-gray-700' : 'text-gray-400'
+                      ? ''
                       : isCurrent ? accentColor : isCompleted ? 'text-gray-700' : 'text-gray-400'
                     }
                   `}
-                  style={hasCustomTheme && isCurrent ? textAccentStyle : undefined}
+                  style={hasCustomTheme
+                    ? isCurrent ? textAccentStyle : isCompleted ? textCompletedStyle : textInactiveStyle
+                    : undefined
+                  }
                 >
                   {step.name}
                 </span>
@@ -146,7 +159,7 @@ export function ProgressIndicator({
                     ${hasCustomTheme ? '' : idx < currentStep ? bgColor : 'bg-gray-200'}
                   `}
                   style={hasCustomTheme
-                    ? { backgroundColor: idx < currentStep ? colorTheme.primary : '#e5e7eb' }
+                    ? { backgroundColor: idx < currentStep ? colorTheme.primary : colorTheme.border }
                     : undefined
                   }
                 />

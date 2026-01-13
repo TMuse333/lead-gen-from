@@ -19,7 +19,7 @@ export interface UseOfferEditorReturn {
   setSuccess: (message: string | null) => void;
 }
 
-export function useOfferEditor(initialTab: EditorTab = 'overview'): UseOfferEditorReturn {
+export function useOfferEditor(initialTab: EditorTab = 'timeline-builder'): UseOfferEditorReturn {
   const [activeTab, setActiveTab] = useState<EditorTab>(initialTab);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

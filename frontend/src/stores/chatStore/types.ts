@@ -10,6 +10,7 @@ import { LlmOutput } from '@/types/componentSchema';
 import { ButtonOption } from '@/types/conversation.types';
 import { QdrantRetrievalMetadata } from '@/types/qdrant.types';
 import type { OfferType, Intent } from '@/lib/offers/unified';
+import type { CustomQuestion, TimelineFlow } from '@/types/timelineBuilder.types';
 
 // Re-export for convenience
 export type { OfferType, Intent };
@@ -89,6 +90,12 @@ export interface ChatStateData {
   // ==================== CONVERSATION TRACKING ====================
   conversationId: string | null;
 
+  // ==================== QUESTIONS (fetched from MongoDB) ====================
+  /** Questions for each flow, fetched from MongoDB */
+  flowQuestions: Partial<Record<TimelineFlow, CustomQuestion[]>>;
+  /** Whether questions have been loaded */
+  questionsLoaded: boolean;
+
   // ==================== LEGACY (for backwards compatibility) ====================
   /** @deprecated Use selectedOffer + currentIntent instead */
   currentFlow: Intent | null;
@@ -145,6 +152,14 @@ export interface ChatStateActions {
       answeredVia: 'button' | 'text';
     };
   }) => Promise<void>;
+
+  // ==================== QUESTION ACTIONS ====================
+  /** Load questions from MongoDB for a specific flow */
+  loadQuestionsForFlow: (flow: TimelineFlow, clientId?: string) => Promise<void>;
+  /** Load questions for all flows */
+  loadAllQuestions: (clientId?: string) => Promise<void>;
+  /** Get questions for current intent */
+  getQuestionsForCurrentIntent: () => CustomQuestion[];
 
   // ==================== RESET ====================
   reset: () => void;

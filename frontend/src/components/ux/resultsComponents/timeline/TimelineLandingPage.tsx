@@ -16,10 +16,14 @@ import {
 import { StepByStepGuide } from './components/StepByStepGuide';
 import { type MarketData } from './components/MarketContext';
 import { AgentExpertise, type AgentCredentials } from './components/AgentExpertise';
+import { CompactTrustBar, HeroStatBadges } from './components/CompactTrustBar';
 import { StoryCard, type MatchedStory } from './components/StoryCard';
 import { ClientTestimonial } from '@/components/svg/stories';
 import { HeroTimelineStats } from '@/components/svg/timeline';
+import { EstimateDisclaimer } from '@/components/ux/shared/EstimateDisclaimer';
+import { EndingCTA } from '@/components/ux/resultsComponents/EndingCTA';
 import type { TimelineOutput } from '@/lib/offers/definitions/timeline/timeline-types';
+import type { EndingCTAConfig } from '@/lib/mongodb/models/clientConfig';
 import { generateTimelinePDF } from '@/lib/pdf/generateTimelinePDF';
 import type { ColorTheme } from '@/lib/colors/defaultTheme';
 
@@ -41,6 +45,10 @@ interface TimelineLandingPageProps {
   colorTheme?: ColorTheme;
   /** Force mobile layout (for preview purposes) */
   forceMobileLayout?: boolean;
+  /** Ending CTA configuration from agent's dashboard settings */
+  endingCTA?: EndingCTAConfig;
+  /** Conversation ID for linking questions */
+  conversationId?: string;
 }
 
 /**
@@ -57,6 +65,8 @@ export function TimelineLandingPage({
   interactive = true,
   colorTheme,
   forceMobileLayout = false,
+  endingCTA,
+  conversationId,
 }: TimelineLandingPageProps) {
   // Helper for responsive classes - when forceMobileLayout is true, use mobile styles
   const responsive = (mobile: string, desktop: string) =>
@@ -72,7 +82,7 @@ export function TimelineLandingPage({
     setDownloadError(null);
 
     try {
-      await generateTimelinePDF(data);
+      await generateTimelinePDF(data, endingCTA || undefined);
     } catch (error) {
       setDownloadError('Failed to generate PDF. Please try again.');
     } finally {
@@ -182,8 +192,25 @@ export function TimelineLandingPage({
     ? { backgroundColor: colorTheme.primary }
     : undefined;
 
+  // Main page background style
+  const pageBackgroundStyle = hasCustomTheme
+    ? { backgroundColor: colorTheme.background, color: colorTheme.text }
+    : undefined;
+
+  // Surface style for cards and sections
+  const surfaceStyle = hasCustomTheme
+    ? { backgroundColor: colorTheme.surface, color: colorTheme.text }
+    : undefined;
+
+  // Text color overrides for dark themes
+  const headingStyle = hasCustomTheme ? { color: colorTheme.text } : undefined;
+  const subTextStyle = hasCustomTheme ? { color: colorTheme.textSecondary } : undefined;
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className={`min-h-screen ${hasCustomTheme ? '' : 'bg-gray-50'}`}
+      style={pageBackgroundStyle}
+    >
       {/* Hero Section - Personalized with user name and animated visualization */}
       <section
         className={`relative overflow-hidden ${hasCustomTheme ? '' : `bg-gradient-to-r ${colors.heroGradient}`}`}
@@ -260,21 +287,54 @@ export function TimelineLandingPage({
                 Includes {data.phases.length} phases, {data.metadata?.totalActionItems || 0} action items
                 {totalStories > 0 && `, and ${totalStories} relevant client stories`}
               </p>
+
             </div>
 
-            {/* Right: Animated Stats Visualization */}
-            <div className={`flex justify-center order-2 w-full max-w-sm ${forceMobileLayout ? '' : 'lg:max-w-none lg:justify-end'}`}>
-              <HeroTimelineStats
-                duration={data.totalEstimatedTime || '4-5 months'}
-                steps={data.phases.length}
-                actions={data.metadata?.totalActionItems || 0}
-                stories={totalStories}
-                budget={data.userSituation.budget}
-                primaryColor={hasCustomTheme ? colorTheme?.primary : undefined}
-                secondaryColor={hasCustomTheme ? colorTheme?.gradientTo : undefined}
-                width={320}
-                height={220}
-              />
+            {/* Right: Headshot and Animated Stats Visualization */}
+            <div className={`flex flex-col items-center order-2 w-full max-w-sm ${forceMobileLayout ? '' : 'lg:max-w-none'}`}>
+              {/* Agent Headshot - Prominent display above timeline */}
+              {(endingCTA || data.agentInfo) && (
+                <div className="mb-6 flex flex-col items-center">
+                  {(endingCTA?.headshot || data.agentInfo?.photo) ? (
+                    <img
+                      src={endingCTA?.headshot || data.agentInfo?.photo}
+                      alt={endingCTA?.displayName || data.agentInfo?.name || 'Agent'}
+                      className="w-32 h-32 lg:w-40 lg:h-40 rounded-full object-cover border-4 border-white/40 shadow-2xl"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-full bg-white/20 flex items-center justify-center border-4 border-white/40 shadow-2xl">
+                      <Users className="h-16 w-16 lg:h-20 lg:w-20 text-white/80" />
+                    </div>
+                  )}
+                  <div className="mt-4 text-center">
+                    <p className="text-lg lg:text-xl font-bold text-white">
+                      {endingCTA?.displayName || data.agentInfo?.name || 'Your Agent'}
+                    </p>
+                    <p className="text-sm lg:text-base text-white/80">
+                      {endingCTA?.title || 'Your guide for this journey'}
+                    </p>
+                    {/* Stat badges inline with agent name */}
+                    {agentCredentials && (
+                      <HeroStatBadges agent={agentCredentials} className="mt-1" />
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Animated Stats Visualization */}
+              <div className="flex justify-center w-full">
+                <HeroTimelineStats
+                  duration={data.totalEstimatedTime || '4-5 months'}
+                  steps={data.phases.length}
+                  actions={data.metadata?.totalActionItems || 0}
+                  stories={totalStories}
+                  budget={data.userSituation.budget}
+                  primaryColor={hasCustomTheme ? colorTheme?.primary : undefined}
+                  secondaryColor={hasCustomTheme ? colorTheme?.gradientTo : undefined}
+                  width={320}
+                  height={220}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -284,10 +344,31 @@ export function TimelineLandingPage({
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
               d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
-              fill="#F9FAFB"
+              fill={hasCustomTheme ? colorTheme.background : "#F9FAFB"}
             />
           </svg>
         </div>
+      </section>
+
+      {/* Compact Trust Bar - Quick credibility stats */}
+      {agentCredentials && (
+        <CompactTrustBar
+          agent={agentCredentials}
+          colorTheme={colorTheme}
+        />
+      )}
+
+      {/* Estimate Disclaimer Banner - Sets expectations upfront */}
+      <section className="px-4 py-4 max-w-5xl mx-auto">
+        <EstimateDisclaimer
+          variant="banner"
+          agentContact={data.agentInfo ? {
+            name: data.agentInfo.name,
+            email: data.agentInfo.email,
+            phone: data.agentInfo.phone,
+          } : undefined}
+          colorTheme={colorTheme}
+        />
       </section>
 
       {/* SECTION 1: Step-by-Step Guide - THE CORE VALUE (moved up immediately after hero)
@@ -312,16 +393,23 @@ export function TimelineLandingPage({
         />
       </section>
 
-      {/* SECTION 2: Agent Expertise - "Your Guide" (credibility after seeing value)
-          Information Theory: Build trust after demonstrating competence */}
-      {agentCredentials && (
-        <section className="py-10 px-4 bg-white">
+      {/* SECTION 2: Agent Expertise - Now shown via CompactTrustBar above
+          Full AgentExpertise section is available but hidden by default
+          since key stats are shown in hero badges and compact trust bar */}
+      {/* {agentCredentials && (
+        <section
+          className={`py-10 px-4 ${hasCustomTheme ? '' : 'bg-white'}`}
+          style={surfaceStyle}
+        >
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              <h2
+                className={`text-2xl md:text-3xl font-bold mb-2 ${hasCustomTheme ? '' : 'text-gray-900'}`}
+                style={headingStyle}
+              >
                 Your Guide for This Journey
               </h2>
-              <p className="text-gray-600">
+              <p className={hasCustomTheme ? '' : 'text-gray-600'} style={subTextStyle}>
                 Expert support every step of the way
               </p>
             </div>
@@ -332,12 +420,15 @@ export function TimelineLandingPage({
             />
           </div>
         </section>
-      )}
+      )} */}
 
       {/* SECTION 3: Featured Stories - Social Proof (after core content engagement)
           Information Theory: Social validation reinforces decision after seeing value */}
       {totalStories > 0 && (
-        <section className="py-10 px-4 bg-gradient-to-b from-amber-50/50 to-white">
+        <section
+          className={`py-10 px-4 ${hasCustomTheme ? '' : 'bg-gradient-to-b from-amber-50/50 to-white'}`}
+          style={hasCustomTheme ? { backgroundColor: colorTheme.background } : undefined}
+        >
           <div className="max-w-5xl mx-auto">
             <div className="flex flex-col items-center">
               {/* Hero SVG - Centered above content */}
@@ -347,14 +438,25 @@ export function TimelineLandingPage({
 
               {/* Section Header */}
               <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 rounded-full mb-3">
-                  <Sparkles className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-semibold text-amber-700">Real Client Experiences</span>
+                <div
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-3 ${hasCustomTheme ? '' : 'bg-amber-100'}`}
+                  style={hasCustomTheme ? { backgroundColor: `${colorTheme.primary}20` } : undefined}
+                >
+                  <Sparkles className={`h-4 w-4 ${hasCustomTheme ? '' : 'text-amber-600'}`} style={accentStyle} />
+                  <span
+                    className={`text-sm font-semibold ${hasCustomTheme ? '' : 'text-amber-700'}`}
+                    style={accentStyle}
+                  >
+                    Real Client Experiences
+                  </span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                <h2
+                  className={`text-2xl md:text-3xl font-bold mb-2 ${hasCustomTheme ? '' : 'text-gray-900'}`}
+                  style={headingStyle}
+                >
                   Success Stories From People Like You
                 </h2>
-                <p className="text-gray-600 max-w-2xl mx-auto">
+                <p className={`max-w-2xl mx-auto ${hasCustomTheme ? '' : 'text-gray-600'}`} style={subTextStyle}>
                   See how others navigated their journey with personalized guidance
                 </p>
               </div>
@@ -369,10 +471,17 @@ export function TimelineLandingPage({
                   .map((story, idx) => (
                     <div
                       key={story.id || idx}
-                      className="bg-white rounded-2xl border-2 border-amber-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-amber-300 overflow-hidden"
+                      className={`rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden ${hasCustomTheme ? '' : 'bg-white border-amber-200/50 hover:border-amber-300'}`}
+                      style={hasCustomTheme ? { backgroundColor: colorTheme.surface, borderColor: `${colorTheme.primary}30` } : undefined}
                     >
-                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 border-b border-amber-100">
-                        <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                      <div
+                        className={`px-4 py-2 border-b ${hasCustomTheme ? '' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100'}`}
+                        style={hasCustomTheme ? { backgroundColor: `${colorTheme.primary}15`, borderColor: `${colorTheme.primary}20` } : undefined}
+                      >
+                        <span
+                          className={`text-xs font-semibold uppercase tracking-wide ${hasCustomTheme ? '' : 'text-amber-700'}`}
+                          style={accentStyle}
+                        >
                           {story.phaseId?.replace(/-/g, ' ') || 'Client Story'}
                         </span>
                       </div>
@@ -390,7 +499,7 @@ export function TimelineLandingPage({
 
               {totalStories > 4 && (
                 <div className="text-center mt-6">
-                  <p className="text-sm text-gray-500">
+                  <p className={`text-sm ${hasCustomTheme ? '' : 'text-gray-500'}`} style={subTextStyle}>
                     <span className="font-medium">{totalStories - 4} more stories</span> are embedded throughout your timeline
                   </p>
                 </div>
@@ -415,16 +524,28 @@ export function TimelineLandingPage({
       {data.disclaimer && (
         <section className="py-8 px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
+            <div
+              className={`rounded-2xl p-6 border-2 ${hasCustomTheme ? '' : 'bg-amber-50 border-amber-200'}`}
+              style={hasCustomTheme ? { backgroundColor: `${colorTheme.primary}10`, borderColor: `${colorTheme.primary}30` } : undefined}
+            >
               <div className="flex items-start gap-4">
-                <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                <div
+                  className={`p-2 rounded-lg flex-shrink-0 ${hasCustomTheme ? '' : 'bg-amber-100'}`}
+                  style={hasCustomTheme ? { backgroundColor: `${colorTheme.primary}20` } : undefined}
+                >
+                  <AlertCircle className={`h-5 w-5 ${hasCustomTheme ? '' : 'text-amber-600'}`} style={accentStyle} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-amber-900 mb-2">
+                  <h3
+                    className={`text-lg font-bold mb-2 ${hasCustomTheme ? '' : 'text-amber-900'}`}
+                    style={headingStyle}
+                  >
                     Important Note
                   </h3>
-                  <p className="text-sm text-amber-800 leading-relaxed">
+                  <p
+                    className={`text-sm leading-relaxed ${hasCustomTheme ? '' : 'text-amber-800'}`}
+                    style={subTextStyle}
+                  >
                     {data.disclaimer}
                   </p>
                 </div>
@@ -434,13 +555,44 @@ export function TimelineLandingPage({
         </section>
       )}
 
+      {/* Ending CTA Section - Configurable CTA with multiple styles */}
+      {(endingCTA || data.agentInfo) && (
+        <EndingCTA
+          config={endingCTA || {
+            // Fallback to agentInfo if no endingCTA config
+            displayName: data.agentInfo?.name || 'Your Agent',
+            email: data.agentInfo?.email,
+            phone: data.agentInfo?.phone,
+            company: data.agentInfo?.company,
+            headshot: data.agentInfo?.photo,
+            style: 'questions-form',
+            responseTimeText: 'I typically respond within 24 hours',
+          }}
+          userName={data.userSituation.contactName}
+          userEmail={data.userSituation.contactEmail}
+          conversationId={conversationId}
+          colorTheme={colorTheme}
+          onDownload={handleDownloadPDF}
+          onShare={handleShare}
+        />
+      )}
+
       {/* CTA Section */}
-      <section className="py-12 px-4 bg-white">
+      <section
+        className={`py-12 px-4 ${hasCustomTheme ? '' : 'bg-white'}`}
+        style={surfaceStyle}
+      >
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+          <h2
+            className={`text-2xl md:text-3xl font-bold mb-4 ${hasCustomTheme ? '' : 'text-gray-900'}`}
+            style={headingStyle}
+          >
             Ready to Get Started?
           </h2>
-          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p
+            className={`mb-8 max-w-2xl mx-auto ${hasCustomTheme ? '' : 'text-gray-600'}`}
+            style={subTextStyle}
+          >
             Save this timeline for reference, or reach out to discuss your specific situation
             and get personalized guidance every step of the way.
           </p>
@@ -474,11 +626,13 @@ export function TimelineLandingPage({
 
             <button
               onClick={handleShare}
-              className="inline-flex items-center gap-2 px-6 py-3
-                bg-gray-100 hover:bg-gray-200 text-gray-700
+              className={`inline-flex items-center gap-2 px-6 py-3
                 font-semibold rounded-xl
                 hover:scale-105
-                transition-all duration-200"
+                transition-all duration-200
+                ${hasCustomTheme ? '' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}
+              `}
+              style={hasCustomTheme ? { backgroundColor: `${colorTheme.primary}15`, color: colorTheme.text } : undefined}
             >
               <Share2 className="h-5 w-5" />
               Share Timeline
@@ -491,9 +645,9 @@ export function TimelineLandingPage({
                   inline-flex items-center gap-2 px-6 py-3
                   border-2 ${hasCustomTheme ? '' : colors.borderColor} ${hasCustomTheme ? '' : colors.accentColor}
                   font-semibold rounded-xl
-                  hover:bg-gray-50
                   hover:scale-105
                   transition-all duration-200
+                  ${hasCustomTheme ? '' : 'hover:bg-gray-50'}
                 `}
                 style={hasCustomTheme ? { ...borderStyle, ...accentStyle } : undefined}
               >
@@ -514,23 +668,32 @@ export function TimelineLandingPage({
 
       {/* Agent Info Footer (if provided but no credentials section) */}
       {data.agentInfo && !agentCredentials && (
-        <section className="py-8 px-4 bg-gray-50 border-t border-gray-200">
+        <section
+          className={`py-8 px-4 border-t ${hasCustomTheme ? '' : 'bg-gray-50 border-gray-200'}`}
+          style={hasCustomTheme ? { backgroundColor: colorTheme.background, borderColor: colorTheme.border } : undefined}
+        >
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-6 p-6 bg-white rounded-2xl shadow-sm border border-gray-200">
+            <div
+              className={`flex items-center gap-6 p-6 rounded-2xl shadow-sm border ${hasCustomTheme ? '' : 'bg-white border-gray-200'}`}
+              style={hasCustomTheme ? { backgroundColor: colorTheme.surface, borderColor: colorTheme.border } : undefined}
+            >
               {data.agentInfo.photo && (
                 <img
                   src={data.agentInfo.photo}
                   alt={data.agentInfo.name}
-                  className="w-20 h-20 rounded-full object-cover"
+                  className="w-32 h-32 lg:w-40 lg:h-40 rounded-full object-cover border-4 border-gray-200 shadow-lg"
                 />
               )}
               <div>
-                <p className="text-sm text-gray-500 mb-1">Your Guide</p>
-                <h3 className="text-xl font-bold text-gray-900">
+                <p className={`text-sm mb-1 ${hasCustomTheme ? '' : 'text-gray-500'}`} style={subTextStyle}>Your Guide</p>
+                <h3
+                  className={`text-xl font-bold ${hasCustomTheme ? '' : 'text-gray-900'}`}
+                  style={headingStyle}
+                >
                   {data.agentInfo.name}
                 </h3>
                 {data.agentInfo.company && (
-                  <p className="text-gray-600">{data.agentInfo.company}</p>
+                  <p className={hasCustomTheme ? '' : 'text-gray-600'} style={subTextStyle}>{data.agentInfo.company}</p>
                 )}
                 {(data.agentInfo.email || data.agentInfo.phone) && (
                   <div className="flex gap-4 mt-2 text-sm">
@@ -559,6 +722,20 @@ export function TimelineLandingPage({
           </div>
         </section>
       )}
+
+      {/* Footer Disclaimer */}
+      <section className="px-4 max-w-4xl mx-auto">
+        <EstimateDisclaimer
+          variant="footer"
+          agentContact={data.agentInfo ? {
+            name: data.agentInfo.name,
+            email: data.agentInfo.email,
+            phone: data.agentInfo.phone,
+          } : undefined}
+          colorTheme={colorTheme}
+          customMessage="The timelines, costs, and recommendations in this guide are estimates based on typical experiences with clients in similar situations. Every real estate transaction is unique. Your agent will provide specific guidance tailored to your circumstances."
+        />
+      </section>
     </div>
   );
 }

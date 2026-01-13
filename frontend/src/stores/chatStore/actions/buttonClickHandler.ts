@@ -1,17 +1,21 @@
-// stores/chatStore/buttonClickHandler.ts - UNIFIED OFFER SYSTEM
+// stores/chatStore/buttonClickHandler.ts - MONGODB QUESTIONS
 import { ChatMessage, ChatState, Intent, OfferType } from '../types';
 import { ButtonOption } from '@/types/conversation.types';
 import {
   getOffer,
-  getNextQuestion,
-  getFirstQuestion,
-  getQuestion,
-  isComplete,
-  getProgress,
   isValidOfferType,
   isValidIntent,
-  ALL_OFFER_TYPES,
 } from '@/lib/offers/unified';
+import {
+  getFirstQuestion,
+  getNextQuestion,
+  getQuestionById,
+  isFlowComplete,
+  calculateProgress,
+  convertButtons,
+  getBotQuestions,
+} from '@/lib/chat/questionProvider';
+import type { TimelineFlow, CustomQuestion } from '@/types/timelineBuilder.types';
 
 export function createButtonClickHandler(
   set: (partial: Partial<ChatState> | ((state: ChatState) => Partial<ChatState>)) => void,
@@ -77,11 +81,20 @@ export function createButtonClickHandler(
     // ==================== HANDLE INTENT SELECTION ====================
     if (isValidIntent(button.value)) {
       const selectedIntent = button.value as Intent;
-      const { selectedOffer } = state;
+      let { selectedOffer, loadQuestionsForFlow } = get();
 
+      // MVP: Auto-select timeline offer if no offer selected yet
       if (!selectedOffer) {
-        console.error('[ButtonHandler] No offer selected when setting intent');
-        return;
+        const defaultOffer: OfferType = 'real-estate-timeline';
+        console.log('[ButtonHandler] Auto-selecting default offer for MVP:', defaultOffer);
+
+        set({
+          selectedOffer: defaultOffer,
+          enabledOffers: [defaultOffer],
+          useIntentSystem: true,
+        });
+
+        selectedOffer = defaultOffer;
       }
 
       console.log('[ButtonHandler] Intent selected:', selectedIntent);
@@ -109,20 +122,49 @@ export function createButtonClickHandler(
       const { createConversation } = get();
       await createConversation();
 
-      // Get first question from unified offer
-      const firstQuestion = getFirstQuestion(selectedOffer, selectedIntent);
-      console.log('[ButtonHandler] First question:', firstQuestion?.id);
+      // Load questions for this flow from MongoDB
+      const clientId = typeof window !== 'undefined'
+        ? sessionStorage.getItem('clientId') || undefined
+        : undefined;
+
+      await loadQuestionsForFlow(selectedIntent as TimelineFlow, clientId);
+
+      // Get questions from store and filter to only those linked to phases
+      const updatedState = get();
+      const allQuestions = updatedState.flowQuestions[selectedIntent as TimelineFlow] || [];
+      const questions = getBotQuestions(allQuestions);
+
+      console.log(`[ButtonHandler] 📋 Bot questions for ${selectedIntent}: ${questions.length} (from ${allQuestions.length} total)`);
+      if (questions.length > 0) {
+        questions.forEach((q, i) => {
+          console.log(`  ${i + 1}. ${q.id} | type: ${q.inputType} | buttons: ${q.buttons?.length || 0}`);
+          if (q.buttons) {
+            q.buttons.forEach(b => console.log(`      - ${b.label} (${b.value})`));
+          }
+        });
+      } else {
+        console.warn('[ButtonHandler] ⚠️ NO QUESTIONS in store! Check if loadQuestionsForFlow succeeded');
+      }
+
+      // Get first question
+      const firstQuestion = getFirstQuestion(questions);
+      console.log('[ButtonHandler] First question from MongoDB:', firstQuestion?.id);
+      if (firstQuestion) {
+        console.log('[ButtonHandler] First question details:', {
+          id: firstQuestion.id,
+          question: firstQuestion.question,
+          inputType: firstQuestion.inputType,
+          buttons: firstQuestion.buttons?.map(b => b.label),
+          mappingKey: firstQuestion.mappingKey,
+        });
+      }
 
       if (firstQuestion) {
-        // Convert Question to ChatMessage format
+        // Convert CustomQuestion to ChatMessage format
         const aiMsg: ChatMessage = {
           role: 'assistant',
-          content: firstQuestion.text,
-          buttons: firstQuestion.buttons?.map(b => ({
-            id: b.id,
-            label: b.label,
-            value: b.value,
-          })),
+          content: firstQuestion.question,
+          buttons: convertButtons(firstQuestion),
           timestamp: new Date(),
         };
         set((s) => ({
@@ -144,19 +186,35 @@ export function createButtonClickHandler(
     }
 
     // ==================== HANDLE REGULAR ANSWER ====================
-    const { selectedOffer, currentIntent, currentQuestionId } = state;
+    const { selectedOffer, currentIntent, currentQuestionId, flowQuestions } = state;
 
     if (!selectedOffer || !currentIntent || !currentQuestionId) {
       console.warn('[ButtonHandler] Missing state for answer:', { selectedOffer, currentIntent, currentQuestionId });
       return;
     }
 
-    // Get current question from unified registry
-    const currentQuestion = getQuestion(selectedOffer, currentIntent, currentQuestionId);
+    // Get questions from store and filter to only those linked to phases
+    const allQuestions = flowQuestions[currentIntent as TimelineFlow] || [];
+    const questions = getBotQuestions(allQuestions);
 
-    if (!currentQuestion?.mappingKey) {
-      console.warn('[ButtonHandler] No mappingKey for question:', currentQuestionId);
+    // Get current question from stored questions
+    const currentQuestion = getQuestionById(questions, currentQuestionId);
+
+    if (!currentQuestion) {
+      console.warn('[ButtonHandler] Question not found:', currentQuestionId);
       return;
+    }
+
+    // Use mappingKey if available, otherwise fall back to question id
+    const mappingKey = currentQuestion.mappingKey || currentQuestion.id;
+    if (!mappingKey) {
+      console.error('[ButtonHandler] Question has neither mappingKey nor id - this should never happen:', currentQuestionId);
+      return;
+    }
+
+    // Log when using id as fallback (helps identify questions needing migration)
+    if (!currentQuestion.mappingKey) {
+      console.log('[ButtonHandler] Using question id as mappingKey fallback:', currentQuestion.id);
     }
 
     // Add user message
@@ -169,32 +227,26 @@ export function createButtonClickHandler(
 
     // Save answer
     const { addAnswer, updateConversation } = get();
-    addAnswer(currentQuestion.mappingKey, button.value);
+    addAnswer(mappingKey, button.value);
 
     // Update conversation with answer
     await updateConversation({
       messages: get().messages,
-      userInput: { ...get().userInput, [currentQuestion.mappingKey]: button.value },
+      userInput: { ...get().userInput, [mappingKey]: button.value },
       progress: get().progress,
       currentQuestionId,
       answer: {
         questionId: currentQuestionId,
-        mappingKey: currentQuestion.mappingKey,
+        mappingKey,
         value: button.value,
         answeredVia: 'button',
       },
     });
 
-    // Apply tracker feedback from button
+    // Apply tracker feedback from button (if button has tracker info)
     const clickedButton = currentQuestion.buttons?.find(b => b.value === button.value);
-    if (clickedButton?.tracker) {
-      if (clickedButton.tracker.insight) {
-        set({ currentInsight: clickedButton.tracker.insight });
-      }
-      if (clickedButton.tracker.dbMessage) {
-        set({ dbActivity: clickedButton.tracker.dbMessage });
-      }
-    }
+    // Note: CustomQuestion buttons don't have tracker info by default,
+    // but we could add this later if needed
 
     try {
       console.log('📞 Calling /api/chat/smart for button click...');
@@ -223,115 +275,84 @@ export function createButtonClickHandler(
         get().addAnswer(data.extracted.mappingKey, data.extracted.value);
       }
 
-      // Get updated state
+      // Get updated state and filter to bot questions only
       const updatedState = get();
+      const updatedAllQuestions = updatedState.flowQuestions[currentIntent as TimelineFlow] || [];
+      const updatedQuestions = getBotQuestions(updatedAllQuestions);
 
-      // Check completion using unified system
-      const isNowComplete = isComplete(selectedOffer, currentIntent, updatedState.userInput);
+      // Check completion using filtered bot questions (only those linked to phases)
+      const isNowComplete = isFlowComplete(updatedQuestions, updatedState.userInput);
 
-      if (isNowComplete) {
-        console.log('🎉 FLOW COMPLETE! Setting isComplete = true');
+      // Get next question from stored questions
+      const nextQuestion = getNextQuestion(updatedQuestions, currentQuestionId);
+
+      // CRITICAL UX RULE: Contact modal MUST appear at the end of all questions
+      // Show contact modal when: flow is complete OR there's no next question
+      if (isNowComplete || !nextQuestion) {
+        console.log('🎉 FLOW COMPLETE! Showing contact modal for lead capture');
         set({
+          showContactModal: true,
           isComplete: true,
           shouldCelebrate: true,
           progress: 100,
         });
       } else {
-        // Get next question from unified registry
-        const nextQuestion = getNextQuestion(selectedOffer, currentIntent, currentQuestionId);
+        // Continue to next question
+        const aiMsg: ChatMessage = {
+          role: 'assistant',
+          content: data.reply || nextQuestion.question,
+          buttons: convertButtons(nextQuestion),
+          timestamp: new Date(),
+        };
+        set((s) => ({
+          messages: [...s.messages, aiMsg],
+          currentQuestionId: nextQuestion.id,
+          currentNodeId: nextQuestion.id,
+        }));
 
-        if (nextQuestion) {
-          // Check if this question should trigger contact modal instead of chat
-          if (nextQuestion.triggersContactModal) {
-            console.log('📧 Next question triggers contact modal:', nextQuestion.id);
-            set({
-              showContactModal: true,
-              currentQuestionId: nextQuestion.id,
-              currentNodeId: nextQuestion.id,
-            });
-            // Update progress
-            const newProgress = getProgress(selectedOffer, currentIntent, updatedState.userInput);
-            set({ progress: newProgress });
-          } else {
-            const aiMsg: ChatMessage = {
-              role: 'assistant',
-              content: data.reply || nextQuestion.text,
-              buttons: nextQuestion.buttons?.map(b => ({
-                id: b.id,
-                label: b.label,
-                value: b.value,
-              })),
-              timestamp: new Date(),
-            };
-            set((s) => ({
-              messages: [...s.messages, aiMsg],
-              currentQuestionId: nextQuestion.id,
-              currentNodeId: nextQuestion.id,
-            }));
-
-            // Update progress
-            const newProgress = getProgress(selectedOffer, currentIntent, updatedState.userInput);
-            set({ progress: newProgress });
-          }
-        } else {
-          // No next question means complete
-          console.log('🎉 No next question! Setting isComplete = true');
-          set({ isComplete: true, shouldCelebrate: true, progress: 100 });
-        }
+        // Update progress
+        const answeredKeys = new Set(Object.keys(updatedState.userInput));
+        const newProgress = calculateProgress(updatedQuestions, answeredKeys);
+        set({ progress: newProgress });
       }
 
     } catch (error) {
       console.error('❌ API call failed, using fallback:', error);
 
-      // Fallback: get next question locally
+      // Fallback: get next question locally (filter to bot questions only)
       const updatedState = get();
-      const isNowComplete = isComplete(selectedOffer, currentIntent, updatedState.userInput);
+      const updatedAllQuestions = updatedState.flowQuestions[currentIntent as TimelineFlow] || [];
+      const updatedQuestions = getBotQuestions(updatedAllQuestions);
+      const isNowComplete = isFlowComplete(updatedQuestions, updatedState.userInput);
+      const nextQuestion = getNextQuestion(updatedQuestions, currentQuestionId);
 
-      if (isNowComplete) {
-        console.log('🎉 FLOW COMPLETE (fallback)! Setting isComplete = true');
+      // CRITICAL UX RULE: Contact modal MUST appear at the end of all questions
+      // Show contact modal when: flow is complete OR there's no next question
+      if (isNowComplete || !nextQuestion) {
+        console.log('🎉 FLOW COMPLETE (fallback)! Showing contact modal for lead capture');
         set({
+          showContactModal: true,
           isComplete: true,
           shouldCelebrate: true,
           progress: 100,
         });
       } else {
-        const nextQuestion = getNextQuestion(selectedOffer, currentIntent, currentQuestionId);
+        // Continue to next question
+        const aiMsg: ChatMessage = {
+          role: 'assistant',
+          content: nextQuestion.question,
+          buttons: convertButtons(nextQuestion),
+          timestamp: new Date(),
+        };
+        set((s) => ({
+          messages: [...s.messages, aiMsg],
+          currentQuestionId: nextQuestion.id,
+          currentNodeId: nextQuestion.id,
+        }));
 
-        if (nextQuestion) {
-          // Check if this question should trigger contact modal instead of chat
-          if (nextQuestion.triggersContactModal) {
-            console.log('📧 Next question triggers contact modal (fallback):', nextQuestion.id);
-            set({
-              showContactModal: true,
-              currentQuestionId: nextQuestion.id,
-              currentNodeId: nextQuestion.id,
-            });
-            const newProgress = getProgress(selectedOffer, currentIntent, updatedState.userInput);
-            set({ progress: newProgress });
-          } else {
-            const aiMsg: ChatMessage = {
-              role: 'assistant',
-              content: nextQuestion.text,
-              buttons: nextQuestion.buttons?.map(b => ({
-                id: b.id,
-                label: b.label,
-                value: b.value,
-              })),
-              timestamp: new Date(),
-            };
-            set((s) => ({
-              messages: [...s.messages, aiMsg],
-              currentQuestionId: nextQuestion.id,
-              currentNodeId: nextQuestion.id,
-            }));
-
-            const newProgress = getProgress(selectedOffer, currentIntent, updatedState.userInput);
-            set({ progress: newProgress });
-          }
-        } else {
-          console.log('🎉 No next question (fallback)! Setting isComplete = true');
-          set({ isComplete: true, shouldCelebrate: true, progress: 100 });
-        }
+        const answeredKeys = new Set(Object.keys(updatedState.userInput));
+        const newProgress = calculateProgress(updatedQuestions, answeredKeys);
+        set({ progress: newProgress });
       }
     } finally {
       set({ loading: false });

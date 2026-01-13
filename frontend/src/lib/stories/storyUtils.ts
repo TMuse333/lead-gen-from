@@ -1,32 +1,69 @@
 // lib/stories/storyUtils.ts
 /**
- * Utilities for parsing and matching stories from Qdrant advice
+ * Utilities for matching and transforming stories
  */
 
-import type { AgentAdviceScenario, AdvicePlacements } from '@/types/advice.types';
-import type { MatchedStory } from '@/components/ux/resultsComponents/timeline/components/StoryCard';
+import type { AgentAdviceScenario, AdvicePlacements, MatchedStory } from '@/types/advice.types';
 import type { OfferType } from '@/lib/offers/unified';
 
 /**
- * Parse a story from the formatted advice string
+ * Extended story scenario that may have structured fields
+ */
+interface StoryScenario extends AgentAdviceScenario {
+  situation?: string;
+  action?: string;
+  outcome?: string;
+}
+
+/**
+ * Get story content - prefers structured fields, falls back to parsing legacy
+ */
+export function getStoryContent(story: StoryScenario): {
+  situation: string;
+  action: string;
+  outcome: string;
+} {
+  // If structured fields exist, use them directly
+  if (story.situation || story.action || story.outcome) {
+    return {
+      situation: story.situation || '',
+      action: story.action || '',
+      outcome: story.outcome || '',
+    };
+  }
+
+  // Fall back to parsing legacy advice field
+  return parseStoryContent(story.advice);
+}
+
+/**
+ * Parse a story from the formatted advice string (legacy support)
  * Format: "[CLIENT STORY]\nSituation: X\nWhat I did: Y\nOutcome: Z"
  */
 export function parseStoryContent(advice: string): {
   situation: string;
-  whatTheyDid: string;
+  action: string;
   outcome: string;
-} | null {
+} {
+  if (!advice) {
+    return { situation: '', action: '', outcome: '' };
+  }
+
   // Check if it's a story format
   if (!advice.includes('[CLIENT STORY]') && !advice.toLowerCase().includes('situation:')) {
-    return null;
+    // Not structured - return raw as situation
+    return {
+      situation: advice.trim(),
+      action: '',
+      outcome: '',
+    };
   }
 
   // Normalize line breaks for consistent parsing
   const normalized = advice.replace(/\r\n/g, '\n');
 
-  // Extract sections by splitting on keywords
   let situation = '';
-  let whatTheyDid = '';
+  let action = '';
   let outcome = '';
 
   // Try to extract Situation
@@ -42,7 +79,7 @@ export function parseStoryContent(advice: string): {
   if (actionStart !== -1) {
     const afterAction = normalized.slice(actionStart + 'what i did:'.length);
     const nextSection = afterAction.search(/outcome:|result:/i);
-    whatTheyDid = (nextSection !== -1 ? afterAction.slice(0, nextSection) : afterAction).trim();
+    action = (nextSection !== -1 ? afterAction.slice(0, nextSection) : afterAction).trim();
   }
 
   // Try to extract Outcome
@@ -54,16 +91,7 @@ export function parseStoryContent(advice: string): {
     outcome = normalized.slice(finalStart + label.length).trim();
   }
 
-  if (!situation && !whatTheyDid && !outcome) {
-    // Try alternative parsing - might be freeform
-    return {
-      situation: advice.replace('[CLIENT STORY]', '').trim(),
-      whatTheyDid: '',
-      outcome: '',
-    };
-  }
-
-  return { situation, whatTheyDid, outcome };
+  return { situation, action, outcome };
 }
 
 /**
@@ -122,24 +150,22 @@ export function getMatchReasons(
  * Transform an AgentAdviceScenario with kind='story' to MatchedStory
  */
 export function transformToMatchedStory(
-  scenario: AgentAdviceScenario,
+  scenario: StoryScenario,
   userInput: Record<string, string>
 ): MatchedStory | null {
   if (scenario.kind !== 'story') {
     return null;
   }
 
-  const parsed = parseStoryContent(scenario.advice);
-  if (!parsed) {
-    return null;
-  }
+  const content = getStoryContent(scenario);
 
   return {
     id: scenario.id,
     title: scenario.title,
-    situation: parsed.situation,
-    whatTheyDid: parsed.whatTheyDid,
-    outcome: parsed.outcome,
+    situation: content.situation,
+    action: content.action,
+    outcome: content.outcome,
+    tags: scenario.tags,
     clientType: extractClientType(scenario.tags),
     location: extractLocation(scenario.tags, userInput),
     budget: extractBudget(scenario.tags),
@@ -208,7 +234,7 @@ function extractBudget(tags: string[]): string | undefined {
  * @returns Record mapping phase IDs to matched stories
  */
 export function groupStoriesByPhase(
-  advice: AgentAdviceScenario[],
+  advice: StoryScenario[],
   offerType: OfferType,
   userInput: Record<string, string>
 ): Record<string, MatchedStory[]> {

@@ -18,8 +18,14 @@ interface StoryUploaderProps {
   editingStory?: {
     id: string;
     title: string;
-    advice: string;
+    // New structured fields
+    situation?: string;
+    action?: string;
+    outcome?: string;
+    // Legacy field
+    advice?: string;
     tags: string[];
+    flows?: string[];
   } | null;
 }
 
@@ -29,10 +35,48 @@ export default function StoryUploader({
   onSuccess,
   editingStory,
 }: StoryUploaderProps) {
+  // Helper to get initial values - prefers structured fields, falls back to parsing legacy
+  const getInitialValues = () => {
+    if (!editingStory) {
+      return { situation: '', action: '', outcome: '' };
+    }
+
+    // If structured fields exist, use them
+    if (editingStory.situation || editingStory.action || editingStory.outcome) {
+      return {
+        situation: editingStory.situation || '',
+        action: editingStory.action || '',
+        outcome: editingStory.outcome || '',
+      };
+    }
+
+    // Fall back to parsing legacy advice field
+    if (editingStory.advice) {
+      let situation = '';
+      let action = '';
+      let outcome = '';
+      const lines = editingStory.advice.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('Situation:')) {
+          situation = line.replace('Situation:', '').trim();
+        } else if (line.startsWith('What I did:')) {
+          action = line.replace('What I did:', '').trim();
+        } else if (line.startsWith('Outcome:')) {
+          outcome = line.replace('Outcome:', '').trim();
+        }
+      }
+      return { situation, action, outcome };
+    }
+
+    return { situation: '', action: '', outcome: '' };
+  };
+
+  const initialValues = getInitialValues();
+
   const [title, setTitle] = useState(editingStory?.title || '');
-  const [clientSituation, setClientSituation] = useState('');
-  const [whatYouDid, setWhatYouDid] = useState('');
-  const [outcome, setOutcome] = useState('');
+  const [clientSituation, setClientSituation] = useState(initialValues.situation);
+  const [whatYouDid, setWhatYouDid] = useState(initialValues.action);
+  const [outcome, setOutcome] = useState(initialValues.outcome);
   const [tags, setTags] = useState<string[]>(editingStory?.tags || []);
   const [customTag, setCustomTag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,22 +84,6 @@ export default function StoryUploader({
   const [success, setSuccess] = useState(false);
 
   const isEditMode = !!editingStory;
-
-  // Parse existing story content if editing
-  useState(() => {
-    if (editingStory?.advice) {
-      const lines = editingStory.advice.split('\n');
-      for (const line of lines) {
-        if (line.startsWith('Situation:')) {
-          setClientSituation(line.replace('Situation:', '').trim());
-        } else if (line.startsWith('What I did:')) {
-          setWhatYouDid(line.replace('What I did:', '').trim());
-        } else if (line.startsWith('Outcome:')) {
-          setOutcome(line.replace('Outcome:', '').trim());
-        }
-      }
-    }
-  });
 
   if (!isOpen) return null;
 
@@ -85,21 +113,22 @@ export default function StoryUploader({
 
     setIsSubmitting(true);
 
-    // Format story content
-    const advice = `[CLIENT STORY]\nSituation: ${clientSituation.trim()}\nWhat I did: ${whatYouDid.trim()}\nOutcome: ${outcome.trim()}`;
-
     try {
       if (isEditMode && editingStory) {
-        const response = await fetch('/api/agent-advice/update', {
+        // Use new structured API for updates
+        const response = await fetch('/api/stories/update', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingStory.id,
             title: title.trim(),
-            advice,
+            situation: clientSituation.trim(),
+            action: whatYouDid.trim(),
+            outcome: outcome.trim(),
             tags,
-            kind: 'story',
-            // Don't include placements - preserve existing ones
+            // Preserve existing placements and flows
+            placements: editingStory.flows ? undefined : {},
+            flows: editingStory.flows || [],
           }),
         });
 
@@ -108,16 +137,18 @@ export default function StoryUploader({
           throw new Error(data.error || 'Failed to update story');
         }
       } else {
-        const response = await fetch('/api/agent-advice/add', {
+        // Use new structured API for creation
+        const response = await fetch('/api/stories/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: title.trim(),
-            advice,
+            situation: clientSituation.trim(),
+            action: whatYouDid.trim(),
+            outcome: outcome.trim(),
             tags,
-            kind: 'story',
-            // No placements - this is an unassigned story
             placements: {},
+            flows: [],
           }),
         });
 
