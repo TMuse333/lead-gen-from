@@ -27,6 +27,11 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        {/* Block search engine indexing */}
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="googlebot" content="noindex, nofollow" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

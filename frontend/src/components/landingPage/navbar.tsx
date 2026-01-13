@@ -4,34 +4,32 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LogIn, LogOut, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { LogOut, User, Sparkles } from "lucide-react";
+import { useState } from "react";
 import logo from "../../../public/logo.png";
 
-type NavItem = {
-  destination: string;
+type SectionItem = {
+  id: string;
   name: string;
 };
 
-type NavbarProps = {
-  links?: NavItem[];
-};
-
-export default function Navbar({ links }: NavbarProps) {
+export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Default links, Home is now part of the list
-  const defaultLinks: NavItem[] = [
-    { destination: "/", name: "Home" },
-    { destination: "/feedback", name: "Feedback" },
+  const isHomePage = pathname === "/" || pathname === "/form";
+
+  // Section links for smooth scrolling on home page
+  const sections: SectionItem[] = [
+    { id: "capture", name: "Lead Capture" },
+    { id: "timeline", name: "Timeline" },
+    { id: "stories", name: "Stories" },
+    { id: "learn", name: "Improve" },
   ];
 
-  const allLinks = links || defaultLinks;
-
-  const handleLogin = () => {
+  const handleGetStarted = () => {
     router.push('/auth/signin');
   };
 
@@ -48,41 +46,50 @@ export default function Navbar({ links }: NavbarProps) {
     router.push('/dashboard');
   };
 
-  return (
-    <nav className="bg-[#0a1525] w-screen fixed z-[1]  top-0 left-0 text-white px-4 py-2 flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-      <Image
-                      src={logo}
-                      alt="Logo"
-                      width={30}
-                      height={30}
-                      className="inline-block"
-                    />
-        {allLinks
-          .filter((link) => link.destination !== pathname)
-          .map((link) => {
-            const isHome = link.destination === "/";
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
-            return (
-              <Link key={link.destination} href={link.destination}
-              
-                  className={`flex sm:text-lg font-semibold md:text-xl items-center space-x-1  hover:underline transition-opacity ${
-                    isHome
-                      ? "hover:text-[#00bfff] font-medium"
-                      : "text-[#00bfff] opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <span>{link.name}</span>
- 
-              </Link>
-            );
-          })}
+  return (
+    <nav className="bg-[#0a1525]/95 backdrop-blur-sm w-screen fixed z-50 top-0 left-0 text-white px-4 py-3 flex items-center justify-between border-b border-white/5">
+      <div className="flex items-center gap-6">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Image
+            src={logo}
+            alt="Logo"
+            width={32}
+            height={32}
+            className="inline-block"
+          />
+          <span className="font-bold text-lg hidden sm:inline bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            TimelineAI
+          </span>
+        </Link>
+
+        {/* Section Navigation - Only show on home page */}
+        {isHomePage && (
+          <div className="hidden md:flex items-center gap-1">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => scrollToSection(section.id)}
+                className="px-3 py-1.5 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+              >
+                {section.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      
+
       {/* Auth Section */}
       <div className="flex items-center gap-3">
         {status === 'loading' ? (
-          <div className="h-8 w-8 animate-pulse bg-cyan-500/20 rounded"></div>
+          <div className="h-10 w-24 animate-pulse bg-cyan-500/20 rounded-lg"></div>
         ) : session ? (
           <>
             <button
@@ -103,11 +110,11 @@ export default function Navbar({ links }: NavbarProps) {
           </>
         ) : (
           <button
-            onClick={handleLogin}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 transition-all text-white text-sm font-medium shadow-lg"
+            onClick={handleGetStarted}
+            className="group flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 transition-all text-white font-semibold shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-105"
           >
-            <LogIn className="h-4 w-4" />
-            <span>Login</span>
+            <Sparkles className="h-4 w-4 group-hover:animate-pulse" />
+            <span>Get Started Free</span>
           </button>
         )}
       </div>
