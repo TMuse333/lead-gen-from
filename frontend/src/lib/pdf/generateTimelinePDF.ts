@@ -23,7 +23,7 @@ const PRIORITY_COLORS = {
   low: '#22c55e',
 };
 
-export async function generateTimelinePDF(data: TimelineOutput, endingCTA?: { headshot?: string; displayName?: string; title?: string }): Promise<void> {
+export async function generateTimelinePDF(data: TimelineOutput, endingCTA?: { headshot?: string; displayName?: string; title?: string; email?: string; phone?: string }): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

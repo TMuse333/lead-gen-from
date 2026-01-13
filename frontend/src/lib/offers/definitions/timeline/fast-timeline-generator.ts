@@ -502,7 +502,7 @@ export function generateFastTimeline(
     if (hasCustomAdvice) {
       console.log(`   Custom advice items: ${extendedPhase.customAgentAdvice!.length}`);
     } else {
-      console.log(`   Generated ${agentAdvice.length} advice items based on user input`);
+      console.log(`   Generated ${agentAdvice?.length ?? 0} advice items based on user input`);
     }
 
     return {

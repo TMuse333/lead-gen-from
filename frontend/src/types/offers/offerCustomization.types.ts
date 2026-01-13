@@ -136,6 +136,7 @@ export type EditorTab =
   | 'live-preview'
   | 'hero-section'
   | 'ending-cta'
+  | 'agent-stats'
   | 'settings'
   | 'analytics'
   // Legacy tabs (kept for backwards compatibility)

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import type { EndingCTAConfig } from "@/lib/mongodb/models/clientConfig";
+import type { AgentProfile } from "@/lib/userConfig/getUserConfig";
 
 interface UserConfig {
   id: string;
@@ -11,6 +12,7 @@ interface UserConfig {
   agentFirstName?: string;
   agentLastName?: string;
   notificationEmail?: string;
+  agentProfile?: AgentProfile;
   // Business
   businessName: string;
   industry: string;

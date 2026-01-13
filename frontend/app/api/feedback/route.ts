@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
-import { getDb } from '@/lib/mongodb/db';
+import { getDatabase } from '@/lib/mongodb/db';
 
 export const runtime = 'nodejs';
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Store in MongoDB
-    const db = await getDb();
+    const db = await getDatabase();
     const feedbackCollection = db.collection('mvp_feedback');
 
     const feedbackDoc = {
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const db = await getDb();
+    const db = await getDatabase();
     const feedbackCollection = db.collection('mvp_feedback');
 
     const feedback = await feedbackCollection

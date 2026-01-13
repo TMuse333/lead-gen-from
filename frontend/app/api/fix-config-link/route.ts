@@ -105,7 +105,9 @@ export async function GET(request: NextRequest) {
     const collection = await getClientConfigsCollection();
     const userId = session.user.id;
 
-    const businessRecord = await collection.findOne({ businessName, isActive: true });
+    const businessRecord = businessName
+      ? await collection.findOne({ businessName, isActive: true })
+      : null;
     const userRecord = await collection.findOne({ userId });
 
     return NextResponse.json({

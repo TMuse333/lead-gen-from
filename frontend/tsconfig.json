@@ -32,5 +32,5 @@
     "**/*.mts",
     "src/**/*"
   ],
-  "exclude": ["node_modules", "docs", "src/scripts"]
+  "exclude": ["node_modules", "docs", "src/scripts", "scripts"]
 }
