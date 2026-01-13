@@ -4,24 +4,24 @@ import FormPage from "@/components/pageComponents/frontendPages/formPage/formPag
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Try the First Real Estate Neural Engine Chatbot | FocusFlow",
+  title: "AI Buying Timeline Generator for Real Estate Agents | FocusFlow",
   description:
-    "Experience the next evolution of real estate AI. Get a sample of the first Neural Engine–powered chatbot that learns your style, speaks like you, and engages leads instantly.",
+    "Capture more leads with personalized buying timelines. Our AI chatbot qualifies buyers and generates custom roadmaps from pre-approval to closing.",
   keywords:
-    "real estate AI sample, AI chatbot demo, realtor chatbot preview, neural engine real estate, FocusFlow chatbot sample, real estate AI 2026",
+    "real estate lead generation, AI buying timeline, realtor chatbot, home buyer journey, personalized timeline, real estate AI 2026, FocusFlow",
 
   openGraph: {
-    title: "Get a Sample of the First Neural Engine Chatbot for Realtors",
+    title: "Give Every Lead a Personalized Buying Timeline",
     description:
-      "Preview a new era of real estate automation. Test-drive the AI chatbot that adapts to your voice, qualifies leads automatically, and builds real relationships with prospects.",
+      "Stop losing leads to boring contact forms. Our AI chatbot creates custom home-buying roadmaps that show buyers their journey from pre-approval to closing.",
     url: "https://chatbot.focusflowsoftware.com",
-    siteName: "FocusFlow Neural Engine",
+    siteName: "FocusFlow Timeline",
     images: [
       {
         url: "https://www.focusflowsoftware.com/media/focusFlow-logo.png",
         width: 1200,
         height: 630,
-        alt: "FocusFlow Neural Engine – Real Estate AI Chatbot Sample",
+        alt: "FocusFlow – AI Buying Timeline Generator for Real Estate",
       },
     ],
     locale: "en_US",
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Try the First Neural Engine Real Estate Chatbot",
+    title: "AI Buying Timeline for Real Estate Agents",
     description:
-      "Get a hands-on sample of the first AI chatbot built to think and respond like YOU. Experience personalized real estate automation today.",
+      "Capture more leads with personalized buying timelines. Qualify buyers and show them their journey from pre-approval to closing.",
     images: ["https://www.focusflowsoftware.com/media/focusFlow-logo.png"],
   },
 

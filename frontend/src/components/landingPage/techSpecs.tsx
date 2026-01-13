@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Sparkles, Zap, Layout, Gift, Target, Brain, Settings } from "lucide-react";
+import { Sparkles, Zap, Layout, Calendar, Target, MessageSquare, Settings } from "lucide-react";
 import {
   useMotionTemplate,
   useMotionValue,
@@ -36,12 +36,12 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
   const borderGlow = useMotionTemplate`1px solid ${color}80`;
 
   const specs = [
-    { icon: Gift,    title: "Instant Personalized Offers",          description: "Auto-generated landing pages tailored to each user's unique situation, delivered in real-time with zero wait.", gradient: "from-cyan-400 to-blue-500" },
-    { icon: Sparkles,title: "Gamified Experience",                 description: "Progress bars, rewards, celebrations, and visual feedback keep users engaged and excited throughout the journey.", gradient: "from-cyan-500 to-blue-600" },
-    { icon: Target,  title: "Guided Smart Flows",                  description: "Contextual questions, dynamic branching, and intelligent tracking ensure users never get bored or lose interest.", gradient: "from-blue-500 to-cyan-600" },
-    { icon: Layout,  title: "Visual & Interactive",                description: "Rich animations, smooth transitions, and delightful micro-interactions make every conversation memorable.", gradient: "from-cyan-400 to-teal-500" },
-    { icon: Settings,title: "Powerful Configuration Dashboard",    description: "No-code admin panel to customize flows, questions, advice, and content — complete control without touching code.", gradient: "from-blue-500 to-cyan-700" },
-    { icon: Brain,   title: "Neural Knowledge Engine",             description: "Your expert content is instantly understood and turned into perfectly relevant, deeply personalized answers using next-gen AI.", gradient: "from-cyan-300 to-blue-700" },
+    { icon: Calendar, title: "Personalized Buying Timeline",        description: "Auto-generated roadmaps tailored to each buyer's budget, timeline, and goals — from pre-approval to closing day.", gradient: "from-cyan-400 to-blue-500" },
+    { icon: MessageSquare, title: "AI Chat Assistant",              description: "Smart conversational AI gathers buyer info naturally, qualifying leads while providing immediate value.", gradient: "from-cyan-500 to-blue-600" },
+    { icon: Target,  title: "Milestone Tracking",                   description: "Visual phases and tasks help buyers understand each step of their journey — Pre-Approval, Home Search, Offer, Closing.", gradient: "from-blue-500 to-cyan-600" },
+    { icon: Layout,  title: "Branded Experience",                   description: "Your name, your style. Each timeline is generated with your branding and personalized agent touch.", gradient: "from-cyan-400 to-teal-500" },
+    { icon: Settings,title: "Easy Customization",                   description: "No-code dashboard to customize phases, questions, and content. Add your own advice and stories for each step.", gradient: "from-blue-500 to-cyan-700" },
+    { icon: Sparkles,title: "Instant Lead Notifications",           description: "Get notified immediately when a new lead completes their timeline. Full conversation history included.", gradient: "from-cyan-300 to-blue-700" },
   ];
 
   return (
@@ -53,22 +53,22 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
     >
       <div className="relative z-10 max-w-7xl mx-auto">
 
-        {/* Header – unchanged */}
+        {/* Header */}
         <div className="text-center mb-16">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.7 }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 backdrop-blur-sm rounded-full mb-4 border border-cyan-400/40">
             <Zap className="h-4 w-4 text-cyan-300" />
-            <span className="text-sm font-semibold text-cyan-200">Powered by Neural Intelligence</span>
+            <span className="text-sm font-semibold text-cyan-200">Built for Real Estate Agents</span>
           </motion.div>
 
           <motion.h2 initial={{ opacity: 0, y: 30 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.9, delay: 0.1 }}
             className="text-4xl md:text-5xl font-bold mb-4">
-            Not Your Average <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">Chatbot</span>
+            Everything You Need to <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">Capture Leads</span>
           </motion.h2>
 
           <motion.p initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.2 }}
             className="text-xl text-cyan-100/80 max-w-3xl mx-auto">
-            Powered by cutting-edge Next.js, a personalized neural memory, and refined design, this AI delivers an experience far beyond the typical chatbot.
+            A complete lead generation system that qualifies buyers and delivers personalized value — all while you focus on closing deals.
           </motion.p>
         </div>
 
@@ -127,7 +127,7 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
 
         {/* CTA – also flash-free */}
         <motion.div initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.8, duration: 0.9 }} className="text-center mt-20">
-          <p className="text-cyan-100 mb-8 text-lg">Ready to experience neural intelligence?</p>
+          <p className="text-cyan-100 mb-8 text-lg">Ready to start capturing more leads?</p>
           <motion.button
             onClick={() => scrollToId("chatbot")}
             style={{ border: borderGlow, willChange: "border-color" }}
@@ -136,7 +136,7 @@ const TechSpecs = ({ imageSrc }: TechSpecsProps) => {
             className="inline-flex items-center gap-3 px-10 py-5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70 transition-shadow duration-300"
           >
             <Sparkles className="h-6 w-6" />
-            Explore the Future
+            Try the Demo
           </motion.button>
         </motion.div>
       </div>

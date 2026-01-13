@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ArrowRight, Sparkles, Zap, Brain } from "lucide-react";
+import { ArrowRight, Zap, Calendar, MessageSquare } from "lucide-react";
 import {
   useMotionTemplate,
   useMotionValue,
@@ -13,6 +13,7 @@ import Link from "next/link";
 import logo from "../../../public/logo.png";
 import Image from "next/image";
 import { scrollToId } from "@/lib/scrollTo";
+import ChatToOffer from "./svg/ChatToOffer";
 
 const COLORS_TOP = ["#00eeff", "#00c8ff", "#00a0ff", "#0088ee", "#0066cc"];
 
@@ -73,8 +74,8 @@ const AuroraHero = () => {
           transition={{ delay: 0.2, duration: 0.7 }}
           className="mt-8 mb-4 inline-flex items-center gap-2 rounded-full bg-cyan-500/20 backdrop-blur-md px-5 py-2.5 text-sm font-semibold border border-cyan-400/40"
         >
-          <Brain className="h-4 w-4 text-cyan-300" />
-          <span className="text-cyan-200">Next-Gen Neural AI Platform by FocusFlow Software</span>
+          <Calendar className="h-4 w-4 text-cyan-300" />
+          <span className="text-cyan-200">AI-Powered Buying Timelines for Real Estate Agents</span>
         </motion.div>
 
         {/* Main Headline */}
@@ -84,9 +85,9 @@ const AuroraHero = () => {
           transition={{ delay: 0.3, duration: 0.9 }}
           className="text-5xl sm:text-6xl md:text-7xl font-bold leading-tight bg-gradient-to-r from-cyan-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent"
         >
-          Turn Conversations Into
+          Give Every Lead a
           <br />
-          <span className="text-cyan-100">Conversions</span> with Neural Intelligence
+          <span className="text-cyan-100">Personalized Buying Timeline</span>
         </motion.h1>
 
         {/* Subheadline */}
@@ -96,8 +97,9 @@ const AuroraHero = () => {
           transition={{ delay: 0.5, duration: 0.8 }}
           className="mt-8 max-w-3xl text-lg sm:text-xl text-cyan-100/70 leading-relaxed"
         >
-          Engage visitors with deeply personalized AI conversations, gamified flows, and instant value —
-          powered by a <strong className="text-cyan-300">Neural Knowledge Engine</strong> that truly understands your expertise.
+          Capture leads with an AI chatbot that creates customized home-buying roadmaps.
+          Buyers see their journey from <strong className="text-cyan-300">pre-approval to closing</strong> —
+          personalized to their budget, timeline, and goals.
         </motion.p>
 
         {/* Quick Stats */}
@@ -108,15 +110,25 @@ const AuroraHero = () => {
           className="mt-10 flex flex-wrap justify-center gap-8 text-sm"
         >
           {[
-            { dot: "bg-cyan-400", text: "Real-time Personalization" },
-            { dot: "bg-blue-400", text: "Instant Lead Qualification" },
-            { dot: "bg-cyan-300", text: "Zero Code Required" },
+            { dot: "bg-cyan-400", text: "Personalized Timelines" },
+            { dot: "bg-blue-400", text: "Instant Lead Capture" },
+            { dot: "bg-cyan-300", text: "Fully Customizable" },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2.5">
               <div className={`w-2.5 h-2.5 ${item.dot} rounded-full animate-pulse shadow-lg shadow-${item.dot}/50`} />
               <span className="text-cyan-200/80">{item.text}</span>
             </div>
           ))}
+        </motion.div>
+
+        {/* ChatToOffer SVG Animation */}
+        <motion.div
+          initial={{ y: 40, opacity: 0 }}
+          animate={isInView ? { y: 0, opacity: 1 } : {}}
+          transition={{ delay: 0.65, duration: 0.9 }}
+          className="mt-10"
+        >
+          <ChatToOffer width={450} height={220} />
         </motion.div>
 
         {/* CTA Buttons */}
