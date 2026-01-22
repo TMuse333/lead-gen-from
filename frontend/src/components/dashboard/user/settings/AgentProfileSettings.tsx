@@ -118,7 +118,7 @@ export default function AgentProfileSettings() {
                 value={profile.name}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                 className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                placeholder="Sarah MacLeod"
+                placeholder="Michael Anderson"
               />
             </div>
             <div>
@@ -245,7 +245,7 @@ export default function AgentProfileSettings() {
                   value={profile.email || ''}
                   onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                   className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  placeholder="sarah@example.com"
+                  placeholder="michael@example.com"
                 />
               </div>
             </div>

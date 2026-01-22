@@ -16,7 +16,7 @@ export const HERO_BANNER_SCHEMA: ComponentSchema = {
           wordCount: '8-12 words',
           tone: 'action-oriented, warm, enthusiastic - include user\'s first name if available from email'
         },
-        example: 'Let\'s Get Your Home Sold Fast, Sarah!',
+        example: 'Let\'s Get Your Home Sold Fast, Michael!',
         context: 'Should reflect their timeline urgency (0-3mo = urgent, 6mo+ = relaxed planning)'
       },
       subheadline: {

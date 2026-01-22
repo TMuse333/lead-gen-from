@@ -203,7 +203,26 @@ export async function POST(request: NextRequest) {
         tags: [],
         source: 'manual' as const,
       })) || [],
-      // colorConfig is not used - chatbot uses default themes
+      // Build colorConfig from provided colors or use defaults
+      ...(colorConfig ? {
+        colorConfig: {
+          name: 'Custom (External)',
+          primary: colorConfig.primary,
+          secondary: colorConfig.primary,
+          background: colorConfig.background,
+          surface: colorConfig.background,
+          text: colorConfig.text,
+          textSecondary: colorConfig.text,
+          accent: colorConfig.primary,
+          border: colorConfig.text,
+          success: '#10b981',
+          error: '#ef4444',
+          warning: '#f59e0b',
+          buttonHover: colorConfig.primary,
+          gradientFrom: colorConfig.primary,
+          gradientTo: colorConfig.primary,
+        }
+      } : {}),
       customQuestions: defaultQuestions,
       qdrantCollectionName: collectionName,
       agentProfile: {

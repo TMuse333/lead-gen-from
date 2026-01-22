@@ -29,7 +29,7 @@ export const PERSONAL_MESSAGE_SCHEMA:ComponentSchema = {
         wordCount: '2-5 words',
         tone: 'warm, conversational, friendly',
       },
-      example: 'Hi Sarah,',
+      example: 'Hi Michael,',
       context:
         'Use first name from email if available; otherwise use "Hi there," or "Hello,"',
     },
