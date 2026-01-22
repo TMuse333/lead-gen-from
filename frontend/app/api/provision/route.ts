@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         tags: [],
         source: 'manual' as const,
       })) || [],
-      colorConfig: colorConfig || undefined,
+      // colorConfig is not used - chatbot uses default themes
       customQuestions: defaultQuestions,
       qdrantCollectionName: collectionName,
       agentProfile: {
@@ -211,6 +211,7 @@ export async function POST(request: NextRequest) {
         email: agentInfo.email,
         phone: agentInfo.phone || undefined,
         company: sanitizedSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        yearsExperience: 0,
       },
       endingCTA: {
         displayName: agentInfo.name,
