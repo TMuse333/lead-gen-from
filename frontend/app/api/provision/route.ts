@@ -193,12 +193,15 @@ export async function POST(request: NextRequest) {
       selectedIntentions: ['buy', 'sell', 'browse'],
       selectedOffers: ['real-estate-timeline'],
       conversationFlows: {},
-      knowledgeBaseItems: stories?.map(s => ({
+      knowledgeBaseItems: stories?.map((s, index) => ({
+        id: `provision-${Date.now()}-${index}`,
         title: s.title,
         advice: s.kind === 'story'
           ? [s.situation, s.action, s.outcome].filter(Boolean).join(' ')
           : s.outcome || '',
         flows: [s.flow],
+        tags: [],
+        source: 'manual' as const,
       })) || [],
       colorConfig: colorConfig || undefined,
       customQuestions: defaultQuestions,
