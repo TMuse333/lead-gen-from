@@ -56,9 +56,10 @@ interface ClientConfig {
 
 interface ChatWithTrackerProps {
   clientConfig?: ClientConfig;
+  embedMode?: boolean;
 }
 
-export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps = {}) {
+export default function ChatWithTracker({ clientConfig, embedMode = false }: ChatWithTrackerProps = {}) {
   const router = useRouter();
 
   // Chat store selectors
@@ -507,10 +508,10 @@ export default function ChatWithTracker({ clientConfig }: ChatWithTrackerProps =
 
   return (
     <>
-      {/* Full-Screen Container */}
+      {/* Container - Fixed for standalone, relative for embed */}
       <div
         id='chatbot-container'
-        className="fixed inset-0 flex flex-col overflow-hidden"
+        className={`${embedMode ? 'relative w-full h-full min-h-[500px]' : 'fixed inset-0'} flex flex-col overflow-hidden`}
         style={{ backgroundColor: 'var(--color-background)' }}
       >
         {/* Simple Top Bar */}

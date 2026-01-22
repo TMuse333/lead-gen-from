@@ -1,10 +1,11 @@
 // app/bot/[clientId]/page.tsx
 // Public bot page for each client
+// Supports ?embed=true for iframe embedding
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import ChatWithTracker from '@/components/ux/chatWithTracker/chatWithTracker';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
@@ -30,8 +31,10 @@ interface ClientConfig {
 
 export default function BotPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const clientId = params.clientId as string;
-  
+  const isEmbed = searchParams.get('embed') === 'true';
+
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,10 +84,10 @@ export default function BotPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a1525] flex items-center justify-center">
+      <div className={`${isEmbed ? 'min-h-[400px]' : 'min-h-screen'} bg-[#0a1525] flex items-center justify-center`}>
         <div className="flex flex-col items-center gap-4 text-cyan-400">
-          <Loader2 className="w-12 h-12 animate-spin" />
-          <p className="text-lg font-medium">Loading bot configuration...</p>
+          <Loader2 className={`${isEmbed ? 'w-8 h-8' : 'w-12 h-12'} animate-spin`} />
+          <p className={`${isEmbed ? 'text-sm' : 'text-lg'} font-medium`}>Loading...</p>
         </div>
       </div>
     );
@@ -92,21 +95,23 @@ export default function BotPage() {
 
   if (error || !config) {
     return (
-      <div className="min-h-screen bg-[#0a1525] flex items-center justify-center px-4">
+      <div className={`${isEmbed ? 'min-h-[400px]' : 'min-h-screen'} bg-[#0a1525] flex items-center justify-center px-4`}>
         <div className="max-w-md w-full bg-slate-900/50 border border-red-500/30 rounded-lg p-6 text-center">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-red-300 mb-2">Bot Not Found</h1>
-          <p className="text-red-400/70 mb-4">
+          <AlertCircle className={`${isEmbed ? 'w-8 h-8' : 'w-12 h-12'} text-red-400 mx-auto mb-4`} />
+          <h1 className={`${isEmbed ? 'text-lg' : 'text-2xl'} font-bold text-red-300 mb-2`}>Bot Not Found</h1>
+          <p className="text-red-400/70 mb-4 text-sm">
             {error || 'Configuration not found'}
           </p>
-          <p className="text-slate-400 text-sm">
-            Please check the URL or contact support if you believe this is an error.
-          </p>
+          {!isEmbed && (
+            <p className="text-slate-400 text-sm">
+              Please check the URL or contact support if you believe this is an error.
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
-  return <ChatWithTracker clientConfig={config} />;
+  return <ChatWithTracker clientConfig={config} embedMode={isEmbed} />;
 }
 
