@@ -1,0 +1,332 @@
+================================================================================
+NEXT.JS TEMPLATE CODEBASE ANALYSIS - COMPLETE
+================================================================================
+
+Location: ~/Desktop/javascript_projects/next-js-template
+Branch: experiment/development
+
+Documents Created:
+1. NEXT_JS_TEMPLATE_ANALYSIS.md (16KB) - Full comprehensive analysis
+2. NEXT_JS_TEMPLATE_QUICK_REFERENCE.md (8.5KB) - Quick lookup guide
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+PROJECT OVERVIEW
+- Website builder SaaS platform for realtors
+- Chatbot integration system (agent-lead-gen embedding)
+- Multi-tenant deployment to Vercel
+- Control plane for lead generation business
+
+CORE ARCHITECTURE
+- Next.js 16.1.0 + React 19.1.0
+- Zustand state management
+- MongoDB + Mongoose backend
+- NextAuth.js authentication
+- Vercel deployment & Blob storage
+
+TECHNOLOGY STACK
+- Frontend: Framer Motion, Tailwind CSS, Lucide icons
+- Backend: Next.js API routes, MongoDB
+- AI: OpenAI (embeddings, GPT-4o-mini), Anthropic Claude
+- Vector DB: Qdrant (knowledge base search)
+- Version Control: GitHub API + Octokit
+- Hosting: Vercel (per-site deployments)
+- Billing: Easy-Money SaaS integration
+
+================================================================================
+ROUTING STRUCTURE
+================================================================================
+
+Public Routes:
+  / - Home (renders pages by slug)
+  /[slug] - Custom pages
+  /blog/[slug] - Blog posts
+  /features - Marketing
+  /info/* - Info pages
+
+Protected Routes (Auth Required):
+  /dashboard - Main control panel
+    /chatbot - Bot configuration (coming soon)
+    /leads - Lead management (coming soon)
+    /seo - SEO tools
+    /settings - Site config
+    /billing - Payment
+    /blog - Blog editor
+
+Setup:
+  /onboarding - Wizard (colors, business info, images)
+
+Auth:
+  /auth/signin - Login
+  /auth/callback - OAuth callback
+
+================================================================================
+HOW CHATBOT INTEGRATES
+================================================================================
+
+PROVISION FLOW (Setup):
+  User completes onboarding
+    ↓
+  POST /api/chatbot/provision {
+    slug: "sarah-realty",
+    agentInfo: { name, email, phone, serviceArea },
+    stories: [...],
+    colorConfig: { primary, text, background }
+  }
+    ↓
+  Proxied to agent-lead-gen API
+    ↓
+  Chatbot system creates Qdrant vectors from stories
+    ↓
+  Config stored, embed script generated
+
+DEPLOYMENT FLOW:
+  Site deployed to Vercel
+    ↓
+  HTML includes chatbot embed script:
+    <script src="https://chatbot.focusflowsoftware.com/embed.js"
+            data-client-id="sarah-realty"></script>
+    ↓
+  Widget fetches config from /api/chatbot/config?slug=sarah-realty
+
+LEAD CAPTURE:
+  Visitor on site
+    ↓
+  Chatbot queries Qdrant for relevant agent stories
+    ↓
+  LLM generates contextual response
+    ↓
+  Lead captured and sent to realtor
+
+================================================================================
+QDRANT INTEGRATION
+================================================================================
+
+Purpose: Semantic search for agent stories → contextualized chatbot responses
+
+Architecture:
+  Query → OpenAI Embedding → Qdrant Search → Results → GPT-4o-mini Synthesis
+
+Key Files:
+  /src/app/api/knowledge/search/route.ts - Search API
+  /src/lib/qdrant/knowledge-client.ts - Qdrant client
+  /src/app/api/knowledge/search/route.ts - Knowledge search
+
+Collection:
+  general-website-knowledge (general site building knowledge)
+  (Future: per-agent story collections)
+
+Environment:
+  QDRANT_URL=http://localhost:6333
+  OPENAI_KEY=sk-proj-xxxxx (for embeddings)
+  NEURAL_NETWORK_URL=xxx (proxied endpoint)
+
+Flow:
+  1. Agent creates stories during setup
+  2. Stories → Vector embeddings
+  3. Visitor asks question to chatbot
+  4. Query → Embedding
+  5. Embedding → Qdrant search
+  6. Top results → LLM synthesis
+  7. Response with context
+
+================================================================================
+CLIENT/HOMEBASE CONFIGURATION
+================================================================================
+
+Multi-Tenant System:
+  Each realtor = separate "client"
+  Identified by: slug (e.g., "sarah-realty")
+  Stored in: websiteData.chatbot object
+
+Configuration Contains:
+  - Agent info (name, email, phone, service area)
+  - Stories (case studies/FAQs for knowledge base)
+  - Colors (primary, text, background)
+  - Greeting message
+  - Embed URL
+
+Data Model (WebsiteMaster):
+  {
+    templateName, pages, colorTheme, chatbot, deployment, ...
+  }
+
+Stored In:
+  - Local: /src/data/websiteData.json (fallback)
+  - GitHub: repo as source of truth
+  - Zustand store: in-memory during editing
+  - MongoDB: version history
+
+Environment Per Deployment:
+  REPO_OWNER, REPO_NAME, CHATBOT_API_URL, PROVISION_API_KEY, etc.
+
+================================================================================
+API INTEGRATION POINTS
+================================================================================
+
+Chatbot APIs:
+  POST /api/chatbot/provision - Create/update chatbot
+  GET /api/chatbot/config?slug=X - Fetch config
+  POST /api/chatbot/colors - Update colors
+  GET /api/chatbot/status?slug=X - Check status
+
+Knowledge Base:
+  POST /api/knowledge/search - Qdrant semantic search
+
+Deployment:
+  POST /api/production/deploy - Deploy to production
+  POST /api/vercel/* - Vercel operations
+  POST /api/versions/* - Version management
+
+AI Assistance:
+  POST /api/assistant/* - Claude/OpenAI edits
+
+Others:
+  POST /api/seo/* - SEO generation
+  POST /api/images/* - Image management
+
+================================================================================
+EXISTING CHATBOT IMPLEMENTATION
+================================================================================
+
+Current Status:
+  ✓ API routes fully implemented
+  ✓ Provision endpoint working
+  ✓ Config endpoint working
+  ✓ Dashboard page created (UI shows "Coming Soon")
+  ✓ Types defined
+  ✓ Strategy documented
+
+Files:
+  /src/app/api/chatbot/* - All 4 endpoints
+  /src/app/dashboard/chatbot/page.tsx - UI (disabled)
+  /src/types/website.ts - WebsiteMaster type with chatbot field
+  /CHATBOT_STRATEGY.md - Full product strategy
+  /TEMPLATE_REPO_CHANGES.md - Architecture improvements
+
+Stories Structure:
+  {
+    id?: string,
+    title: string,
+    situation?: string,
+    action?: string,
+    outcome?: string,
+    flow: "buy" | "sell" | "browse",
+    kind: "story" | "faq" | "tip"
+  }
+
+================================================================================
+KEY TAKEAWAYS FOR INTEGRATION
+================================================================================
+
+For agent-lead-gen chatbot:
+  1. Configuration received via POST /api/chatbot/provision
+  2. Stories vectorized in Qdrant during provision
+  3. Client identified by unique slug
+  4. Stories used to contextualize responses
+  5. Colors should match site theme
+  6. Leads tracked back to correct realtor
+
+For next-js-template enhancement:
+  1. Activate /dashboard/chatbot UI
+  2. Implement /dashboard/leads page
+  3. Add "Setup Chatbot" to onboarding
+  4. Expose lead APIs for chatbot to call
+  5. Track conversation analytics
+
+================================================================================
+CRITICAL FILES TO UNDERSTAND
+================================================================================
+
+1. /src/types/website.ts
+   - WebsiteMaster type (everything about a site)
+   - Pages keyed by slug
+   - Chatbot configuration
+
+2. /src/components/pageComponents/PageRenderer.tsx
+   - Renders pages by slug from websiteData.pages
+   - Priority: Store → Local JSON → Code-defined
+
+3. /src/stores/websiteStore.ts
+   - Zustand store for website data
+   - Main state management
+
+4. /src/app/api/chatbot/provision/route.ts
+   - Chatbot creation/provisioning
+   - Proxies to agent-lead-gen
+
+5. /src/app/api/knowledge/search/route.ts
+   - Qdrant integration
+   - OpenAI synthesis
+
+6. /src/middleware.ts
+   - Authentication protection
+   - Route guards
+
+7. /CHATBOT_STRATEGY.md
+   - Product philosophy
+   - Integration plan
+
+================================================================================
+FILES SAVED TO YOUR WORKING DIRECTORY
+================================================================================
+
+Location: /Users/thomasmusial/Desktop/javascript_projects/agent-lead-gen/frontend/
+
+1. NEXT_JS_TEMPLATE_ANALYSIS.md (607 lines, 16KB)
+   - Comprehensive architectural analysis
+   - Detailed explanations of every component
+   - Data flows and integration points
+   - Best for: Understanding the full picture
+
+2. NEXT_JS_TEMPLATE_QUICK_REFERENCE.md (300+ lines, 8.5KB)
+   - Quick lookup guide
+   - Key routes, APIs, environment vars
+   - Data model snippets
+   - Best for: Quick reference while coding
+
+Both files contain:
+- Architecture overview
+- Routing structure
+- API endpoints
+- Qdrant integration details
+- Chatbot provisioning flow
+- Data models
+- Environment configuration
+- Key files to study
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+For agent-lead-gen development:
+  1. Review NEXT_JS_TEMPLATE_QUICK_REFERENCE.md first (5 min read)
+  2. Read NEXT_JS_TEMPLATE_ANALYSIS.md for deep understanding (20 min read)
+  3. Study the 7 critical files listed above
+  4. Understand the provision → qdrant → response flow
+  5. Implement lead APIs if not already done
+
+For template enhancement:
+  1. Activate chatbot dashboard UI
+  2. Implement leads page
+  3. Add to onboarding flow
+  4. Create lead API endpoints
+  5. Add analytics/tracking
+
+================================================================================
+KEY INSIGHT
+================================================================================
+
+The product is NOT a website builder.
+The product is QUALIFIED LEADS.
+
+Website = Delivery mechanism
+Chatbot = Salesperson working 24/7
+Stories/Knowledge Base = Sales collateral
+
+Realtors don't pay for sites. They pay for leads with intent signals
+(budget, timeline, property type) already captured before first contact.
+
+================================================================================

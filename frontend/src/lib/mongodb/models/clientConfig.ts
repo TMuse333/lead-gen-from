@@ -62,6 +62,9 @@ export interface ClientConfigDocument {
   dataCollection: DataCollectionType[];
   customDataCollection?: string;
   selectedIntentions: FlowIntention[];
+
+  // Website Integration
+  homebaseUrl?: string; // URL to agent's main website (e.g., Vercel site from next-js-template)
   
   // Step 2: Offers
   selectedOffers: OfferType[];

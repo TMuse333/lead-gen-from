@@ -1,10 +1,11 @@
+// Auth configuration
 import NextAuth from "next-auth";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import EmailProvider from "next-auth/providers/email";
 import clientPromise from "@/lib/mongodb/clientPromise";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true, // Required for NextAuth v5
   adapter: MongoDBAdapter(clientPromise),
   providers: [

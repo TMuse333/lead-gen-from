@@ -36,6 +36,7 @@ export interface UserConfig {
   selectedIntentions?: string[];
   agentProfile?: AgentProfile;
   storyMappings?: StoryMappings;
+  homebaseUrl?: string;
 }
 
 export async function getUserConfig(
@@ -59,6 +60,7 @@ export async function getUserConfig(
       selectedIntentions: userConfig.selectedIntentions,
       agentProfile: userConfig.agentProfile,
       storyMappings: userConfig.storyMappings,
+      homebaseUrl: userConfig.homebaseUrl,
     };
   } catch {
     return null;

@@ -2,14 +2,15 @@
 /**
  * Story Uploader Modal
  *
- * Simple modal for uploading stories without requiring offer/phase assignment.
- * Stories can be assigned to offers later.
+ * Supports two input modes:
+ * 1. Structured: Traditional 3-field input (situation, action, outcome)
+ * 2. Raw: Paste entire story and use AI to parse into structured format
  */
 
 'use client';
 
 import { useState } from 'react';
-import { X, BookOpen, Loader2, CheckCircle2, Tag } from 'lucide-react';
+import { X, BookOpen, Loader2, CheckCircle2, Tag, Sparkles, FileText, List } from 'lucide-react';
 
 interface StoryUploaderProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ interface StoryUploaderProps {
     flows?: string[];
   } | null;
 }
+
+type InputMode = 'structured' | 'raw';
 
 export default function StoryUploader({
   isOpen,
@@ -73,6 +76,13 @@ export default function StoryUploader({
 
   const initialValues = getInitialValues();
 
+  // Input mode state
+  const [inputMode, setInputMode] = useState<InputMode>('structured');
+  const [rawText, setRawText] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  // Form state
   const [title, setTitle] = useState(editingStory?.title || '');
   const [clientSituation, setClientSituation] = useState(initialValues.situation);
   const [whatYouDid, setWhatYouDid] = useState(initialValues.action);
@@ -96,6 +106,54 @@ export default function StoryUploader({
 
   const removeTag = (tag: string) => {
     setTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  // Parse raw text with AI
+  const handleParseWithAI = async () => {
+    if (!rawText.trim()) {
+      setParseError('Please paste your story first');
+      return;
+    }
+
+    setIsParsing(true);
+    setParseError(null);
+
+    try {
+      const response = await fetch('/api/stories/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText: rawText.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to parse story');
+      }
+
+      // Populate structured fields from parsed data
+      setTitle(data.parsed.title);
+      setClientSituation(data.parsed.situation);
+      setWhatYouDid(data.parsed.action);
+      setOutcome(data.parsed.outcome);
+
+      // Add suggested tags (without duplicates)
+      if (data.parsed.suggestedTags?.length) {
+        setTags((prev) => {
+          const newTags = data.parsed.suggestedTags.filter(
+            (t: string) => !prev.includes(t)
+          );
+          return [...prev, ...newTags];
+        });
+      }
+
+      // Switch to structured mode to show/edit parsed results
+      setInputMode('structured');
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'Failed to parse story');
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,6 +226,7 @@ export default function StoryUploader({
         setWhatYouDid('');
         setOutcome('');
         setTags([]);
+        setRawText('');
         setSuccess(false);
       }, 1000);
     } catch (err) {
@@ -216,185 +275,289 @@ export default function StoryUploader({
           </button>
         </div>
 
+        {/* Input Mode Tabs */}
+        {!isEditMode && (
+          <div className="flex border-b border-slate-700">
+            <button
+              onClick={() => setInputMode('structured')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium transition-colors ${
+                inputMode === 'structured'
+                  ? 'bg-amber-500/10 text-amber-300 border-b-2 border-amber-500'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              Structured Input
+            </button>
+            <button
+              onClick={() => setInputMode('raw')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium transition-colors ${
+                inputMode === 'raw'
+                  ? 'bg-amber-500/10 text-amber-300 border-b-2 border-amber-500'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Paste & AI Parse
+            </button>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Story Title <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Helping a First-Time Buyer Win in a Competitive Market"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
-            />
-          </div>
+          {/* Raw Input Mode */}
+          {inputMode === 'raw' && !isEditMode && (
+            <div className="space-y-4">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-200">
+                    <strong>AI-Powered Parsing</strong>
+                    <p className="text-amber-200/70 mt-1">
+                      Paste your entire story below and we&apos;ll automatically extract the situation,
+                      action, and outcome for you.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          {/* Story Fields */}
-          <div className="space-y-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                What was their situation? <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                value={clientSituation}
-                onChange={(e) => setClientSituation(e.target.value)}
-                placeholder="e.g., First-time buyer, relocating for work, needed to close within 45 days, limited budget of $350k in a hot market..."
-                rows={3}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Paste Your Full Story
+                  </div>
+                </label>
+                <textarea
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  placeholder={`Example:
+Last year I helped a first-time buyer named Sarah who was relocating from Chicago for a new job. She had a tight budget of $350k and needed to close within 45 days. The market was really competitive with homes going over asking price.
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                What did you do to help? <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                value={whatYouDid}
-                onChange={(e) => setWhatYouDid(e.target.value)}
-                placeholder="e.g., I connected them with a local lender who could close fast, helped them write a personal letter to the seller, suggested waiving minor contingencies..."
-                rows={3}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
-              />
-            </div>
+I connected her with a local lender who specialized in fast closings and helped her write a personal letter to the sellers. We also strategically waived the inspection contingency on a home that had a recent inspection report available.
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                How did it turn out? <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
-                placeholder="e.g., They got the house at $5k under asking! The seller chose them over two higher offers because of the personal letter. They closed in 38 days..."
-                rows={3}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
-              />
-            </div>
-          </div>
+Sarah got the house for $5k under asking! The sellers chose her over two higher offers because of the personal letter and the confidence in our fast close timeline. She moved in just 38 days after we started looking.`}
+                  rows={10}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Include details about: the client&apos;s situation, what you did to help, and the outcome
+                </p>
+              </div>
 
-          {/* Tags */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Tag className="w-4 h-4 text-slate-400" />
-              <label className="text-sm font-medium text-slate-300">
-                Tags <span className="text-slate-500">(helps match to similar clients)</span>
-              </label>
-            </div>
+              {/* Parse Error */}
+              {parseError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+                  {parseError}
+                </div>
+              )}
 
-            {/* Suggested tags */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {suggestedTags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => {
-                    if (tags.includes(tag)) {
-                      removeTag(tag);
-                    } else {
-                      setTags((prev) => [...prev, tag]);
-                    }
-                  }}
-                  className={`text-sm px-3 py-1.5 rounded-full border transition-all ${
-                    tags.includes(tag)
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                      : 'bg-slate-700/50 text-slate-400 border-slate-600 hover:border-slate-500'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom tag input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customTag}
-                onChange={(e) => setCustomTag(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                placeholder="Add custom tag..."
-                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              />
+              {/* Parse Button */}
               <button
                 type="button"
-                onClick={addTag}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm"
+                onClick={handleParseWithAI}
+                disabled={isParsing || !rawText.trim()}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-slate-600 disabled:to-slate-600 text-white font-medium rounded-lg transition-all"
               >
-                Add
+                {isParsing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Parsing with AI...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Parse with AI
+                  </>
+                )}
               </button>
-            </div>
-
-            {/* Selected tags */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="flex items-center gap-1 text-xs px-2 py-1 bg-amber-500/20 text-amber-300 rounded"
-                  >
-                    {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="hover:text-white">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Info box */}
-          <div className="p-3 bg-slate-700/30 rounded-lg text-sm text-slate-400">
-            <strong className="text-slate-300">Tip:</strong> After saving, you can assign this story
-            to specific offers/phases from the Stories tab.
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
-              {error}
             </div>
           )}
 
-          {/* Success */}
-          {success && (
-            <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-sm text-green-400">
-              <CheckCircle2 className="w-5 h-5" />
-              Story saved successfully!
-            </div>
+          {/* Structured Input Mode */}
+          {(inputMode === 'structured' || isEditMode) && (
+            <>
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Story Title <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Helping a First-Time Buyer Win in a Competitive Market"
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+                />
+              </div>
+
+              {/* Story Fields */}
+              <div className="space-y-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    What was their situation? <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={clientSituation}
+                    onChange={(e) => setClientSituation(e.target.value)}
+                    placeholder="e.g., First-time buyer, relocating for work, needed to close within 45 days, limited budget of $350k in a hot market..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    What did you do to help? <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={whatYouDid}
+                    onChange={(e) => setWhatYouDid(e.target.value)}
+                    placeholder="e.g., I connected them with a local lender who could close fast, helped them write a personal letter to the seller, suggested waiving minor contingencies..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    How did it turn out? <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={outcome}
+                    onChange={(e) => setOutcome(e.target.value)}
+                    placeholder="e.g., They got the house at $5k under asking! The seller chose them over two higher offers because of the personal letter. They closed in 38 days..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="w-4 h-4 text-slate-400" />
+                  <label className="text-sm font-medium text-slate-300">
+                    Tags <span className="text-slate-500">(helps match to similar clients)</span>
+                  </label>
+                </div>
+
+                {/* Suggested tags */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {suggestedTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (tags.includes(tag)) {
+                          removeTag(tag);
+                        } else {
+                          setTags((prev) => [...prev, tag]);
+                        }
+                      }}
+                      className={`text-sm px-3 py-1.5 rounded-full border transition-all ${
+                        tags.includes(tag)
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                          : 'bg-slate-700/50 text-slate-400 border-slate-600 hover:border-slate-500'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom tag input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                    placeholder="Add custom tag..."
+                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* Selected tags */}
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="flex items-center gap-1 text-xs px-2 py-1 bg-amber-500/20 text-amber-300 rounded"
+                      >
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Info box */}
+              <div className="p-3 bg-slate-700/30 rounded-lg text-sm text-slate-400">
+                <strong className="text-slate-300">Tip:</strong> After saving, you can assign this story
+                to specific offers/phases from the Stories tab.
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+
+              {/* Success */}
+              {success && (
+                <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-sm text-green-400">
+                  <CheckCircle2 className="w-5 h-5" />
+                  Story saved successfully!
+                </div>
+              )}
+            </>
           )}
         </form>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || success}
-            className="flex items-center gap-2 px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-600 text-white font-medium rounded-lg transition-colors"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : success ? (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                Saved!
-              </>
-            ) : (
-              isEditMode ? 'Update Story' : 'Save Story'
-            )}
-          </button>
-        </div>
+        {(inputMode === 'structured' || isEditMode) && (
+          <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || success}
+              className="flex items-center gap-2 px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : success ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Saved!
+                </>
+              ) : (
+                isEditMode ? 'Update Story' : 'Save Story'
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

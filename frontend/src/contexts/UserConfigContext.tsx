@@ -31,6 +31,7 @@ interface UserConfig {
     source: string;
   }>;
   qdrantCollectionName: string;
+  homebaseUrl?: string; // URL to agent's main website
   endingCTA?: EndingCTAConfig;
   isActive: boolean;
   onboardingCompletedAt: string;

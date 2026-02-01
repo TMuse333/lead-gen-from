@@ -147,6 +147,32 @@ export default function ConfigSummary() {
                   </div>
                 </div>
               </div>
+
+              {/* Homebase URL Configuration */}
+              <div className="pt-4 border-t border-slate-700">
+                <p className="text-sm text-slate-400 mb-2">Website Integration</p>
+                <div className="flex items-center gap-2">
+                  {config.homebaseUrl ? (
+                    <>
+                      <a
+                        href={config.homebaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono text-sm"
+                      >
+                        {config.homebaseUrl}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </>
+                  ) : (
+                    <p className="text-slate-500 text-sm">Not configured</p>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  This URL will appear as a "Back to Home" button in your embedded chatbot
+                </p>
+              </div>
+
               <div>
                 <p className="text-sm text-slate-400 mb-2">Data Collection Preferences</p>
                 <div className="flex flex-wrap gap-2">

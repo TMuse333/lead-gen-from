@@ -41,6 +41,7 @@ interface ProvisionRequest {
     text: string;
   };
   greeting?: string;
+  homebaseUrl?: string; // URL to agent's main website (e.g., Vercel deployment)
   // For linking to external user
   externalUserId?: string;
 }
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     const body: ProvisionRequest = await request.json();
-    const { slug, agentInfo, stories, colorConfig, greeting, externalUserId } = body;
+    const { slug, agentInfo, stories, colorConfig, greeting, homebaseUrl, externalUserId } = body;
 
     // 3. Validate required fields
     if (!slug || !agentInfo?.name || !agentInfo?.email) {
@@ -193,6 +194,7 @@ export async function POST(request: NextRequest) {
       selectedIntentions: ['buy', 'sell', 'browse'],
       selectedOffers: ['real-estate-timeline'],
       conversationFlows: {},
+      homebaseUrl, // Store homebase URL for "Back to Home" button
       knowledgeBaseItems: stories?.map((s, index) => ({
         id: `provision-${Date.now()}-${index}`,
         title: s.title,

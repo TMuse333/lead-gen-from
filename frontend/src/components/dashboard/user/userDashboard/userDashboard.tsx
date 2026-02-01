@@ -10,6 +10,7 @@ import SettingsDashboard from '../settings/SettingsDashboard';
 import KnowledgeBaseDashboard from '../knowledgeBase/KnowledgeBaseDashboard';
 import TimelineDashboard from '../timeline/TimelineDashboard';
 import FeedbackDashboard from '../feedback/FeedbackDashboard';
+import IframeTestDashboard from '../iframeTest/IframeTestDashboard';
 
 // Define user dashboard sections (matching DashboardSidebar)
 interface DashboardSection {
@@ -54,6 +55,13 @@ const USER_SECTIONS: DashboardSection[] = [
     label: 'Settings',
     component: SettingsDashboard,
     description: 'Profile, branding, and preferences'
+  },
+  // Iframe Test - Test bot embedding
+  {
+    id: 'iframe-test',
+    label: 'Iframe Test',
+    component: IframeTestDashboard,
+    description: 'Preview your bot in iframe and get embed code'
   },
   // Feedback - MVP feedback collection
   {

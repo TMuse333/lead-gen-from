@@ -45,12 +45,25 @@ export function createSendMessageHandler(
       const allQuestions = flowQuestions[currentIntent as TimelineFlow] || [];
       const questions = getBotQuestions(allQuestions);
 
+      console.log('[SendMessage] Flow questions:', {
+        intent: currentIntent,
+        totalQuestions: questions.length,
+        questionIds: questions.map(q => ({ id: q.id, question: q.question })),
+      });
+
       // Get current question from stored questions
       const currentQuestion = currentQuestionId
         ? getQuestionById(questions, currentQuestionId)
         : null;
 
-      console.log('[SendMessage] Current question:', currentQuestion?.id);
+      console.log('[SendMessage] Current question:', currentQuestion?.id, currentQuestion?.question);
+
+      // Get next question for LLM context (even though we don't advance yet)
+      const nextQuestionForContext = currentQuestionId
+        ? getNextQuestion(questions, currentQuestionId)
+        : null;
+
+      console.log('[SendMessage] Next question for context:', nextQuestionForContext?.id, nextQuestionForContext?.question);
 
       const response = await fetch('/api/chat/smart', {
         method: 'POST',
@@ -63,6 +76,7 @@ export function createSendMessageHandler(
           userInput: state.userInput,
           messages: state.messages.slice(-5),
           questionConfig: currentQuestion,
+          nextQuestionConfig: nextQuestionForContext, // Pass next question for LLM context
         }),
       });
 
@@ -98,7 +112,27 @@ export function createSendMessageHandler(
       const isNowComplete = isFlowComplete(questions, updatedState.userInput);
       console.log('🎯 isNowComplete:', isNowComplete);
 
-      // Get next question from stored questions
+      // DECISION POINT: Should we advance to next question or re-ask current?
+      // If no answer was extracted (user asked clarification/objection), re-ask the same question
+      if (!data.extracted) {
+        console.log('🔄 No answer extracted - re-asking current question');
+
+        // Re-ask the current question with buttons
+        const aiMsg: ChatMessage = {
+          role: 'assistant',
+          content: data.reply || 'Let me clarify that for you.',
+          buttons: currentQuestion ? convertButtons(currentQuestion) : [],
+          timestamp: new Date(),
+        };
+        set((s) => ({ messages: [...s.messages, aiMsg] }));
+
+        // Keep the same question ID - don't advance
+        set({ loading: false });
+        console.log('🟦 === SEND MESSAGE END (Re-asked) ===\n');
+        return;
+      }
+
+      // Get next question from stored questions (only if answer was extracted)
       const nextQuestion = currentQuestionId
         ? getNextQuestion(questions, currentQuestionId)
         : null;

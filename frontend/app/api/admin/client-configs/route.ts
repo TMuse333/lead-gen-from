@@ -2,26 +2,20 @@
 // API route to get all client configurations (admin only)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/authConfig';
+import { checkIsAdmin } from '@/lib/auth/adminCheck';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import type { ClientConfigDocument } from '@/lib/mongodb/models/clientConfig';
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
+    // 1. Check if user is admin
+    const session = await checkIsAdmin();
+    if (!session) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
       );
     }
-
-    // TODO: Add admin check here
-    // For now, allow any authenticated user to see all configs
-    // In production, you'd check if user is admin:
-    // const isAdmin = await checkAdminStatus(session.user.id);
-    // if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     // 2. Get all client configurations
     const collection = await getClientConfigsCollection();

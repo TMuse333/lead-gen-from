@@ -19,7 +19,7 @@ import {
 } from '@/stores/chatStore';
 
 import { GameChat } from './chat/gameChat';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Home } from 'lucide-react';
 import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
 import { getQuestionCount, getQuestion, type OfferType } from '@/lib/offers/unified';
 import { ContactCollectionModal, ContactRetriggerButton, type ContactData } from './modals/ContactCollectionModal';
@@ -48,6 +48,7 @@ interface ClientConfig {
   qdrantCollectionName: string;
   agentProfile?: any;
   endingCTA?: any;
+  homebaseUrl?: string; // URL to agent's main website
   isActive: boolean;
   onboardingCompletedAt: string;
   createdAt: string;
@@ -506,70 +507,94 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
 
   const businessName = clientConfig?.businessName || 'AI Assistant';
 
+  // Hybrid homebaseUrl strategy:
+  // 1. Use configured URL (from provision API or manual config)
+  // 2. Fall back to auto-generated Vercel URL
+  const homebaseUrl = clientConfig?.homebaseUrl ||
+    (clientConfig?.businessName ? `https://${clientConfig.businessName}.vercel.app` : undefined);
+
   return (
     <>
       {/* Container - Fixed for standalone, relative for embed */}
       <div
         id='chatbot-container'
-        className={`${embedMode ? 'relative w-full h-full min-h-[500px]' : 'fixed inset-0'} flex flex-col overflow-hidden`}
-        style={{ backgroundColor: 'var(--color-background)' }}
+        className={`${embedMode ? 'relative w-full h-full min-h-[400px]' : 'fixed inset-0'} flex flex-col overflow-hidden`}
+        style={{
+          backgroundColor: 'var(--color-background)',
+          // Ensure iframe renders properly without scrollbars
+          ...(embedMode ? {
+            maxHeight: '100vh',
+            isolation: 'isolate' // Prevent bleed into parent
+          } : {})
+        }}
       >
-        {/* Simple Top Bar */}
-        <div
-          className="flex items-center justify-between px-6 py-3 border-b"
-          style={{
-            backgroundColor: 'rgba(var(--color-background-rgb), 0.95)',
-            borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
-          }}
-        >
-          {/* Left: Business Name */}
-          <div className="flex items-center gap-3">
+        {/* Top Bar - Minimal in embed mode, full in standalone */}
+        {embedMode ? (
+          /* Minimal header for embed mode - Just "Back to Home" button */
+          homebaseUrl && (
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold"
+              className="flex items-center justify-end border-b px-3 py-2"
               style={{
-                background: 'linear-gradient(135deg, var(--color-gradient-from), var(--color-gradient-to))',
-                color: 'var(--color-text-on-gradient)',
+                backgroundColor: 'rgba(var(--color-background-rgb), 0.95)',
+                borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
               }}
             >
-              {businessName.charAt(0).toUpperCase()}
-            </div>
-            <span className="font-semibold text-lg" style={{ color: 'var(--color-text-on-background)' }}>{businessName}</span>
-          </div>
-
-          {/* Right: Progress */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2">
-              <div
-                className="w-32 h-2 rounded-full overflow-hidden"
-                style={{ backgroundColor: 'rgba(var(--color-primary-rgb), 0.2)' }}
+              <a
+                href={homebaseUrl}
+                target="_parent"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-700/50 transition-colors text-sm"
+                style={{ color: 'var(--color-text)' }}
               >
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${progress}%`,
-                    background: 'linear-gradient(90deg, var(--color-gradient-from), var(--color-gradient-to))',
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
-                {progress}%
-              </span>
+                <Home size={14} />
+                <span>Back to Home</span>
+              </a>
             </div>
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.parent.postMessage({ type: 'close-iframe' }, '*');
-                }
-              }}
-              className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
-              style={{ color: 'var(--color-text)' }}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          )
+        ) : (
+          /* Full header for standalone mode */
+          <div
+            className="flex items-center justify-between border-b px-6 py-3"
+            style={{
+              backgroundColor: 'rgba(var(--color-background-rgb), 0.95)',
+              borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
+            }}
+          >
+            {/* Left: Business Name */}
+            <div className="flex items-center gap-2">
+              <div
+                className="rounded-full flex items-center justify-center font-bold w-10 h-10 text-lg"
+                style={{
+                  background: 'linear-gradient(135deg, var(--color-gradient-from), var(--color-gradient-to))',
+                  color: 'var(--color-text-on-gradient)',
+                }}
+              >
+                {businessName.charAt(0).toUpperCase()}
+              </div>
+              <span className="font-semibold text-lg" style={{ color: 'var(--color-text-on-background)' }}>{businessName}</span>
+            </div>
+
+            {/* Right: Progress */}
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
+                <div
+                  className="w-32 h-2 rounded-full overflow-hidden"
+                  style={{ backgroundColor: 'rgba(var(--color-primary-rgb), 0.2)' }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progress}%`,
+                      background: 'linear-gradient(90deg, var(--color-gradient-from), var(--color-gradient-to))',
+                    }}
+                  />
+                </div>
+                <span className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
+                  {progress}%
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
@@ -595,14 +620,15 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
             />
           </div>
 
-          {/* Side Panel - Progress Tracker (Desktop Only) */}
-          <div
-            className="hidden lg:flex w-80 flex-col border-l"
-            style={{
-              backgroundColor: 'rgba(var(--color-background-rgb), 0.5)',
-              borderColor: 'rgba(var(--color-primary-rgb), 0.2)',
-            }}
-          >
+          {/* Side Panel - Progress Tracker (Desktop Only, hidden in embed mode) */}
+          {!embedMode && (
+            <div
+              className="hidden lg:flex w-80 flex-col border-l"
+              style={{
+                backgroundColor: 'rgba(var(--color-background-rgb), 0.5)',
+                borderColor: 'rgba(var(--color-primary-rgb), 0.2)',
+              }}
+            >
             {/* Progress Header */}
             <div className="p-4 border-b" style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.2)' }}>
               <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-on-background)' }}>Your Progress</h3>
@@ -683,6 +709,7 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 

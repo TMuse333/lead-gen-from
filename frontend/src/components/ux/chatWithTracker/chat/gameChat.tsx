@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, MessageSquare, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { MessageBubble } from './messageBubble';
-import ChatExperienceSvg from './ChatExperienceSvg';
 import { DEFAULT_THEME } from '@/lib/colors/defaultTheme';
 import { injectColorTheme } from '@/lib/colors/colorUtils';
 import { determineTextColorForGradient } from '@/lib/colors/contrastUtils';
@@ -160,7 +159,12 @@ export function GameChat({
     if (messages.length > 1 && messagesEndRef.current) {
       // Use a small timeout to ensure DOM is updated
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // Scroll only the messages container, not the entire page
+        messagesEndRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest', // Don't scroll parent containers (like the page)
+          inline: 'nearest'
+        });
       }, 100);
     }
   }, [messages, loading, isChatOpen]); 
@@ -230,18 +234,6 @@ export function GameChat({
         <div className="flex-1 flex flex-col h-full">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-thumb-cyan-600/30">
-            {/* AI Chat Experience Header - shows only at start */}
-            {messages.length <= 2 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex flex-col items-center pb-4 mb-2 border-b border-cyan-500/20"
-              >
-                <ChatExperienceSvg width={280} height={100} />
-              </motion.div>
-            )}
-
             {messages.map((msg, i) => (
               <div key={`${msg.timestamp?.getTime()}-${i}`} className="space-y-4">
                 <MessageBubble role={msg.role} content={msg.content} index={i} />

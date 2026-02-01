@@ -1,6 +1,7 @@
 // app/bot/[clientId]/page.tsx
 // Public bot page for each client
 // Supports ?embed=true for iframe embedding
+// Iframe-optimized with responsive design and color theming
 
 'use client';
 

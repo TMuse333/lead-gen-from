@@ -251,6 +251,10 @@ export function createButtonClickHandler(
     try {
       console.log('📞 Calling /api/chat/smart for button click...');
 
+      // Get next question for LLM context (before API call!)
+      const nextQuestionForContext = getNextQuestion(questions, currentQuestionId);
+      console.log('[ButtonHandler] Next question for context:', nextQuestionForContext?.id, nextQuestionForContext?.question);
+
       const response = await fetch('/api/chat/smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -264,6 +268,7 @@ export function createButtonClickHandler(
           userInput: get().userInput,
           messages: state.messages.slice(-5),
           questionConfig: currentQuestion,
+          nextQuestionConfig: nextQuestionForContext, // Send next question for LLM context
         }),
       });
 

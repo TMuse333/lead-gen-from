@@ -40,6 +40,7 @@ interface ChatRequest {
   messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
   flowConfig?: any;
   questionConfig?: any;
+  nextQuestionConfig?: any; // MongoDB next question for LLM context
 }
 
 // ————————————————————————
@@ -218,14 +219,22 @@ export async function POST(req: NextRequest) {
       userInput,
       messages,
       questionConfig,
+      nextQuestionConfig, // MongoDB next question for LLM context
       // Legacy
       currentFlow,
       currentNodeId,
       flowConfig,
     } = body;
 
+    console.log('[API] Received request:', {
+      currentQuestionId,
+      hasQuestionConfig: !!questionConfig,
+      hasNextQuestionConfig: !!nextQuestionConfig,
+      nextQuestionId: nextQuestionConfig?.id,
+    });
+
     // ——————————————————
-    // Resolve current question - unified or legacy
+    // Resolve current question - PRIORITY: MongoDB custom questions > unified offer system
     // ——————————————————
     let currentQuestion: { id: string; text: string; mappingKey: string; buttons?: any[] } | null = null;
     let nextQuestion: { id: string; text: string; mappingKey: string; buttons?: any[] } | null = null;
@@ -233,7 +242,29 @@ export async function POST(req: NextRequest) {
     let currentIndex = 0;
     let offerLabel = 'Real Estate Assistant';
 
-    if (selectedOffer && currentIntent && currentQuestionId) {
+    // PRIORITY 1: Use MongoDB custom questions if provided (from setup wizard)
+    // CustomQuestion uses 'question' field, not 'text'
+    const questionText = questionConfig?.text || questionConfig?.question;
+    if (questionConfig && questionText) {
+      console.log('[API] Using MongoDB custom question:', questionConfig.id, questionText);
+      currentQuestion = {
+        id: questionConfig.id,
+        text: questionText,
+        mappingKey: questionConfig.mappingKey || questionConfig.id,
+        buttons: questionConfig.buttons?.map((b: any) => ({
+          id: b.id,
+          label: b.label,
+          value: b.value,
+        })),
+      };
+
+      // Note: nextQuestion will be determined by frontend based on MongoDB questions
+      // We don't calculate it here - the API just validates the current question
+      offerLabel = currentIntent ? `${currentIntent.charAt(0).toUpperCase() + currentIntent.slice(1)} Journey` : 'Real Estate Assistant';
+    }
+    // PRIORITY 2: Fall back to unified offer system (hardcoded questions)
+    else if (selectedOffer && currentIntent && currentQuestionId) {
+      console.log('[API] Using unified offer system question:', currentQuestionId);
       // Use unified offer system
       const offer = getOffer(selectedOffer);
       if (offer) {
@@ -272,7 +303,9 @@ export async function POST(req: NextRequest) {
           };
         }
       }
-    } else if (questionConfig && flowConfig) {
+    }
+    // PRIORITY 3: Legacy flow system
+    else if (questionConfig && flowConfig) {
       // Legacy flow system
       currentQuestion = {
         id: questionConfig.id,
@@ -302,7 +335,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid question config' }, { status: 400 });
     }
 
-    const isLastQuestion = !nextQuestion;
+    // Check if there's a next question from EITHER MongoDB or unified system
+    const hasNextQuestion = !!(nextQuestionConfig?.question || nextQuestionConfig?.text || nextQuestion);
+    const isLastQuestion = !hasNextQuestion;
+
+    console.log('[API] Question completion check:', {
+      hasMongoDBNext: !!(nextQuestionConfig?.question || nextQuestionConfig?.text),
+      hasUnifiedNext: !!nextQuestion,
+      isLastQuestion,
+    });
+
     const progress = Math.round(((currentIndex + 1) / totalQuestions) * 100);
 
     const isButtonClick = !!buttonId && !!buttonValue;
@@ -396,16 +438,21 @@ Keep it short and kind.`;
     // ——————————————————
     // 5. Generate warm reply
     // ——————————————————
+    // Use MongoDB next question if available, otherwise use unified system next question
+    const nextQuestionText = nextQuestionConfig?.question || nextQuestionConfig?.text || nextQuestion?.text;
+
+    console.log('[API] Generating reply with next question:', nextQuestionText || 'NONE (final question)');
+
     const systemPrompt = `You are a friendly AI assistant for ${offerLabel}.
 
 User just answered: "${answerValue}"
 They were asked: "${currentQuestion.text}"
-${nextQuestion ? `Next question will be: "${nextQuestion.text}"` : 'This was the final question.'}
+${nextQuestionText ? `Next question will be: "${nextQuestionText}"` : 'This was the final question.'}
 
 Reply in 2–3 warm, natural sentences:
 - Acknowledge their answer positively
 - Add brief context or excitement
-${nextQuestion ? `- Smoothly transition to the next question` : `- Celebrate completion and build excitement`}
+${nextQuestionText ? `- Smoothly transition to the next question` : `- Celebrate completion and build excitement`}
 
 Be kind, human, and engaging.`;
 
@@ -456,10 +503,21 @@ Be kind, human, and engaging.`;
 
     trackUsageAsync(usage);
 
+    // Note: When using MongoDB custom questions, nextQuestion is calculated by frontend
+    // We return null here and let the frontend handle the flow
+    const usingMongoDBQuestions = !!(questionConfig?.text || questionConfig?.question);
+    const shouldReturnNextQuestion = nextQuestion && !usingMongoDBQuestions;
+
+    console.log('[API] Response:', {
+      extracted: extracted.mappingKey,
+      hasNextQuestion: !!shouldReturnNextQuestion,
+      usingMongoDBQuestions,
+    });
+
     return NextResponse.json({
       reply,
       extracted,
-      nextQuestion: nextQuestion
+      nextQuestion: shouldReturnNextQuestion && nextQuestion
         ? {
             id: nextQuestion.id,
             question: nextQuestion.text,

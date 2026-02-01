@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, Home,
-Eye, ExternalLink, Menu, X, Users, Play, MessageSquareHeart } from 'lucide-react';
+Eye, ExternalLink, Menu, X, Users, Play, MessageSquareHeart, Code } from 'lucide-react';
 import logo from '../../../../../public/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -71,6 +71,12 @@ const SECTION_GROUPS: SectionGroup[] = [
         label: 'Settings',
         icon: Settings,
         description: 'Profile, branding, and preferences'
+      },
+      {
+        id: 'iframe-test',
+        label: 'Iframe Test',
+        icon: Code,
+        description: 'Preview your bot in iframe and get embed code'
       }
     ]
   },

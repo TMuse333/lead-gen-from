@@ -108,7 +108,13 @@ export function getNextQuestion(
   questions: CustomQuestion[],
   currentQuestionId: string
 ): CustomQuestion | null {
-  if (!questions || questions.length === 0) return null;
+  if (!questions || questions.length === 0) {
+    console.warn(`[QuestionProvider] getNextQuestion: No questions provided`);
+    return null;
+  }
+
+  console.log(`[QuestionProvider] getNextQuestion: Looking for next after "${currentQuestionId}"`);
+  console.log(`[QuestionProvider]   Available questions:`, questions.map(q => ({ id: q.id, order: q.order })));
 
   // Sort by order
   const sorted = [...questions].sort((a, b) => a.order - b.order);
@@ -118,15 +124,21 @@ export function getNextQuestion(
 
   if (currentIndex === -1) {
     console.warn(`[QuestionProvider] Question not found: ${currentQuestionId}`);
+    console.warn(`[QuestionProvider]   Available IDs:`, sorted.map(q => q.id));
     return null;
   }
+
+  console.log(`[QuestionProvider]   Current index: ${currentIndex} (of ${sorted.length})`);
 
   // Return next question or null if at end
   if (currentIndex + 1 >= sorted.length) {
+    console.log(`[QuestionProvider]   ✅ This is the last question`);
     return null;
   }
 
-  return sorted[currentIndex + 1];
+  const nextQuestion = sorted[currentIndex + 1];
+  console.log(`[QuestionProvider]   ✅ Next question:`, { id: nextQuestion.id, question: nextQuestion.question });
+  return nextQuestion;
 }
 
 /**
@@ -218,26 +230,26 @@ export function convertButtons(question: CustomQuestion): ButtonOption[] | undef
 }
 
 /**
- * Filter questions to only those linked to phases
- * The bot should ONLY ask questions that are linked to timeline phases.
- * Questions without linkedPhaseId are orphaned and should not be asked.
+ * Get all bot questions sorted by order
+ * Questions can optionally be linked to timeline phases, but it's not required.
+ * All questions will be asked by the bot in the order specified.
  *
  * @param questions - All questions from MongoDB
- * @returns Questions that have linkedPhaseId set (bot will ask these)
+ * @returns All questions sorted by their order property
  */
 export function getBotQuestions(questions: CustomQuestion[]): CustomQuestion[] {
   if (!questions || questions.length === 0) return [];
 
-  const botQuestions = questions.filter(q => q.linkedPhaseId);
+  // Return ALL questions, sorted by order
+  // Note: linkedPhaseId is optional - questions can be used in bot without being linked to timeline phases
+  const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
 
-  console.log(`[QuestionProvider] 🤖 Bot questions filter: ${questions.length} total → ${botQuestions.length} with linkedPhaseId`);
-  if (botQuestions.length !== questions.length) {
-    const orphaned = questions.filter(q => !q.linkedPhaseId);
-    console.log(`[QuestionProvider] ⚠️ Orphaned questions (not linked to any phase):`, orphaned.map(q => q.id));
-  }
+  const withPhases = questions.filter(q => q.linkedPhaseId).length;
+  const withoutPhases = questions.length - withPhases;
 
-  // Sort by order to ensure proper sequence
-  return botQuestions.sort((a, b) => a.order - b.order);
+  console.log(`[QuestionProvider] 🤖 Bot questions: ${questions.length} total (${withPhases} linked to phases, ${withoutPhases} standalone)`);
+
+  return sortedQuestions;
 }
 
 /**

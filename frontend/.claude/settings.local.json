@@ -10,7 +10,8 @@
       "Bash(grep:*)",
       "Bash(cat:*)",
       "Bash(source ~/.nvm/nvm.sh)",
-      "Bash(nvm use:*)"
+      "Bash(nvm use:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

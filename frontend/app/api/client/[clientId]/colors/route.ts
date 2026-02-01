@@ -12,8 +12,8 @@ interface ColorUpdateRequest {
   primary: string;
   secondary?: string;
   background: string;
-  text: string;
   surface?: string;
+  text: string;
   textSecondary?: string;
   accent?: string;
   border?: string;
