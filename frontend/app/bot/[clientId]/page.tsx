@@ -49,10 +49,7 @@ export default function BotPage() {
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [trackingAllowed, setTrackingAllowed] = useState<boolean>(() => {
-    // Initialize with current consent status
-    return getCookieConsent() === 'accepted';
-  });
+  const [trackingAllowed, setTrackingAllowed] = useState<boolean>(false);
   const [visitorData, setVisitorData] = useState<FullVisitorData | null>(null);
 
   const handleConsentChange = useCallback((status: ConsentStatus) => {
@@ -64,15 +61,19 @@ export default function BotPage() {
     }
   }, []);
 
-  // Initialize visitor tracking on mount
+  // Initialize visitor tracking and check consent on mount
   useEffect(() => {
+    // Check consent status on client side
+    const consent = getCookieConsent();
+    setTrackingAllowed(consent === 'accepted');
+
     const data = initVisitorTracking();
     setVisitorData(data);
     console.log('[BotPage] Visitor tracking initialized:', {
       visitorId: data.visitorId,
       isReturningVisitor: data.isReturningVisitor,
       deviceType: data.deviceType,
-      hasConsent: trackingAllowed,
+      hasConsent: consent === 'accepted',
     });
   }, []);
 
