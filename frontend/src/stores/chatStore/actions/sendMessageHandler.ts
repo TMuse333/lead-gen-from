@@ -23,9 +23,32 @@ export function createSendMessageHandler(
 
     const { selectedOffer, currentIntent, currentQuestionId, flowQuestions } = state;
 
-    // Validate state
+    // If no flow selected yet, show a helpful message with intent buttons
     if (!selectedOffer || !currentIntent) {
-      console.warn('[SendMessage] Missing offer or intent');
+      console.log('[SendMessage] No flow selected yet, prompting user');
+
+      // Add user's message
+      const userMsg: ChatMessage = {
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      };
+      set((s) => ({ messages: [...s.messages, userMsg] }));
+
+      // Respond with intent selection buttons
+      const intentButtons = [
+        { id: 'buy', label: "🔑 I'm buying", value: 'buy' },
+        { id: 'sell', label: "🏠 I'm selling", value: 'sell' },
+      ];
+
+      const promptMsg: ChatMessage = {
+        role: 'assistant',
+        content: "I'd love to help! To give you the most relevant information, could you let me know what you're looking to do?",
+        buttons: intentButtons,
+        timestamp: new Date(),
+      };
+      set((s) => ({ messages: [...s.messages, promptMsg] }));
+
       return;
     }
 
