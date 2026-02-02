@@ -23,7 +23,7 @@ export function createSendMessageHandler(
 
     const { selectedOffer, currentIntent, currentQuestionId, flowQuestions } = state;
 
-    // If no flow selected yet, show a helpful message with intent buttons
+    // If no flow selected yet, show a conversational response with intent buttons
     if (!selectedOffer || !currentIntent) {
       console.log('[SendMessage] No flow selected yet, prompting user');
 
@@ -35,15 +35,37 @@ export function createSendMessageHandler(
       };
       set((s) => ({ messages: [...s.messages, userMsg] }));
 
-      // Respond with intent selection buttons
+      // Respond with intent selection buttons - conversational and acknowledging their input
       const intentButtons = [
-        { id: 'buy', label: "🔑 I'm buying", value: 'buy' },
-        { id: 'sell', label: "🏠 I'm selling", value: 'sell' },
+        { id: 'buy', label: "🔑 I'm looking to buy", value: 'buy' },
+        { id: 'sell', label: "🏠 I'm looking to sell", value: 'sell' },
       ];
+
+      // Create a caring, conversational response that acknowledges what they said
+      // Theme: We're here to help create their personalized timeline with real stories from the agent
+      const lowerMessage = message.toLowerCase();
+      let response = '';
+
+      if (lowerMessage.includes('buy') || lowerMessage.includes('purchase') || lowerMessage.includes('looking for') || lowerMessage.includes('house') || lowerMessage.includes('home')) {
+        // They mentioned buying - warm and helpful
+        response = "It sounds like you're thinking about buying - that's exciting! I'd love to help you map out your journey. I'll ask a few quick questions to create a personalized timeline, and I can even share some stories from your agent about how they've helped buyers in similar situations. Ready to get started?";
+      } else if (lowerMessage.includes('sell') || lowerMessage.includes('list') || lowerMessage.includes('move') || lowerMessage.includes('market')) {
+        // They mentioned selling - supportive tone
+        response = "Thinking about selling? I'm here to help make that process as smooth as possible! Let me create a custom timeline based on your situation. I'll also share some real stories from your agent about how they've successfully helped other sellers. Sound good?";
+      } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey') || lowerMessage.includes('help')) {
+        // Greeting - warm welcome
+        response = "Hey! Great to have you here. I'm here to create a personalized real estate timeline just for you - complete with step-by-step guidance and real stories from your agent about how they handle different situations. Are you looking to buy or sell?";
+      } else if (lowerMessage.includes('question') || lowerMessage.includes('how') || lowerMessage.includes('what') || lowerMessage.includes('when') || lowerMessage.includes('?')) {
+        // They're asking a question - be helpful and caring
+        response = "I'd be happy to help answer that! Once I know a bit more about your situation, I can give you much better guidance. I'll even share relevant stories from your agent about similar scenarios. Are you currently looking to buy or sell?";
+      } else {
+        // General statement - acknowledge and guide warmly
+        response = "Thanks for sharing that! I want to make sure I give you the most helpful guidance possible. I can create a personalized timeline with actionable steps and real stories from your agent. To get started, are you looking to buy or sell?";
+      }
 
       const promptMsg: ChatMessage = {
         role: 'assistant',
-        content: "I'd love to help! To give you the most relevant information, could you let me know what you're looking to do?",
+        content: response,
         buttons: intentButtons,
         timestamp: new Date(),
       };

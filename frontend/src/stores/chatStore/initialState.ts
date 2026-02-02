@@ -13,17 +13,15 @@ const MVP_OFFER: OfferType = 'real-estate-timeline';
  * Timeline preview teaser - shows what the user will get
  */
 const TIMELINE_PREVIEW = `
-**Here's a sneak peek of what you'll get:**
+**Here's what I can do for you:**
 
-📋 **Your Personalized Timeline**
-• Step-by-step phases tailored to YOUR situation
-• Actionable tasks with priorities for each phase
-• Expert advice based on your location, budget & timeline
-• Estimated timeframes adjusted to your goals
+📋 **Your Personalized Real Estate Timeline**
+I'll ask you a few quick questions about your situation, and then create a custom step-by-step roadmap just for you.
 
-_These estimates are based on typical experiences with similar clients. Your agent will provide personalized guidance for your specific situation._
+💬 **Real Stories & Advice**
+I even have stories directly from your agent about how they've helped clients in similar situations - so you can see exactly how they handle different scenarios.
 
-Just answer a few quick questions and I'll generate your custom roadmap!
+_Ready to get started? Just let me know if you're looking to buy or sell!_
 `;
 
 /**
@@ -40,22 +38,20 @@ export function getInitialMessage(): ChatMessage {
     }
   }
 
-  // Build greeting with preview
+  // Build greeting with preview - warm and caring tone
   let content = businessName
-    ? `Hello! I'm ${businessName}'s AI assistant. `
-    : "Hi! I'm your AI real estate assistant. ";
+    ? `Hey there! I'm ${businessName}'s AI assistant, and I'm here to help make your real estate journey as smooth as possible. `
+    : "Hey there! I'm your AI real estate assistant, here to help make your journey as smooth as possible. ";
 
-  content += "I can generate a personalized real estate timeline based on your goals.";
   content += TIMELINE_PREVIEW;
-  content += "\n**Are you looking to buy, sell, or just exploring?**";
+  content += "\n**What brings you here today?**";
 
   return {
     role: 'assistant',
     content,
     buttons: [
-      { id: 'buy', label: '🔑 I\'m looking to buy', value: 'buy' },
-      { id: 'sell', label: '🏠 I want to sell my home', value: 'sell' },
-      { id: 'browse', label: '👀 Just browsing the market', value: 'browse' },
+      { id: 'buy', label: "🔑 I'm looking to buy", value: 'buy' },
+      { id: 'sell', label: "🏠 I'm looking to sell", value: 'sell' },
     ],
     timestamp: new Date(),
   };

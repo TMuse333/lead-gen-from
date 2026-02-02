@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://*.vercel.app https://*.focusflowsoftware.com https://chris-crowell.ca https://*.chris-crowell.ca http://localhost:* https://localhost:*",
+            value: "frame-ancestors *",
           },
         ],
       },

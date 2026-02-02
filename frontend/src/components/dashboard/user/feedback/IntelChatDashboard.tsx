@@ -42,10 +42,11 @@ const CATEGORY_CONFIG: Record<string, { icon: any; label: string; color: string;
   recommendation: { icon: Sparkles, label: 'Recommendation', color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/30' },
   question: { icon: HelpCircle, label: 'Question', color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/30' },
   feedback: { icon: ThumbsUp, label: 'Feedback', color: 'text-green-400', bg: 'bg-green-400/10 border-green-400/30' },
+  feature_request: { icon: Sparkles, label: 'Feature Request', color: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/30' },
   general: { icon: MessageSquare, label: 'Message', color: 'text-slate-400', bg: 'bg-slate-400/10 border-slate-400/30' },
 };
 
-const FEEDBACK_CATEGORIES = ['feedback', 'question', 'general'] as const;
+const FEEDBACK_CATEGORIES = ['feedback', 'question', 'feature_request', 'general'] as const;
 const ADMIN_CATEGORIES = ['insight', 'recommendation', 'question'] as const;
 
 export default function IntelChatDashboard() {
@@ -66,6 +67,13 @@ export default function IntelChatDashboard() {
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isDevelopment, setIsDevelopment] = useState(false);
+
+  // Check if we're in development environment (client-side only)
+  useEffect(() => {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    setIsDevelopment(isLocalhost);
+  }, []);
 
   // Check if user is admin and impersonating
   useEffect(() => {
@@ -358,20 +366,22 @@ export default function IntelChatDashboard() {
                             <Send className="w-4 h-4" />
                           )}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendTestEmail(newAdminMessage, selectedAdminCategory)}
-                          disabled={isSendingTestEmail}
-                          className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 disabled:cursor-not-allowed text-white text-xs rounded-lg transition-colors flex items-center gap-1.5"
-                          title="Send test emails to admin"
-                        >
-                          {isSendingTestEmail ? (
-                            <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
-                          ) : (
-                            <Mail className="w-3 h-3" />
-                          )}
-                          Test Email
-                        </button>
+                        {isDevelopment && (
+                          <button
+                            type="button"
+                            onClick={() => handleSendTestEmail(newAdminMessage, selectedAdminCategory)}
+                            disabled={isSendingTestEmail}
+                            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 disabled:cursor-not-allowed text-white text-xs rounded-lg transition-colors flex items-center gap-1.5"
+                            title="Send test emails to admin"
+                          >
+                            {isSendingTestEmail ? (
+                              <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
+                            ) : (
+                              <Mail className="w-3 h-3" />
+                            )}
+                            Test Email
+                          </button>
+                        )}
                       </div>
                     </div>
                     {testEmailResult && (
@@ -521,7 +531,7 @@ export default function IntelChatDashboard() {
                         <Send className="w-4 h-4" />
                       )}
                     </button>
-                    {isAdmin && (
+                    {isAdmin && isDevelopment && (
                       <button
                         type="button"
                         onClick={() => handleSendTestEmail(newFeedback, selectedCategory)}

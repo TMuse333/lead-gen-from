@@ -56,16 +56,18 @@ export function createButtonClickHandler(
       };
       set((s) => ({ messages: [...s.messages, userMsg] }));
 
-      // Show intent selection with only supported intents
-      const intentButtons = offer.supportedIntents.map(intent => {
-        const labels: Record<Intent, { label: string; icon: string }> = {
-          buy: { label: "I'm buying", icon: '🔑' },
-          sell: { label: "I'm selling", icon: '🏠' },
-          browse: { label: 'Just browsing', icon: '👀' },
-        };
-        const { label, icon } = labels[intent];
-        return { id: intent, label: `${icon} ${label}`, value: intent };
-      });
+      // Show intent selection with only supported intents (excluding browse for MVP)
+      const intentButtons = offer.supportedIntents
+        .filter(intent => intent !== 'browse') // Remove browse option
+        .map(intent => {
+          const labels: Record<Intent, { label: string; icon: string }> = {
+            buy: { label: "I'm looking to buy", icon: '🔑' },
+            sell: { label: "I'm looking to sell", icon: '🏠' },
+            browse: { label: 'Just browsing', icon: '👀' }, // Keep for type safety
+          };
+          const { label, icon } = labels[intent];
+          return { id: intent, label: `${icon} ${label}`, value: intent };
+        });
 
       const intentQuestion: ChatMessage = {
         role: 'assistant',
