@@ -125,7 +125,11 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
       // Store client identifier and config for API calls and UI
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('clientId', clientConfig.businessName);
-        sessionStorage.setItem('businessName', clientConfig.businessName);
+        // Use agentProfile.name or endingCTA.displayName for a friendly display name
+        const displayName = clientConfig.agentProfile?.name ||
+                           clientConfig.endingCTA?.displayName ||
+                           clientConfig.businessName;
+        sessionStorage.setItem('businessName', displayName);
         sessionStorage.setItem('clientQdrantCollection', clientConfig.qdrantCollectionName);
         sessionStorage.setItem('selectedOffers', JSON.stringify(clientConfig.selectedOffers || []));
 
