@@ -89,6 +89,8 @@ export interface ChatStateData {
 
   // ==================== CONVERSATION TRACKING ====================
   conversationId: string | null;
+  /** Tracks how many messages have been synced to the server */
+  lastSyncedMessageCount: number;
 
   // ==================== QUESTIONS (fetched from MongoDB) ====================
   /** Questions for each flow, fetched from MongoDB */
@@ -150,6 +152,15 @@ export interface ChatStateActions {
       mappingKey: string;
       value: string;
       answeredVia: 'button' | 'text';
+    };
+    contactModal?: {
+      shown?: boolean;
+      shownAt?: Date;
+      completed?: boolean;
+      completedAt?: Date;
+      skipped?: boolean;
+      skippedAt?: Date;
+      skippedCount?: number;
     };
   }) => Promise<void>;
 

@@ -181,10 +181,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { flow, userInput, clientIdentifier } = body as {
+    const { flow, userInput, clientIdentifier, environment } = body as {
       flow?: unknown;
       userInput?: unknown;
       clientIdentifier?: string;
+      environment?: 'test' | 'production';
     };
 
     if (typeof flow !== "string" || !flow) {
@@ -361,6 +362,7 @@ export async function POST(req: NextRequest) {
           conversationId: new ObjectId(conversationId),
           userId,
           clientIdentifier: clientId || undefined,
+          environment: environment || 'production',
           flow: flow,
           generatedAt: new Date(),
           generationTime: generationTime,

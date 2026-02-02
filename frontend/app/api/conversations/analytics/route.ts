@@ -4,14 +4,16 @@
  *
  * Provides aggregated analytics including:
  * - Completion rates by flow
- * - Funnel drop-off analysis
+ * - Funnel drop-off analysis (synced with custom questions)
  * - Question-level performance
  * - Time-based trends
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
-import { getConversationsCollection } from '@/lib/mongodb/db';
+import { getConversationsCollection, getClientConfigsCollection } from '@/lib/mongodb/db';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
+import type { CustomQuestion } from '@/types/timelineBuilder.types';
 
 export const runtime = 'nodejs';
 
@@ -75,16 +77,24 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
+
     const { searchParams } = new URL(req.url);
     const days = parseInt(searchParams.get('days') || '30');
     const flow = searchParams.get('flow'); // Optional filter
+    const environment = searchParams.get('environment') || 'production'; // Default to production
 
     const collection = await getConversationsCollection();
 
     // Build base filter
-    const baseFilter: any = { userId: session.user.id };
+    const baseFilter: any = { userId };
     if (flow && flow !== 'all') {
       baseFilter.flow = flow;
+    }
+    // Filter by environment (all, production, test)
+    if (environment !== 'all') {
+      baseFilter.environment = environment;
     }
 
     // Date range filter
@@ -163,11 +173,36 @@ export async function GET(req: NextRequest) {
     }
 
     // ==================== FUNNEL ANALYSIS ====================
+    // Fetch custom questions from client config to get proper labels
+    const configCollection = await getClientConfigsCollection();
+    const clientConfig = await configCollection.findOne({ userId });
+
+    // Build a map of questionId -> question details (label, order)
+    const questionLabelsMap = new Map<string, { label: string; order: number; flow: string }>();
+
+    if (clientConfig?.customQuestions) {
+      // Map questions from each flow
+      const flows = ['buy', 'sell'] as const;
+      for (const flowType of flows) {
+        const questions = clientConfig.customQuestions[flowType] as CustomQuestion[] | undefined;
+        if (questions) {
+          for (const q of questions) {
+            questionLabelsMap.set(q.id, {
+              label: q.label || q.mappingKey || q.question.slice(0, 30),
+              order: q.order,
+              flow: flowType,
+            });
+          }
+        }
+      }
+    }
+
     // Analyze which questions users answered and where they dropped
-    const questionCounts = new Map<string, { reached: number; answered: number; label: string }>();
+    const questionCounts = new Map<string, { reached: number; answered: number; label: string; order: number; flow: string }>();
 
     for (const conv of conversations) {
       const answers = conv.answers || [];
+      const convFlow = conv.flow || 'unknown';
 
       // Track each question that was answered
       for (const answer of answers) {
@@ -175,10 +210,13 @@ export async function GET(req: NextRequest) {
         if (!qId) continue;
 
         if (!questionCounts.has(qId)) {
+          const questionMeta = questionLabelsMap.get(qId);
           questionCounts.set(qId, {
             reached: 0,
             answered: 0,
-            label: answer.mappingKey || qId
+            label: questionMeta?.label || answer.mappingKey || qId,
+            order: questionMeta?.order ?? 999,
+            flow: questionMeta?.flow || convFlow,
           });
         }
 
@@ -191,13 +229,20 @@ export async function GET(req: NextRequest) {
       if (conv.status === 'abandoned' && conv.currentNodeId) {
         const lastQ = conv.currentNodeId;
         if (!questionCounts.has(lastQ)) {
-          questionCounts.set(lastQ, { reached: 0, answered: 0, label: lastQ });
+          const questionMeta = questionLabelsMap.get(lastQ);
+          questionCounts.set(lastQ, {
+            reached: 0,
+            answered: 0,
+            label: questionMeta?.label || lastQ,
+            order: questionMeta?.order ?? 999,
+            flow: questionMeta?.flow || convFlow,
+          });
         }
         questionCounts.get(lastQ)!.reached++;
       }
     }
 
-    // Convert to funnel steps
+    // Convert to funnel steps - sort by question order to show proper funnel sequence
     const funnel: FunnelStep[] = Array.from(questionCounts.entries())
       .map(([questionId, counts]) => ({
         questionId,
@@ -209,7 +254,13 @@ export async function GET(req: NextRequest) {
           ? Math.round(((counts.reached - counts.answered) / counts.reached) * 100)
           : 0,
       }))
-      .sort((a, b) => b.reached - a.reached); // Sort by most reached
+      .sort((a, b) => {
+        // First sort by order if both have it, then by reached count as fallback
+        const orderA = questionCounts.get(a.questionId)?.order ?? 999;
+        const orderB = questionCounts.get(b.questionId)?.order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return b.reached - a.reached;
+      });
 
     // ==================== DROP-OFF POINTS ====================
     // Find where users abandon most frequently
@@ -223,12 +274,17 @@ export async function GET(req: NextRequest) {
     }
 
     const dropOffPoints = Array.from(abandonedByQuestion.entries())
-      .map(([questionId, count]) => ({
-        questionId,
-        label: questionCounts.get(questionId)?.label || questionId,
-        abandonedCount: count,
-        percentage: abandonedCount > 0 ? Math.round((count / abandonedCount) * 100) : 0,
-      }))
+      .map(([questionId, count]) => {
+        // Use the synced label from questionLabelsMap or questionCounts
+        const questionMeta = questionLabelsMap.get(questionId);
+        const countsData = questionCounts.get(questionId);
+        return {
+          questionId,
+          label: questionMeta?.label || countsData?.label || questionId,
+          abandonedCount: count,
+          percentage: abandonedCount > 0 ? Math.round((count / abandonedCount) * 100) : 0,
+        };
+      })
       .sort((a, b) => b.abandonedCount - a.abandonedCount)
       .slice(0, 5); // Top 5 drop-off points
 

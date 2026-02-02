@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, Home,
-Eye, ExternalLink, Menu, X, Users, Play, MessageSquareHeart, Code } from 'lucide-react';
+Eye, ExternalLink, Menu, X, Users, Play, MessageSquareHeart, Code, BarChart3 } from 'lucide-react';
 import logo from '../../../../../public/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -61,6 +61,12 @@ const SECTION_GROUPS: SectionGroup[] = [
         label: 'Leads',
         icon: Users,
         description: 'View leads and conversations'
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: BarChart3,
+        description: 'Bot performance and engagement stats'
       }
     ]
   },

@@ -158,15 +158,50 @@ export function createActions(
       const state = get();
       const intent = state.currentIntent || state.currentFlow;
 
+      console.log('[ChatStore] createConversation called:', {
+        intent,
+        currentIntent: state.currentIntent,
+        currentFlow: state.currentFlow,
+        messageCount: state.messages.length,
+        existingConversationId: state.conversationId,
+      });
+
       if (!intent || state.messages.length === 0) {
         console.warn('[ChatStore] Cannot create conversation: missing intent or messages');
         return null;
+      }
+
+      // Skip if conversation already exists
+      if (state.conversationId) {
+        console.log('[ChatStore] Conversation already exists:', state.conversationId);
+        return state.conversationId;
       }
 
       try {
         const clientIdentifier = typeof window !== 'undefined'
           ? sessionStorage.getItem('clientId') || undefined
           : undefined;
+
+        // Get visitor tracking data from session storage
+        let visitorData = undefined;
+        if (typeof window !== 'undefined') {
+          const visitorDataStr = sessionStorage.getItem('visitorData');
+          if (visitorDataStr) {
+            try {
+              visitorData = JSON.parse(visitorDataStr);
+            } catch (e) {
+              console.warn('[ChatStore] Failed to parse visitor data:', e);
+            }
+          }
+        }
+
+        // Detect environment based on hostname (localhost = test, otherwise production)
+        const environment: 'test' | 'production' = typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'test'
+          : 'production';
+
+        console.log('[ChatStore] Creating conversation with clientIdentifier:', clientIdentifier, 'environment:', environment, 'visitorData:', visitorData?.visitorId);
 
         const response = await fetch('/api/conversations', {
           method: 'POST',
@@ -183,6 +218,8 @@ export function createActions(
             userInput: state.userInput,
             clientIdentifier,
             sessionId: typeof window !== 'undefined' ? sessionStorage.getItem('sessionId') || undefined : undefined,
+            visitorData, // Include visitor tracking data
+            environment, // Mark as test or production
           }),
         });
 
@@ -192,8 +229,9 @@ export function createActions(
 
         const data = await response.json();
         if (data.success && data._id) {
-          set({ conversationId: data._id });
-          console.log('[ChatStore] Conversation created:', data._id);
+          // Set conversation ID and mark all current messages as synced
+          set({ conversationId: data._id, lastSyncedMessageCount: state.messages.length });
+          console.log('[ChatStore] Conversation created:', data._id, 'with', state.messages.length, 'messages synced');
           return data._id;
         }
         return null;
@@ -214,8 +252,18 @@ export function createActions(
         const updateBody: Record<string, unknown> = {};
 
         if (updates.messages) {
-          const existingCount = state.messages.length;
-          const newMessages = updates.messages.slice(existingCount);
+          console.log('[ChatStore updateConversation] Messages check:', {
+            updatesMessagesLength: updates.messages.length,
+            stateMessagesLength: state.messages.length,
+            lastSyncedCount: state.lastSyncedMessageCount || 0,
+          });
+
+          // Use lastSyncedMessageCount to track what we've already sent to the server
+          const lastSyncedCount = state.lastSyncedMessageCount || 0;
+          const newMessages = updates.messages.slice(lastSyncedCount);
+
+          console.log('[ChatStore updateConversation] New messages to send:', newMessages.length);
+
           if (newMessages.length > 0) {
             updateBody.messages = newMessages.map(msg => ({
               role: msg.role,
@@ -223,6 +271,8 @@ export function createActions(
               buttons: msg.buttons?.map(b => ({ label: b.label, value: b.value })),
               timestamp: msg.timestamp,
             }));
+            // Update the synced count after we build the update body
+            set({ lastSyncedMessageCount: updates.messages.length });
           }
         }
 
@@ -247,6 +297,10 @@ export function createActions(
 
         if (updates.currentQuestionId) {
           updateBody.currentQuestionId = updates.currentQuestionId;
+        }
+
+        if (updates.contactModal) {
+          updateBody.contactModal = updates.contactModal;
         }
 
         const response = await fetch(`/api/conversations/${state.conversationId}`, {

@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { 
-  Mail, Phone, MapPin, Calendar, Eye, 
-  ShoppingCart, Home, Eye as EyeIcon, 
+import {
+  Mail, Phone, MapPin, Calendar, Eye,
+  ShoppingCart, Home, Eye as EyeIcon,
   Loader2, ExternalLink, ChevronDown, ChevronUp,
-  User, FileText
+  User, FileText, Globe, FlaskConical, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,6 +18,7 @@ interface Lead {
   propertyAddress: string;
   flow: string;
   offerType?: string;
+  environment?: 'test' | 'production';
   userInput: Record<string, string>;
   generation: {
     id: string;
@@ -54,15 +55,50 @@ export default function LeadsDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [environment, setEnvironment] = useState<string>('production');
+  const [isDevelopment, setIsDevelopment] = useState(false);
+
+  // Detect development mode and load preferences after hydration (avoids SSR mismatch)
+  useEffect(() => {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    setIsDevelopment(isLocalhost);
+
+    // Load saved filter preference
+    const savedFilter = localStorage.getItem('leads-environment-filter');
+    if (savedFilter) {
+      // Only allow test/all filter if in development
+      if ((savedFilter === 'test' || savedFilter === 'all') && !isLocalhost) {
+        setEnvironment('production');
+      } else {
+        setEnvironment(savedFilter);
+      }
+    }
+  }, []);
+
+  // Environment filter options (computed based on isDevelopment state)
+  const environmentOptions = isDevelopment
+    ? [
+        { value: 'production', label: 'Production', icon: Globe },
+        { value: 'test', label: 'Test', icon: FlaskConical },
+        { value: 'all', label: 'All Data', icon: Layers },
+      ]
+    : [{ value: 'production', label: 'Production', icon: Globe }];
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [environment]);
+
+  // Save environment preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('leads-environment-filter', environment);
+    }
+  }, [environment]);
 
   const fetchLeads = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/user/leads?limit=100');
+      const response = await fetch(`/api/user/leads?limit=100&environment=${environment}`);
       if (!response.ok) throw new Error('Failed to fetch leads');
       const data = await response.json();
       setLeads(data.leads);
@@ -133,13 +169,38 @@ export default function LeadsDashboard() {
                 View all leads and their generated offers ({total} total)
               </p>
             </div>
-            <button
-              onClick={fetchLeads}
-              className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Environment Filter */}
+              {environmentOptions.length > 1 && (
+                <div className="flex bg-slate-800 rounded-lg p-1">
+                  {environmentOptions.map((option) => {
+                    const Icon = option.icon;
+                    const isActive = environment === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setEnvironment(option.value)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                          isActive
+                            ? 'bg-cyan-500/20 text-cyan-200'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                onClick={fetchLeads}
+                className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
 
@@ -215,6 +276,12 @@ export default function LeadsDashboard() {
                             {lead.offerType && (
                               <span className="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded text-xs capitalize">
                                 {lead.offerType}
+                              </span>
+                            )}
+                            {lead.environment === 'test' && (
+                              <span className="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs flex items-center gap-1">
+                                <FlaskConical className="h-3 w-3" />
+                                Test
                               </span>
                             )}
                           </div>

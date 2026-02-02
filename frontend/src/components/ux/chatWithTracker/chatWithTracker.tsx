@@ -19,13 +19,14 @@ import {
 } from '@/stores/chatStore';
 
 import { GameChat } from './chat/gameChat';
-import { Loader2, Home } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
 import { getQuestionCount, getQuestion, type OfferType } from '@/lib/offers/unified';
 import { ContactCollectionModal, ContactRetriggerButton, type ContactData } from './modals/ContactCollectionModal';
 import { GenerationLoadingOverlay, GENERATION_STEPS } from './components/GenerationLoadingOverlay';
 import { useClientSideTimeline } from '@/hooks/offers/useClientSideTimeline';
 import { DynamicInsights } from './tracker/DynamicInsights';
+import type { FullVisitorData } from '@/lib/tracking/visitorTracking';
 
 // Analytics tracking for contact collection
 interface ContactAnalytics {
@@ -58,9 +59,11 @@ interface ClientConfig {
 interface ChatWithTrackerProps {
   clientConfig?: ClientConfig;
   embedMode?: boolean;
+  trackingAllowed?: boolean; // Whether user has consented to analytics tracking
+  visitorData?: FullVisitorData | null; // Visitor tracking data from cookies
 }
 
-export default function ChatWithTracker({ clientConfig, embedMode = false }: ChatWithTrackerProps = {}) {
+export default function ChatWithTracker({ clientConfig, embedMode = false, trackingAllowed = true, visitorData }: ChatWithTrackerProps = {}) {
   const router = useRouter();
 
   // Chat store selectors
@@ -126,6 +129,11 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
         sessionStorage.setItem('clientQdrantCollection', clientConfig.qdrantCollectionName);
         sessionStorage.setItem('selectedOffers', JSON.stringify(clientConfig.selectedOffers || []));
 
+        // Store visitor data for conversation API
+        if (visitorData) {
+          sessionStorage.setItem('visitorData', JSON.stringify(visitorData));
+        }
+
         // Update the initial message with the loaded config
         updateInitialMessage();
       }
@@ -151,7 +159,7 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
 
       clientConfigLoadedRef.current = true;
     }
-  }, [clientConfig, updateInitialMessage]);
+  }, [clientConfig, updateInitialMessage, visitorData]);
 
   // Initialize on mount
   useEffect(() => {
@@ -216,8 +224,13 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
       setShowContactModal(true);
       // Track analytics - first attempt
       contactAnalyticsRef.current.firstAttemptShown = true;
+
+      // Track contact modal shown in conversation
+      updateConversation({
+        contactModal: { shown: true, shownAt: new Date() },
+      });
     }
-  }, [storeShowContactModal, showContactModal, hasSkippedContact]);
+  }, [storeShowContactModal, showContactModal, hasSkippedContact, updateConversation]);
 
   // Show contact modal when chat is complete
   // Use intent (new system) with flow as fallback (legacy)
@@ -263,8 +276,13 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
       setShowContactModal(true);
       // Track analytics - first attempt
       contactAnalyticsRef.current.firstAttemptShown = true;
+
+      // Track contact modal shown in conversation
+      updateConversation({
+        contactModal: { shown: true, shownAt: new Date() },
+      });
     }
-  }, [isComplete, currentIntent, currentFlow, effectiveIntent, selectedOffer, userInput, isGenerating, showContactModal, hasSkippedContact]);
+  }, [isComplete, currentIntent, currentFlow, effectiveIntent, selectedOffer, userInput, isGenerating, showContactModal, hasSkippedContact, updateConversation]);
 
   // Handle contact submission from modal
   const handleContactSubmit = useCallback((contact: ContactData) => {
@@ -278,6 +296,15 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
     } else if (contactAnalyticsRef.current.skippedCount > 0) {
       contactAnalyticsRef.current.retryCompleted = true;
     }
+
+    // Track contact modal completed in conversation
+    updateConversation({
+      contactModal: {
+        completed: true,
+        completedAt: new Date(),
+        skippedCount: contactAnalyticsRef.current.skippedCount,
+      },
+    });
 
     // Add contact info to userInput using addAnswer for each field
     const { addAnswer, setComplete, userInput: currentUserInput, conversationId: currentConversationId } = useChatStore.getState();
@@ -295,6 +322,12 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
     // Send email notification to agent/owner (fire and forget - don't block generation)
     const clientId = clientConfig?.qdrantCollectionName || clientConfig?.businessName;
     if (clientId) {
+      // Detect environment based on hostname (localhost = test, otherwise production)
+      const notifyEnvironment: 'test' | 'production' = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'test'
+        : 'production';
+
       fetch('/api/notify-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -308,6 +341,7 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
           userInput: currentUserInput,
           flow: currentIntent || currentFlow,
           conversationId: currentConversationId,
+          environment: notifyEnvironment,
         }),
       }).catch((err) => {
         // Log but don't fail - email notification is non-critical
@@ -327,6 +361,15 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
     // Track skip analytics
     contactAnalyticsRef.current.skippedCount += 1;
 
+    // Track contact modal skipped in conversation
+    updateConversation({
+      contactModal: {
+        skipped: true,
+        skippedAt: new Date(),
+        skippedCount: contactAnalyticsRef.current.skippedCount,
+      },
+    });
+
     // Add a message letting user know they can complete it later
     const { addMessage } = useChatStore.getState();
     addMessage({
@@ -334,7 +377,7 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
       content: "No worries! When you're ready to get your personalized results, just click the button below. 👇",
       timestamp: new Date(),
     });
-  }, [setStoreShowContactModal]);
+  }, [setStoreShowContactModal, updateConversation]);
 
   // Handle re-trigger of contact modal
   const handleContactRetrigger = useCallback(() => {
@@ -509,12 +552,6 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
 
   const businessName = clientConfig?.businessName || 'AI Assistant';
 
-  // Hybrid homebaseUrl strategy:
-  // 1. Use configured URL (from provision API or manual config)
-  // 2. Fall back to auto-generated Vercel URL
-  const homebaseUrl = clientConfig?.homebaseUrl ||
-    (clientConfig?.businessName ? `https://${clientConfig.businessName}.vercel.app` : undefined);
-
   return (
     <>
       {/* Container - Fixed for standalone, relative for embed */}
@@ -530,28 +567,10 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
           } : {})
         }}
       >
-        {/* Top Bar - Minimal in embed mode, full in standalone */}
+        {/* Top Bar - Hidden in embed mode, full in standalone */}
         {embedMode ? (
-          /* Minimal header for embed mode - Just "Back to Home" button */
-          homebaseUrl && (
-            <div
-              className="flex items-center justify-end border-b px-3 py-2"
-              style={{
-                backgroundColor: 'rgba(var(--color-background-rgb), 0.95)',
-                borderColor: 'rgba(var(--color-primary-rgb), 0.3)',
-              }}
-            >
-              <a
-                href={homebaseUrl}
-                target="_parent"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-700/50 transition-colors text-sm"
-                style={{ color: 'var(--color-text)' }}
-              >
-                <Home size={14} />
-                <span>Back to Home</span>
-              </a>
-            </div>
-          )
+          /* No header in embed mode - cleaner iframe experience */
+          null
         ) : (
           /* Full header for standalone mode */
           <div
@@ -721,7 +740,7 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
         onSubmit={handleContactSubmit}
         onSkip={handleContactSkip}
         businessName={businessName}
-        requiredFields={{ name: true, email: true, phone: false }}
+        requiredFields={{ name: true, email: true, phone: true }}
         allowSkip={true}
       />
 

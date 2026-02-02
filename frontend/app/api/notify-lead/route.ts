@@ -19,6 +19,7 @@ interface LeadNotificationRequest {
   userInput: Record<string, string>;
   flow?: string;
   conversationId?: string;
+  environment?: 'test' | 'production';
 }
 
 // Create reusable transporter with SMTP (uses same config as auth system)
@@ -91,7 +92,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body: LeadNotificationRequest = await request.json();
-    const { clientId, lead, userInput, flow, conversationId } = body;
+    const { clientId, lead, userInput, flow, conversationId, environment } = body;
+
+    // In test mode, we'll send to admin email instead of the agent
+    const isTestMode = environment === 'test';
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
 
     // Validate required fields
     if (!clientId || !lead?.name || !lead?.email) {
@@ -119,10 +124,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine notification email (priority: notificationEmail > endingCTA.email > agentProfile.email)
-    const notificationEmail =
+    const agentNotificationEmail =
       clientConfig.notificationEmail ||
       clientConfig.endingCTA?.email ||
       clientConfig.agentProfile?.email;
+
+    // In test mode, send to admin email; in production, send to agent
+    const notificationEmail = isTestMode ? adminEmail : agentNotificationEmail;
 
     if (!notificationEmail) {
       console.warn('No notification email configured for client:', clientId);
@@ -132,6 +140,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Lead captured but no notification email configured',
         emailSent: false,
+        isTestMode,
       });
     }
 
@@ -139,7 +148,17 @@ export async function POST(request: NextRequest) {
     const agentName = clientConfig.agentProfile?.name || clientConfig.endingCTA?.displayName || '';
 
     // Create email content
-    const subject = `New Lead: ${lead.name} - ${getFlowDisplayName(flow)} Interest`;
+    const testPrefix = isTestMode ? '[TEST] ' : '';
+    const subject = `${testPrefix}New Lead: ${lead.name} - ${getFlowDisplayName(flow)} Interest`;
+
+    // Test mode banner HTML
+    const testModeBanner = isTestMode ? `
+        <!-- Test Mode Banner -->
+        <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center;">
+          <strong style="color: #92400e;">TEST MODE</strong>
+          <p style="color: #92400e; margin: 4px 0 0 0; font-size: 14px;">This is a test lead from a development/testing environment. Would normally be sent to: ${agentNotificationEmail || 'No agent email configured'}</p>
+        </div>
+    ` : '';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -150,9 +169,11 @@ export async function POST(request: NextRequest) {
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
 
+        ${testModeBanner}
+
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #0891b2 0%, #0284c7 100%); padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">New Lead Captured!</h1>
+          <h1 style="color: white; margin: 0; font-size: 24px;">${testPrefix}New Lead Captured!</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Someone completed your chatbot</p>
         </div>
 
@@ -233,12 +254,16 @@ ${conversationId ? `Conversation ID: ${conversationId}` : ''}
       html: htmlContent,
     });
 
-    console.log(`Lead notification sent to ${notificationEmail} for lead: ${lead.name}`);
+    console.log(`Lead notification sent to ${notificationEmail} for lead: ${lead.name}${isTestMode ? ' [TEST MODE]' : ''}`);
 
     return NextResponse.json({
       success: true,
-      message: 'Lead notification sent successfully',
+      message: isTestMode
+        ? 'Test lead notification sent to admin'
+        : 'Lead notification sent successfully',
       emailSent: true,
+      isTestMode,
+      sentTo: isTestMode ? 'admin' : 'agent',
     });
 
   } catch (error) {

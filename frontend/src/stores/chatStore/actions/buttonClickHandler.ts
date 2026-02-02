@@ -319,6 +319,14 @@ export function createButtonClickHandler(
         const answeredKeys = new Set(Object.keys(updatedState.userInput));
         const newProgress = calculateProgress(updatedQuestions, answeredKeys);
         set({ progress: newProgress });
+
+        // Send updated progress to server
+        const { updateConversation: updateConv } = get();
+        await updateConv({
+          progress: newProgress,
+          currentQuestionId: nextQuestion.id,
+          messages: get().messages,
+        });
       }
 
     } catch (error) {
@@ -358,6 +366,14 @@ export function createButtonClickHandler(
         const answeredKeys = new Set(Object.keys(updatedState.userInput));
         const newProgress = calculateProgress(updatedQuestions, answeredKeys);
         set({ progress: newProgress });
+
+        // Send updated progress to server
+        const { updateConversation: updateConvFallback } = get();
+        await updateConvFallback({
+          progress: newProgress,
+          currentQuestionId: nextQuestion.id,
+          messages: get().messages,
+        });
       }
     } finally {
       set({ loading: false });

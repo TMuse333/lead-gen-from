@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       flow,
       offerType,
       clientIdentifier,
+      environment,
     } = body;
 
     if (!conversationId || !llmOutput || !debugInfo) {
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
       conversationId: new ObjectId(conversationId),
       userId,
       clientIdentifier,
+      environment: environment || 'production',
       flow: flow || debugInfo.flow,
       offerType,
       generatedAt: new Date(),

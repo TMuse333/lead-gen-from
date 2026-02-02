@@ -11,6 +11,7 @@ import KnowledgeBaseDashboard from '../knowledgeBase/KnowledgeBaseDashboard';
 import TimelineDashboard from '../timeline/TimelineDashboard';
 import IntelChatDashboard from '../feedback/IntelChatDashboard';
 import IframeTestDashboard from '../iframeTest/IframeTestDashboard';
+import AnalyticsDashboard from '../analytics/AnalyticsDashboard';
 
 // Define user dashboard sections (matching DashboardSidebar)
 interface DashboardSection {
@@ -48,6 +49,13 @@ const USER_SECTIONS: DashboardSection[] = [
     label: 'Leads',
     component: LeadsDashboard,
     description: 'View leads and conversations'
+  },
+  // Analytics - Bot performance stats
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    component: AnalyticsDashboard,
+    description: 'Bot performance and engagement stats'
   },
   // Settings - Profile, branding, preferences
   {

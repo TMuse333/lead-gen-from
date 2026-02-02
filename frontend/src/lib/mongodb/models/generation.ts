@@ -15,14 +15,17 @@ export interface GenerationDebugInfo {
 
 export interface GenerationDocument {
   _id?: ObjectId;
-  
+
   // Link to Conversation
   conversationId: ObjectId;     // References conversations._id
-  
+
   // User/Client Identification (denormalized for easier queries)
   userId?: string;
   clientIdentifier?: string;
-  
+
+  // Environment tracking (to separate test data from production)
+  environment?: 'test' | 'production';
+
   // Generation Metadata
   flow: string;                // Flow type used
   offerType?: string;           // Future: 'pdf', 'landingPage', 'video', 'homeEvaluation', etc.

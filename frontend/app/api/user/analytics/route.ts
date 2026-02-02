@@ -2,15 +2,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
 import { getConversationsCollection, getGenerationsCollection } from '@/lib/mongodb/db';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 
 /**
  * GET /api/analytics
- * Get analytics for the authenticated user
+ * Get analytics for the authenticated user (or impersonated user)
  */
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -18,17 +19,30 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
+
+    // Get environment filter from query params (default to production)
+    const { searchParams } = new URL(req.url);
+    const environment = searchParams.get('environment') || 'production';
+
     const conversationsCollection = await getConversationsCollection();
     const generationsCollection = await getGenerationsCollection();
 
-    // Get all conversations for this user
+    // Build query filter
+    const conversationFilter: Record<string, unknown> = { userId };
+    if (environment !== 'all') {
+      conversationFilter.environment = environment;
+    }
+
+    // Get all conversations for this user (filtered by environment)
     const conversations = await conversationsCollection
-      .find({ userId: session.user.id })
+      .find(conversationFilter)
       .toArray();
 
     // Get all generations for this user
     const generations = await generationsCollection
-      .find({ userId: session.user.id })
+      .find({ userId })
       .toArray();
 
     // Calculate stats
@@ -95,20 +109,76 @@ export async function GET(req: NextRequest) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
-      
+
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
-      
+
       const count = conversations.filter(c => {
         const startedAt = new Date(c.startedAt);
         return startedAt >= date && startedAt < nextDate;
       }).length;
-      
+
       timelineData.push({
         date: date.toISOString().split('T')[0],
         count,
       });
     }
+
+    // Contact modal analytics
+    const conversationsWithModal = conversations.filter(c => c.contactModal?.shown);
+    const contactModalStats = {
+      shown: conversationsWithModal.length,
+      completed: conversationsWithModal.filter(c => c.contactModal?.completed).length,
+      skipped: conversationsWithModal.filter(c => c.contactModal?.skipped && !c.contactModal?.completed).length,
+      conversionRate: conversationsWithModal.length > 0
+        ? Math.round((conversationsWithModal.filter(c => c.contactModal?.completed).length / conversationsWithModal.length) * 100)
+        : 0,
+      // Average skips before completing (for those who eventually completed)
+      avgSkipsBeforeComplete: (() => {
+        const completedWithSkips = conversationsWithModal.filter(c => c.contactModal?.completed && c.contactModal?.skippedCount);
+        if (completedWithSkips.length === 0) return 0;
+        return Math.round(
+          completedWithSkips.reduce((sum, c) => sum + (c.contactModal?.skippedCount || 0), 0) / completedWithSkips.length * 10
+        ) / 10;
+      })(),
+    };
+
+    // Visitor tracking analytics
+    const conversationsWithTracking = conversations.filter(c => c.visitorTracking);
+    const visitorStats = {
+      total: conversationsWithTracking.length,
+      returning: conversationsWithTracking.filter(c => c.visitorTracking?.isReturningVisitor).length,
+      newVisitors: conversationsWithTracking.filter(c => !c.visitorTracking?.isReturningVisitor).length,
+      deviceBreakdown: {
+        mobile: conversationsWithTracking.filter(c => c.visitorTracking?.deviceType === 'mobile').length,
+        tablet: conversationsWithTracking.filter(c => c.visitorTracking?.deviceType === 'tablet').length,
+        desktop: conversationsWithTracking.filter(c => c.visitorTracking?.deviceType === 'desktop').length,
+      },
+      // Top referral sources
+      referralSources: conversationsWithTracking
+        .filter(c => c.visitorTracking?.referralSource?.source)
+        .reduce((acc, c) => {
+          const source = c.visitorTracking?.referralSource?.source || 'direct';
+          acc[source] = (acc[source] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+      // Average session duration
+      avgSessionDuration: conversationsWithTracking.length > 0
+        ? Math.round(
+            conversationsWithTracking
+              .filter(c => c.visitorTracking?.sessionDuration)
+              .reduce((sum, c) => sum + (c.visitorTracking?.sessionDuration || 0), 0) /
+            conversationsWithTracking.filter(c => c.visitorTracking?.sessionDuration).length || 1
+          )
+        : 0,
+      // Returning visitor completion rate
+      returningCompletionRate: (() => {
+        const returningConvos = conversationsWithTracking.filter(c => c.visitorTracking?.isReturningVisitor);
+        if (returningConvos.length === 0) return 0;
+        const completed = returningConvos.filter(c => c.status === 'completed').length;
+        return Math.round((completed / returningConvos.length) * 100);
+      })(),
+    };
 
     return NextResponse.json({
       success: true,
@@ -127,13 +197,15 @@ export async function GET(req: NextRequest) {
         generations: {
           total: totalGenerations,
           successful: successfulGenerations,
-          successRate: totalGenerations > 0 
-            ? Math.round((successfulGenerations / totalGenerations) * 100 * 100) / 100 
+          successRate: totalGenerations > 0
+            ? Math.round((successfulGenerations / totalGenerations) * 100 * 100) / 100
             : 0,
           avgGenerationTime: Math.round(avgGenerationTime),
           avgAdviceUsed: Math.round(avgAdviceUsed * 10) / 10,
           recent: recentGenerations,
         },
+        visitors: visitorStats,
+        contactModal: contactModalStats,
         timeline: timelineData,
       },
     });

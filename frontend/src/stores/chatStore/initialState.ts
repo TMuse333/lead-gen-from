@@ -88,6 +88,7 @@ export const initialChatState: ChatStateData = {
 
   // Conversation tracking
   conversationId: null,
+  lastSyncedMessageCount: 0,
 
   // Questions (fetched from MongoDB)
   flowQuestions: {},

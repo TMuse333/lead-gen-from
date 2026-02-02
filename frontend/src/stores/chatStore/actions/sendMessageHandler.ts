@@ -177,6 +177,14 @@ export function createSendMessageHandler(
           currentQuestionId: nextQuestion.id,
           currentNodeId: nextQuestion.id, // Legacy
         });
+
+        // Send updated progress and messages to server
+        const { updateConversation: updateConv } = get();
+        await updateConv({
+          progress: newProgress,
+          currentQuestionId: nextQuestion.id,
+          messages: get().messages,
+        });
       }
 
     } catch (error) {

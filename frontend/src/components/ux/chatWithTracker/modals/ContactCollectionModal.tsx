@@ -3,6 +3,10 @@
  * Mandatory contact collection modal for all offers
  * Collects name, email, and phone before generating results
  * User can skip but will see a re-trigger button
+ *
+ * Uses CSS variables for theming (injected by colorUtils.ts):
+ * --color-primary, --color-secondary, --color-background, --color-surface,
+ * --color-text, --color-text-secondary, --color-border, --color-gradient-from, --color-gradient-to
  */
 'use client';
 
@@ -55,7 +59,7 @@ export function ContactCollectionModal({
   businessName,
   title = "Great news!",
   subtitle = "I have everything I need to create your personalized phase-by-phase analysis. Just need your contact info to send it over!",
-  requiredFields = { name: true, email: true, phone: false },
+  requiredFields = { name: true, email: true, phone: true },
   initialValues = {},
   allowSkip = true,
 }: ContactCollectionModalProps) {
@@ -160,7 +164,7 @@ export function ContactCollectionModal({
             onClick={allowSkip ? handleSkip : undefined}
           />
 
-          {/* Modal */}
+          {/* Modal - Compact version for iframe embedding */}
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -171,73 +175,99 @@ export function ContactCollectionModal({
               stiffness: 300,
               duration: 0.5,
             }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
           >
-            <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-700 relative">
-              {/* Glowing effect */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 blur-xl -z-10" />
+            <div
+              className="rounded-xl shadow-2xl max-w-md w-full overflow-hidden relative max-h-[95vh] overflow-y-auto"
+              style={{
+                backgroundColor: 'var(--color-surface, #1e293b)',
+                borderColor: 'var(--color-border, #334155)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+              }}
+            >
+              {/* Glowing effect using theme colors */}
+              <div
+                className="absolute inset-0 rounded-xl blur-xl -z-10 opacity-20"
+                style={{
+                  background: `linear-gradient(to right, var(--color-gradient-from, #06b6d4), var(--color-gradient-to, #3b82f6))`,
+                }}
+              />
 
               {/* Close button */}
               {allowSkip && (
                 <button
                   onClick={handleSkip}
-                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors z-10"
+                  className="absolute top-3 right-3 p-1.5 rounded-lg transition-colors z-10 hover:opacity-80"
+                  style={{
+                    color: 'var(--color-text-secondary, #94a3b8)',
+                    backgroundColor: 'var(--color-surface, #1e293b)',
+                  }}
                   disabled={isSubmitting}
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               )}
 
-              {/* Header with chat bubble style */}
-              <div className="relative bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 border-b border-slate-700 p-6 overflow-hidden">
-                {/* Subtle animated glow orbs */}
-                <div className="absolute top-0 left-1/4 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-
-                {/* Bot avatar and message bubble style */}
-                <div className="relative flex items-start gap-4">
+              {/* Compact Header */}
+              <div
+                className="relative p-4 overflow-hidden"
+                style={{
+                  background: `linear-gradient(to right, color-mix(in srgb, var(--color-gradient-from, #06b6d4) 10%, transparent), color-mix(in srgb, var(--color-gradient-to, #3b82f6) 10%, transparent))`,
+                  borderBottom: '1px solid var(--color-border, #334155)',
+                }}
+              >
+                {/* Bot avatar and message - compact */}
+                <div className="relative flex items-start gap-3">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-                    className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30"
+                    className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
+                    style={{
+                      background: `linear-gradient(to bottom right, var(--color-gradient-from, #06b6d4), var(--color-gradient-to, #3b82f6))`,
+                    }}
                   >
-                    <MessageCircle className="h-6 w-6 text-white" />
+                    <MessageCircle className="h-5 w-5 text-white" />
                   </motion.div>
 
-                  <div className="flex-1">
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="bg-slate-800/80 rounded-2xl rounded-tl-sm p-4 border border-slate-700/50"
+                  <div className="flex-1 pr-6">
+                    <h2
+                      className="text-lg font-semibold mb-0.5"
+                      style={{ color: 'var(--color-text, #f0f9ff)' }}
                     >
-                      <h2 className="text-xl font-semibold text-white mb-1.5">
-                        {title}
-                      </h2>
-                      <p className="text-slate-300 text-sm leading-relaxed">
-                        {subtitle}
-                      </p>
-                    </motion.div>
+                      {title}
+                    </h2>
+                    <p
+                      className="text-sm leading-snug"
+                      style={{ color: 'var(--color-text-secondary, #94a3b8)' }}
+                    >
+                      {subtitle}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Form - Compact version */}
+              <form onSubmit={handleSubmit} className="p-4 space-y-3">
                 {/* Name Input */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <label htmlFor="contact-name" className="block text-sm font-medium text-slate-300 mb-2">
-                    Full Name {requiredFields.name && <span className="text-cyan-400">*</span>}
+                  <label
+                    htmlFor="contact-name"
+                    className="block text-sm font-medium mb-1.5"
+                    style={{ color: 'var(--color-text-secondary, #94a3b8)' }}
+                  >
+                    Full Name {requiredFields.name && <span style={{ color: 'var(--color-primary, #06b6d4)' }}>*</span>}
                   </label>
                   <div className="relative">
-                    <User className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors ${
-                      focusedField === 'name' ? 'text-cyan-400' : 'text-slate-400'
-                    }`} />
+                    <User
+                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors"
+                      style={{ color: focusedField === 'name' ? 'var(--color-primary, #06b6d4)' : 'var(--color-text-secondary, #94a3b8)' }}
+                    />
                     <input
                       id="contact-name"
                       type="text"
@@ -246,34 +276,26 @@ export function ContactCollectionModal({
                       onFocus={() => setFocusedField('name')}
                       onBlur={() => setFocusedField(null)}
                       placeholder="John Smith"
-                      className={`
-                        w-full pl-10 pr-10 py-3
-                        bg-slate-800 border rounded-lg
-                        text-white placeholder-slate-500
-                        focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent
-                        transition-all duration-200
-                        ${errors.name ? 'border-red-500' : 'border-slate-600'}
-                        ${focusedField === 'name' ? 'shadow-lg shadow-cyan-500/20' : ''}
-                      `}
+                      className="w-full pl-9 pr-9 py-2.5 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: 'var(--color-background, #0f172a)',
+                        borderColor: errors.name ? 'var(--color-error, #ef4444)' : 'var(--color-border, #334155)',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        color: 'var(--color-text, #f0f9ff)',
+                        '--tw-ring-color': 'var(--color-primary, #06b6d4)',
+                      } as React.CSSProperties}
                       autoFocus
                       disabled={isSubmitting}
                     />
                     {isFieldValid('name') && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--color-success, #10b981)' }} />
                       </motion.div>
                     )}
                   </div>
                   {errors.name && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-400"
-                    >
+                    <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-1 text-xs" style={{ color: 'var(--color-error, #ef4444)' }}>
                       {errors.name}
                     </motion.p>
                   )}
@@ -285,13 +307,18 @@ export function ContactCollectionModal({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <label htmlFor="contact-email" className="block text-sm font-medium text-slate-300 mb-2">
-                    Email Address {requiredFields.email && <span className="text-cyan-400">*</span>}
+                  <label
+                    htmlFor="contact-email"
+                    className="block text-sm font-medium mb-1.5"
+                    style={{ color: 'var(--color-text-secondary, #94a3b8)' }}
+                  >
+                    Email Address {requiredFields.email && <span style={{ color: 'var(--color-primary, #06b6d4)' }}>*</span>}
                   </label>
                   <div className="relative">
-                    <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors ${
-                      focusedField === 'email' ? 'text-cyan-400' : 'text-slate-400'
-                    }`} />
+                    <Mail
+                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors"
+                      style={{ color: focusedField === 'email' ? 'var(--color-primary, #06b6d4)' : 'var(--color-text-secondary, #94a3b8)' }}
+                    />
                     <input
                       id="contact-email"
                       type="email"
@@ -300,33 +327,25 @@ export function ContactCollectionModal({
                       onFocus={() => setFocusedField('email')}
                       onBlur={() => setFocusedField(null)}
                       placeholder="you@example.com"
-                      className={`
-                        w-full pl-10 pr-10 py-3
-                        bg-slate-800 border rounded-lg
-                        text-white placeholder-slate-500
-                        focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent
-                        transition-all duration-200
-                        ${errors.email ? 'border-red-500' : 'border-slate-600'}
-                        ${focusedField === 'email' ? 'shadow-lg shadow-cyan-500/20' : ''}
-                      `}
+                      className="w-full pl-9 pr-9 py-2.5 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: 'var(--color-background, #0f172a)',
+                        borderColor: errors.email ? 'var(--color-error, #ef4444)' : 'var(--color-border, #334155)',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        color: 'var(--color-text, #f0f9ff)',
+                        '--tw-ring-color': 'var(--color-primary, #06b6d4)',
+                      } as React.CSSProperties}
                       disabled={isSubmitting}
                     />
                     {isFieldValid('email') && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--color-success, #10b981)' }} />
                       </motion.div>
                     )}
                   </div>
                   {errors.email && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-400"
-                    >
+                    <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-1 text-xs" style={{ color: 'var(--color-error, #ef4444)' }}>
                       {errors.email}
                     </motion.p>
                   )}
@@ -338,13 +357,18 @@ export function ContactCollectionModal({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <label htmlFor="contact-phone" className="block text-sm font-medium text-slate-300 mb-2">
-                    Phone Number {requiredFields.phone ? <span className="text-cyan-400">*</span> : <span className="text-slate-500">(optional)</span>}
+                  <label
+                    htmlFor="contact-phone"
+                    className="block text-sm font-medium mb-1.5"
+                    style={{ color: 'var(--color-text-secondary, #94a3b8)' }}
+                  >
+                    Phone Number {requiredFields.phone ? <span style={{ color: 'var(--color-primary, #06b6d4)' }}>*</span> : <span style={{ color: 'var(--color-text-secondary, #94a3b8)', opacity: 0.7 }}>(optional)</span>}
                   </label>
                   <div className="relative">
-                    <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors ${
-                      focusedField === 'phone' ? 'text-cyan-400' : 'text-slate-400'
-                    }`} />
+                    <Phone
+                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors"
+                      style={{ color: focusedField === 'phone' ? 'var(--color-primary, #06b6d4)' : 'var(--color-text-secondary, #94a3b8)' }}
+                    />
                     <input
                       id="contact-phone"
                       type="tel"
@@ -353,70 +377,41 @@ export function ContactCollectionModal({
                       onFocus={() => setFocusedField('phone')}
                       onBlur={() => setFocusedField(null)}
                       placeholder="(555) 123-4567"
-                      className={`
-                        w-full pl-10 pr-10 py-3
-                        bg-slate-800 border rounded-lg
-                        text-white placeholder-slate-500
-                        focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent
-                        transition-all duration-200
-                        ${errors.phone ? 'border-red-500' : 'border-slate-600'}
-                        ${focusedField === 'phone' ? 'shadow-lg shadow-cyan-500/20' : ''}
-                      `}
+                      className="w-full pl-9 pr-9 py-2.5 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: 'var(--color-background, #0f172a)',
+                        borderColor: errors.phone ? 'var(--color-error, #ef4444)' : 'var(--color-border, #334155)',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        color: 'var(--color-text, #f0f9ff)',
+                        '--tw-ring-color': 'var(--color-primary, #06b6d4)',
+                      } as React.CSSProperties}
                       disabled={isSubmitting}
                     />
                     {formData.phone && isFieldValid('phone') && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--color-success, #10b981)' }} />
                       </motion.div>
                     )}
                   </div>
                   {errors.phone && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-400"
-                    >
+                    <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-1 text-xs" style={{ color: 'var(--color-error, #ef4444)' }}>
                       {errors.phone}
                     </motion.p>
                   )}
                 </motion.div>
 
-                {/* Benefits */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  className="space-y-2 py-2"
-                >
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-sm shadow-cyan-500" />
-                    <span>Get your personalized timeline instantly</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-sm shadow-cyan-500" />
-                    <span>Expert guidance from {businessName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-sm shadow-cyan-500" />
-                    <span>Connect with a local expert who can help</span>
-                  </div>
-                </motion.div>
-
-                {/* Submit Button with glow */}
+                {/* Submit Button with theme colors */}
                 <motion.button
                   type="submit"
                   disabled={isSubmitting}
                   whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
                   whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-                  className="relative w-full px-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                  className="relative w-full px-4 py-3 text-white font-semibold rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden mt-4"
+                  style={{
+                    background: `linear-gradient(to right, var(--color-gradient-from, #06b6d4), var(--color-gradient-to, #3b82f6))`,
+                  }}
                 >
-                  {/* Button glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-400 opacity-0 hover:opacity-20 transition-opacity" />
-
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -439,7 +434,8 @@ export function ContactCollectionModal({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.7 }}
-                    className="w-full py-2 text-slate-400 hover:text-slate-300 text-sm transition-colors disabled:opacity-50"
+                    className="w-full py-1.5 text-sm transition-colors disabled:opacity-50 hover:opacity-80"
+                    style={{ color: 'var(--color-text-secondary, #94a3b8)' }}
                   >
                     I'll do this later
                   </motion.button>
@@ -450,7 +446,8 @@ export function ContactCollectionModal({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.8 }}
-                  className="flex items-center justify-center gap-2 text-xs text-slate-500 pt-2"
+                  className="flex items-center justify-center gap-1.5 text-xs pt-1"
+                  style={{ color: 'var(--color-text-secondary, #94a3b8)', opacity: 0.7 }}
                 >
                   <Shield className="h-3 w-3" />
                   <span>We respect your privacy. No spam, ever.</span>
@@ -480,15 +477,10 @@ export function ContactRetriggerButton({ onClick, className = '' }: ContactRetri
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`
-        flex items-center gap-2 px-4 py-3
-        bg-gradient-to-r from-cyan-500 to-blue-500
-        hover:from-cyan-600 hover:to-blue-600
-        text-white font-medium rounded-xl
-        shadow-lg shadow-cyan-500/30
-        transition-all
-        ${className}
-      `}
+      className={`flex items-center gap-2 px-4 py-3 text-white font-medium rounded-xl shadow-lg transition-all ${className}`}
+      style={{
+        background: `linear-gradient(to right, var(--color-gradient-from, #06b6d4), var(--color-gradient-to, #3b82f6))`,
+      }}
     >
       <Sparkles className="h-4 w-4" />
       <span>Complete to Get Results</span>

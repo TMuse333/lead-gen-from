@@ -2,16 +2,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
 import { getGenerationsCollection, getConversationsCollection } from '@/lib/mongodb/db';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { ObjectId } from 'mongodb';
 
 /**
  * GET /api/user/leads
- * Get all leads (generations with contact info) for the authenticated user
+ * Get all leads (generations with contact info) for the authenticated user (or impersonated user)
  */
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -19,17 +20,25 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const userId = session.user.id;
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = parseInt(searchParams.get('skip') || '0');
+    const environment = searchParams.get('environment') || 'production';
 
     const generationsCollection = await getGenerationsCollection();
     const conversationsCollection = await getConversationsCollection();
 
-    // Get all generations for this user
+    // Build generation filter
+    const generationFilter: Record<string, unknown> = { userId };
+    if (environment !== 'all') {
+      generationFilter.environment = environment;
+    }
+
+    // Get all generations for this user (filtered by environment)
     const generations = await generationsCollection
-      .find({ userId })
+      .find(generationFilter)
       .sort({ generatedAt: -1 })
       .limit(limit)
       .skip(skip)
@@ -72,6 +81,7 @@ export async function GET(req: NextRequest) {
         propertyAddress,
         flow: generation.flow,
         offerType: generation.offerType,
+        environment: (generation as any).environment || 'production',
         userInput: userInput,
         generation: {
           id: generation._id?.toString(),
@@ -92,7 +102,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const total = await generationsCollection.countDocuments({ userId });
+    const total = await generationsCollection.countDocuments(generationFilter);
 
     return NextResponse.json({
       success: true,

@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { 
-  MessageSquare, CheckCircle2, XCircle, Clock, 
-  TrendingUp, BarChart3, Zap, Database, Users, Activity
+import {
+  MessageSquare, CheckCircle2, XCircle, Clock,
+  TrendingUp, BarChart3, Zap, Database, Users, Activity,
+  Smartphone, Tablet, Monitor, UserCheck, Globe, Link2,
+  Mail, UserPlus, SkipForward
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -27,10 +29,34 @@ interface AnalyticsData {
     avgAdviceUsed: number;
     recent: number;
   };
+  visitors?: {
+    total: number;
+    returning: number;
+    newVisitors: number;
+    deviceBreakdown: {
+      mobile: number;
+      tablet: number;
+      desktop: number;
+    };
+    referralSources: Record<string, number>;
+    avgSessionDuration: number;
+    returningCompletionRate: number;
+  };
+  contactModal?: {
+    shown: number;
+    completed: number;
+    skipped: number;
+    conversionRate: number;
+    avgSkipsBeforeComplete: number;
+  };
   timeline: Array<{ date: string; count: number }>;
 }
 
-export default function UserAnalytics() {
+interface UserAnalyticsProps {
+  environment?: 'production' | 'test' | 'all';
+}
+
+export default function UserAnalytics({ environment = 'production' }: UserAnalyticsProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +64,8 @@ export default function UserAnalytics() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch('/api/user/analytics');
+        setLoading(true);
+        const response = await fetch(`/api/user/analytics?environment=${environment}`);
         if (!response.ok) throw new Error('Failed to fetch analytics');
         const data = await response.json();
         setAnalytics(data.analytics);
@@ -50,7 +77,7 @@ export default function UserAnalytics() {
     };
 
     fetchAnalytics();
-  }, []);
+  }, [environment]);
 
   if (loading) {
     return (
@@ -212,6 +239,223 @@ export default function UserAnalytics() {
             ))}
           </div>
         </div>
+
+        {/* Contact Modal Stats */}
+        {analytics.contactModal && analytics.contactModal.shown > 0 && (
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
+            <h2 className="text-xl font-bold text-cyan-50 mb-4 flex items-center gap-2">
+              <Mail className="h-5 w-5 text-pink-400" />
+              Lead Capture Performance
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {/* Modal Shown */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                  <UserPlus className="h-4 w-4" />
+                  <span className="text-xs uppercase">Modal Shown</span>
+                </div>
+                <div className="text-2xl font-bold text-slate-100">{analytics.contactModal.shown}</div>
+              </div>
+
+              {/* Completed */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-green-400 mb-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="text-xs uppercase">Completed</span>
+                </div>
+                <div className="text-2xl font-bold text-green-400">{analytics.contactModal.completed}</div>
+              </div>
+
+              {/* Skipped */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-amber-400 mb-2">
+                  <SkipForward className="h-4 w-4" />
+                  <span className="text-xs uppercase">Skipped</span>
+                </div>
+                <div className="text-2xl font-bold text-amber-400">{analytics.contactModal.skipped}</div>
+              </div>
+
+              {/* Conversion Rate */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-cyan-400 mb-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-xs uppercase">Conversion</span>
+                </div>
+                <div className="text-2xl font-bold text-cyan-400">{analytics.contactModal.conversionRate}%</div>
+              </div>
+            </div>
+
+            {/* Conversion funnel visualization */}
+            <div className="mt-4">
+              <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                <span>Lead Capture Funnel</span>
+              </div>
+              <div className="h-8 bg-slate-700 rounded-lg overflow-hidden flex">
+                <div
+                  className="h-full bg-green-500 flex items-center justify-center text-xs font-medium text-white"
+                  style={{ width: `${analytics.contactModal.conversionRate}%`, minWidth: analytics.contactModal.completed > 0 ? '40px' : '0' }}
+                >
+                  {analytics.contactModal.completed > 0 && `${analytics.contactModal.conversionRate}%`}
+                </div>
+                <div
+                  className="h-full bg-amber-500/50 flex items-center justify-center text-xs font-medium text-amber-200"
+                  style={{
+                    width: `${analytics.contactModal.shown > 0 ? (analytics.contactModal.skipped / analytics.contactModal.shown) * 100 : 0}%`,
+                    minWidth: analytics.contactModal.skipped > 0 ? '40px' : '0'
+                  }}
+                >
+                  {analytics.contactModal.skipped > 0 && 'Skipped'}
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
+                <span>Submitted contact info</span>
+                <span>Skipped modal</span>
+              </div>
+            </div>
+
+            {analytics.contactModal.avgSkipsBeforeComplete > 0 && (
+              <p className="text-sm text-slate-400 mt-4">
+                Users who completed skipped an average of {analytics.contactModal.avgSkipsBeforeComplete} times before submitting.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Visitor Insights */}
+        {analytics.visitors && analytics.visitors.total > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Device Breakdown */}
+            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <h2 className="text-xl font-bold text-cyan-50 mb-4 flex items-center gap-2">
+                <Globe className="h-5 w-5 text-emerald-400" />
+                Visitor Insights
+              </h2>
+              <div className="space-y-4">
+                {/* Returning vs New */}
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-amber-400" />
+                    Returning Visitors
+                  </span>
+                  <span className="text-amber-400 font-semibold">{analytics.visitors.returning}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-400" />
+                    New Visitors
+                  </span>
+                  <span className="text-blue-400 font-semibold">{analytics.visitors.newVisitors}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Returning Completion Rate</span>
+                  <span className="text-green-400 font-semibold">{analytics.visitors.returningCompletionRate}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Avg Session Duration</span>
+                  <span className="text-cyan-400 font-semibold">
+                    {analytics.visitors.avgSessionDuration > 0
+                      ? `${Math.floor(analytics.visitors.avgSessionDuration / 60)}m ${analytics.visitors.avgSessionDuration % 60}s`
+                      : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Device Breakdown */}
+            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <h2 className="text-xl font-bold text-cyan-50 mb-4 flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-green-400" />
+                Device Breakdown
+              </h2>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 flex items-center gap-2">
+                    <Monitor className="h-4 w-4 text-green-400" />
+                    Desktop
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-500 rounded-full"
+                        style={{
+                          width: `${analytics.visitors.total > 0
+                            ? (analytics.visitors.deviceBreakdown.desktop / analytics.visitors.total) * 100
+                            : 0}%`
+                        }}
+                      />
+                    </div>
+                    <span className="text-green-400 font-semibold w-8 text-right">
+                      {analytics.visitors.deviceBreakdown.desktop}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-blue-400" />
+                    Mobile
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{
+                          width: `${analytics.visitors.total > 0
+                            ? (analytics.visitors.deviceBreakdown.mobile / analytics.visitors.total) * 100
+                            : 0}%`
+                        }}
+                      />
+                    </div>
+                    <span className="text-blue-400 font-semibold w-8 text-right">
+                      {analytics.visitors.deviceBreakdown.mobile}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 flex items-center gap-2">
+                    <Tablet className="h-4 w-4 text-purple-400" />
+                    Tablet
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-purple-500 rounded-full"
+                        style={{
+                          width: `${analytics.visitors.total > 0
+                            ? (analytics.visitors.deviceBreakdown.tablet / analytics.visitors.total) * 100
+                            : 0}%`
+                        }}
+                      />
+                    </div>
+                    <span className="text-purple-400 font-semibold w-8 text-right">
+                      {analytics.visitors.deviceBreakdown.tablet}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Referral Sources */}
+              {Object.keys(analytics.visitors.referralSources).length > 0 && (
+                <div className="mt-6 pt-4 border-t border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                    <Link2 className="h-4 w-4 text-indigo-400" />
+                    Traffic Sources
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(analytics.visitors.referralSources)
+                      .sort(([, a], [, b]) => b - a)
+                      .slice(0, 5)
+                      .map(([source, count]) => (
+                        <div key={source} className="flex justify-between items-center text-sm">
+                          <span className="text-slate-400 capitalize">{source}</span>
+                          <span className="text-indigo-300 font-medium">{count}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Timeline Chart */}
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">

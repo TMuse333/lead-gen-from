@@ -5,11 +5,21 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import ChatWithTracker from '@/components/ux/chatWithTracker/chatWithTracker';
+import CookieConsent, { getCookieConsent, type ConsentStatus } from '@/components/ux/CookieConsent';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
+import {
+  initVisitorTracking,
+  getFullVisitorData,
+  setLastConversation,
+  setUserIntent,
+  setChatProgress,
+  setLeadCaptured,
+  type FullVisitorData,
+} from '@/lib/tracking/visitorTracking';
 
 interface ClientConfig {
   id: string;
@@ -39,6 +49,32 @@ export default function BotPage() {
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [trackingAllowed, setTrackingAllowed] = useState<boolean>(() => {
+    // Initialize with current consent status
+    return getCookieConsent() === 'accepted';
+  });
+  const [visitorData, setVisitorData] = useState<FullVisitorData | null>(null);
+
+  const handleConsentChange = useCallback((status: ConsentStatus) => {
+    setTrackingAllowed(status === 'accepted');
+    // Re-initialize tracking when consent is given
+    if (status === 'accepted') {
+      const data = initVisitorTracking();
+      setVisitorData(data);
+    }
+  }, []);
+
+  // Initialize visitor tracking on mount
+  useEffect(() => {
+    const data = initVisitorTracking();
+    setVisitorData(data);
+    console.log('[BotPage] Visitor tracking initialized:', {
+      visitorId: data.visitorId,
+      isReturningVisitor: data.isReturningVisitor,
+      deviceType: data.deviceType,
+      hasConsent: trackingAllowed,
+    });
+  }, []);
 
   useEffect(() => {
     if (!clientId) {
@@ -113,6 +149,19 @@ export default function BotPage() {
     );
   }
 
-  return <ChatWithTracker clientConfig={config} embedMode={isEmbed} />;
+  return (
+    <>
+      <ChatWithTracker
+        clientConfig={config}
+        embedMode={isEmbed}
+        trackingAllowed={trackingAllowed}
+        visitorData={visitorData}
+      />
+      <CookieConsent
+        onConsentChange={handleConsentChange}
+        embedMode={isEmbed}
+      />
+    </>
+  );
 }
 

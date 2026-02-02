@@ -356,7 +356,7 @@ export default function ResultsPage() {
         style={mainBgStyle}
       >
         <div className="max-w-5xl mx-auto space-y-8">
-          {/* Main Generation Summary - Always show if debug info exists */}
+          {/* Main Generation Summary - Commented out for cleaner UI
           {localDebugInfo && (
             <ErrorBoundary
               fallback={
@@ -375,6 +375,7 @@ export default function ResultsPage() {
               />
             </ErrorBoundary>
           )}
+          */}
 
           {/* Timeline Landing Page - Special Rendering */}
           {timelineEntry && (
@@ -442,8 +443,9 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* Compact Debug Panel - Fixed position */}
+          {/* Compact Debug Panel - Hidden for cleaner UI
           <CompactDebugPanel debugInfo={localDebugInfo} />
+          */}
         </div>
       </main>
     </ErrorBoundary>

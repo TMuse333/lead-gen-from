@@ -36,8 +36,8 @@ interface FunnelStep {
   dropOffRate: number;
 }
 
-interface IntentStats {
-  intent: string;
+interface FlowStats {
+  flow: string;
   total: number;
   completed: number;
   abandoned: number;
@@ -65,7 +65,7 @@ interface AnalyticsData {
     avgDuration: number;
     avgMessages: number;
   };
-  byIntent: IntentStats[];
+  byFlow: FlowStats[];
   funnel: FunnelStep[];
   dropOffPoints: DropOffPoint[];
   trends: {
@@ -78,7 +78,11 @@ interface AnalyticsData {
   };
 }
 
-export default function ConversationAnalytics() {
+interface ConversationAnalyticsProps {
+  environment?: 'production' | 'test' | 'all';
+}
+
+export default function ConversationAnalytics({ environment = 'production' }: ConversationAnalyticsProps) {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +95,7 @@ export default function ConversationAnalytics() {
     try {
       const params = new URLSearchParams();
       params.append('days', days.toString());
+      params.append('environment', environment);
       if (selectedIntent !== 'all') {
         params.append('flow', selectedIntent); // API still uses 'flow' param
       }
@@ -111,7 +116,7 @@ export default function ConversationAnalytics() {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [days, selectedIntent]);
+  }, [days, selectedIntent, environment]);
 
   const formatDuration = (seconds: number) => {
     if (!seconds) return '0m';
@@ -141,7 +146,7 @@ export default function ConversationAnalytics() {
 
   if (!data) return null;
 
-  const { overview, byIntent, funnel, dropOffPoints, trends } = data;
+  const { overview, byFlow, funnel, dropOffPoints, trends } = data;
 
   // Calculate trend (compare last 7 days to previous 7 days)
   const recentDays = trends.daily.slice(-7);
@@ -346,21 +351,21 @@ export default function ConversationAnalytics() {
             <h3 className="text-lg font-semibold text-slate-100">Performance by Intent</h3>
           </div>
 
-          {byIntent.length === 0 ? (
-            <p className="text-slate-400 text-center py-4">No intent data available yet</p>
+          {byFlow.length === 0 ? (
+            <p className="text-slate-400 text-center py-4">No flow data available yet</p>
           ) : (
             <div className="space-y-4">
-              {byIntent.map((item) => {
-                // Map intent to display label
-                const intentLabels: Record<string, string> = {
+              {byFlow.map((item) => {
+                // Map flow to display label
+                const flowLabels: Record<string, string> = {
                   buy: 'Buying',
                   sell: 'Selling',
                   browse: 'Browsing',
                 };
-                const displayLabel = intentLabels[item.intent] || item.intent;
+                const displayLabel = flowLabels[item.flow] || item.flow;
 
                 return (
-                  <div key={item.intent} className="p-3 bg-slate-700/50 rounded-lg">
+                  <div key={item.flow} className="p-3 bg-slate-700/50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-slate-200 font-medium">{displayLabel}</span>
                       <span className="text-slate-400 text-sm">{item.total} total</span>
