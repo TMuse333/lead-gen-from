@@ -202,7 +202,9 @@ export async function POST(req: NextRequest) {
 
         if (userCollectionName && storyMappings) {
           try {
-            const flow = effectiveIntent as 'buy' | 'sell' | 'browse';
+            // Map browse to buy for MVP (browse is commented out)
+            const rawFlow = effectiveIntent === 'browse' ? 'buy' : effectiveIntent;
+            const flow = rawFlow as 'buy' | 'sell';
             storiesByPhase = await resolveStoriesForFlow(
               userCollectionName,
               storyMappings,
@@ -251,8 +253,10 @@ export async function POST(req: NextRequest) {
             // ========== FAST PATH: Use hardcoded templates for timeline offers ==========
             if (offerType === 'real-estate-timeline') {
               // Build input for fast generator
+              // Map browse to buy for MVP (browse is commented out)
+              const timelineFlow = (effectiveIntent === 'browse' ? 'buy' : effectiveIntent) as 'buy' | 'sell';
               const timelineInput: UserTimelineInput = {
-                flow: (effectiveIntent as 'buy' | 'sell' | 'browse') || 'buy',
+                flow: timelineFlow || 'buy',
                 location: mergedUserInput.location,
                 budget: mergedUserInput.budget,
                 timeline: mergedUserInput.timeline,

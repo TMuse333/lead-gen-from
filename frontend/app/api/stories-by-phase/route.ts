@@ -24,19 +24,22 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { flow, storyMappings, collectionName } = body as {
-      flow: 'buy' | 'sell' | 'browse';
+    const { flow: rawFlow, storyMappings, collectionName } = body as {
+      flow: 'buy' | 'sell' | 'browse'; // Accept browse for legacy support
       storyMappings: StoryMappings;
       collectionName: string;
     };
 
-    // Validate required fields
-    if (!flow || !['buy', 'sell', 'browse'].includes(flow)) {
+    // Validate required fields - accept browse but map to buy for MVP
+    if (!rawFlow || !['buy', 'sell', 'browse'].includes(rawFlow)) {
       return NextResponse.json(
-        { error: 'Valid flow (buy, sell, browse) is required' },
+        { error: 'Valid flow (buy, sell) is required' },
         { status: 400 }
       );
     }
+
+    // Map browse to buy for MVP
+    const flow = (rawFlow === 'browse' ? 'buy' : rawFlow) as 'buy' | 'sell';
 
     if (!collectionName) {
       return NextResponse.json(

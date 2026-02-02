@@ -134,7 +134,7 @@ type WizardStep = 'flow' | 'phase-count' | 'configure-phase' | 'review';
 const FLOW_OPTIONS: { id: TimelineFlow; label: string; description: string }[] = [
   { id: 'buy', label: 'Buyers', description: 'Customize the journey for home buyers' },
   { id: 'sell', label: 'Sellers', description: 'Customize the journey for home sellers' },
-  { id: 'browse', label: 'Browsers', description: 'Customize the journey for those just browsing' },
+  // { id: 'browse', label: 'Browsers', description: 'Customize the journey for those just browsing' }, // Commented out for MVP
 ];
 
 const PRIORITY_OPTIONS = [
@@ -1099,7 +1099,31 @@ export function TimelineWizardModal({
                         ({currentPhase.actionableSteps.length}/{PHASE_CONSTRAINTS.MAX_STEPS_PER_PHASE})
                       </span>
                     </h4>
+                    {/* Progress indicator for advice */}
+                    {(() => {
+                      const stepsWithAdvice = currentPhase.actionableSteps.filter(s => s.inlineExperience || s.linkedStoryId).length;
+                      const totalSteps = currentPhase.actionableSteps.length;
+                      return stepsWithAdvice > 0 ? (
+                        <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
+                          {stepsWithAdvice}/{totalSteps} with advice
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500 italic">
+                          No advice added yet
+                        </span>
+                      );
+                    })()}
                   </div>
+
+                  {/* Contextual hint for adding advice */}
+                  {currentPhase.actionableSteps.filter(s => s.inlineExperience || s.linkedStoryId).length === 0 && (
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+                      <p className="text-xs text-purple-300">
+                        <strong>💡 Tip:</strong> Click the <span className="bg-purple-500/30 px-1.5 py-0.5 rounded text-purple-200">+ Advice</span> button on any step to add your personal expertise.
+                        Even 1-2 stories per phase makes your timeline stand out.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {currentPhase.actionableSteps.map((step, stepIndex) => {
@@ -1225,10 +1249,13 @@ export function TimelineWizardModal({
                                           inlineExperience: e.target.value || undefined,
                                           linkedStoryId: undefined
                                         })}
-                                        placeholder="Add a quick tip or advice for this step..."
-                                        rows={3}
+                                        placeholder={`Share your expertise for "${step.title}"...\n\nExample: "I always tell my clients to..." or "One thing that helped a past client was..."`}
+                                        rows={4}
                                         className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500/50 resize-none"
                                       />
+                                      <p className="text-xs text-slate-500">
+                                        Your personal touch here helps clients trust your expertise.
+                                      </p>
                                     </div>
                                   )}
 
@@ -1437,6 +1464,56 @@ export function TimelineWizardModal({
                     Here&apos;s your {FLOW_OPTIONS.find(f => f.id === selectedFlow)?.label} timeline with {phases.length} phases and {getTotalQuestionCount()} questions
                   </p>
                 </div>
+
+                {/* Progress Summary Card */}
+                {(() => {
+                  const totalSteps = phases.reduce((sum, p) => sum + p.actionableSteps.length, 0);
+                  const stepsWithAdvice = phases.reduce((sum, p) => sum + p.actionableSteps.filter(s => s.inlineExperience || s.linkedStoryId).length, 0);
+                  const phasesWithAdvice = phases.filter(p => p.actionableSteps.some(s => s.inlineExperience || s.linkedStoryId)).length;
+                  const progressPercent = totalSteps > 0 ? Math.round((stepsWithAdvice / totalSteps) * 100) : 0;
+
+                  return (
+                    <div className={`p-4 rounded-lg border ${
+                      stepsWithAdvice === 0
+                        ? 'bg-amber-500/10 border-amber-500/30'
+                        : stepsWithAdvice >= totalSteps / 2
+                          ? 'bg-green-500/10 border-green-500/30'
+                          : 'bg-purple-500/10 border-purple-500/30'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-slate-200">Your Personal Touch</span>
+                        <span className={`text-lg font-bold ${
+                          stepsWithAdvice === 0 ? 'text-amber-400' : stepsWithAdvice >= totalSteps / 2 ? 'text-green-400' : 'text-purple-400'
+                        }`}>
+                          {stepsWithAdvice}/{totalSteps} steps
+                        </span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-2">
+                        <div
+                          className={`h-full transition-all ${
+                            stepsWithAdvice === 0 ? 'bg-amber-500' : stepsWithAdvice >= totalSteps / 2 ? 'bg-green-500' : 'bg-purple-500'
+                          }`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        {stepsWithAdvice === 0 ? (
+                          <>
+                            <strong className="text-amber-400">No advice added yet.</strong> Go back and add your expertise to make your timeline unique.
+                          </>
+                        ) : stepsWithAdvice >= totalSteps / 2 ? (
+                          <>
+                            <strong className="text-green-400">Great job!</strong> You&apos;ve added advice to {phasesWithAdvice} of {phases.length} phases.
+                          </>
+                        ) : (
+                          <>
+                            <strong className="text-purple-400">Good start!</strong> Consider adding advice to more steps to maximize your impact.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* View All Questions Toggle */}
                 <button

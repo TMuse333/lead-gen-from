@@ -638,7 +638,9 @@ function buildTimelinePrompt(
   userInput: Record<string, string>,
   context: PromptContext
 ): string {
-  const flow = (userInput.intent || context.intent || 'buy') as 'buy' | 'sell' | 'browse';
+  // Map browse to buy for MVP (browse is commented out)
+  const rawFlow = userInput.intent || context.intent || 'buy';
+  const flow = (rawFlow === 'browse' ? 'buy' : rawFlow) as 'buy' | 'sell';
   const template = getFlowTemplate(flow);
   let phases = getTemplatePhases(flow);
 

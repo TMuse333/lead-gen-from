@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = session.user.id;
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
 
     // 2. Get user's client configuration
     const collection = await getClientConfigsCollection();
@@ -103,7 +105,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const userId = session.user.id;
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
     const body = await request.json();
     const { selectedOffers, conversationFlows, agentProfile, endingCTA } = body;
 

@@ -84,7 +84,7 @@ export async function fetchQuestionsForFlow(
  * Call this on chatbot init for faster question loading
  */
 export async function prefetchAllQuestions(clientId?: string): Promise<void> {
-  const flows: TimelineFlow[] = ['buy', 'sell', 'browse'];
+  const flows: TimelineFlow[] = ['buy', 'sell']; // browse commented out for MVP
   await Promise.all(flows.map(flow => fetchQuestionsForFlow(flow, clientId)));
 }
 

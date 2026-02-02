@@ -35,12 +35,13 @@ const PHASE_MAPPINGS: Record<TimelineFlow, Record<string, string>> = {
     location: 'list-property',
     timeline: 'marketing-showings',
   },
-  browse: {
-    interest: 'understand-options',
-    budget: 'financial-education',
-    location: 'market-research',
-    timeline: 'decision-time',
-  },
+  // browse commented out for MVP
+  // browse: {
+  //   interest: 'understand-options',
+  //   budget: 'financial-education',
+  //   location: 'market-research',
+  //   timeline: 'decision-time',
+  // },
 };
 
 /**
@@ -86,7 +87,7 @@ export function generateAllDefaultQuestions(): FlowQuestionConfigs {
   return {
     buy: generateDefaultQuestionsForFlow('buy'),
     sell: generateDefaultQuestionsForFlow('sell'),
-    browse: generateDefaultQuestionsForFlow('browse'),
+    // browse: generateDefaultQuestionsForFlow('browse'), // Commented out for MVP
   };
 }
 
@@ -105,9 +106,10 @@ export function getDefaultQuestionsSummary(): Record<TimelineFlow, { count: numb
       count: allQuestions.sell?.length || 0,
       questions: allQuestions.sell?.map(q => `${q.id} (${q.inputType}, order: ${q.order})`) || [],
     },
-    browse: {
-      count: allQuestions.browse?.length || 0,
-      questions: allQuestions.browse?.map(q => `${q.id} (${q.inputType}, order: ${q.order})`) || [],
-    },
+    // browse commented out for MVP
+    // browse: {
+    //   count: allQuestions.browse?.length || 0,
+    //   questions: allQuestions.browse?.map(q => `${q.id} (${q.inputType}, order: ${q.order})`) || [],
+    // },
   };
 }

@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getUserCollectionName } from '@/lib/userConfig/getUserCollection';
 import { storeUserStory } from '@/lib/qdrant/collections/vector/advice/upsertUser';
 import OpenAI from 'openai';
@@ -100,8 +101,11 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
+
     // Get user's collection name
-    const collectionName = await getUserCollectionName(session.user.id);
+    const collectionName = await getUserCollectionName(userId);
     if (!collectionName) {
       return NextResponse.json(
         { error: 'No knowledge base collection found. Complete onboarding first.' },

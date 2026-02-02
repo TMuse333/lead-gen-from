@@ -28,6 +28,7 @@ import {
 import { useTimelineBuilder } from '@/hooks/offers/useTimelineBuilder';
 import { DraggableList } from '@/components/dashboard/shared/DraggableList';
 import { StoryPickerModal } from '@/components/dashboard/shared/StoryPickerModal';
+import { QuickSetupWizard } from './QuickSetupWizard';
 import { TimelineWizardModal } from './TimelineWizardModal';
 import type { CustomPhaseConfig, CustomActionableStep, TimelineFlow } from '@/types/timelineBuilder.types';
 import { PHASE_CONSTRAINTS } from '@/types/timelineBuilder.types';
@@ -35,7 +36,7 @@ import { PHASE_CONSTRAINTS } from '@/types/timelineBuilder.types';
 const FLOW_OPTIONS: { id: TimelineFlow; label: string }[] = [
   { id: 'buy', label: 'Buyers' },
   { id: 'sell', label: 'Sellers' },
-  { id: 'browse', label: 'Browsers' },
+  // { id: 'browse', label: 'Browsers' }, // Commented out for MVP
 ];
 
 const PRIORITY_OPTIONS = [
@@ -76,7 +77,8 @@ export function TimelineBuilderTab() {
 
   // Accordion: only one phase expanded at a time (null = all collapsed)
   const [expandedPhaseId, setExpandedPhaseId] = useState<string | null>(null);
-  const [showWizard, setShowWizard] = useState(false);
+  const [showEasyWizard, setShowEasyWizard] = useState(false);
+  const [showAdvancedWizard, setShowAdvancedWizard] = useState(false);
   const [storyPickerState, setStoryPickerState] = useState<{
     isOpen: boolean;
     phaseId: string;
@@ -110,25 +112,6 @@ export function TimelineBuilderTab() {
 
   const handleInlineSave = (text: string) => {
     setInlineExperience(storyPickerState.phaseId, storyPickerState.stepId, text);
-  };
-
-  const handleWizardComplete = (flow: TimelineFlow, newPhases: CustomPhaseConfig[]) => {
-    // Apply wizard results by updating each phase
-    if (flow !== selectedFlow) {
-      setSelectedFlow(flow);
-    }
-    // The hook will refetch, but we can directly update for immediate feedback
-    newPhases.forEach(phase => {
-      updatePhase(phase.id, phase);
-    });
-  };
-
-  // Bulk apply phases from wizard (replace all)
-  const applyWizardPhases = (flow: TimelineFlow, newPhases: CustomPhaseConfig[]) => {
-    if (flow !== selectedFlow) {
-      setSelectedFlow(flow);
-    }
-    reorderPhases(newPhases);
   };
 
   if (isLoading) {
@@ -182,14 +165,23 @@ export function TimelineBuilderTab() {
         ))}
       </div>
 
-      {/* Quick Setup Wizard Button */}
-      <button
-        onClick={() => setShowWizard(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/50 transition-all text-sm w-fit"
-      >
-        <Sparkles className="w-4 h-4" />
-        Quick Setup Wizard
-      </button>
+      {/* Setup Wizard Buttons */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setShowEasyWizard(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg text-green-400 hover:text-green-300 hover:border-green-500/50 transition-all text-sm"
+        >
+          <Sparkles className="w-4 h-4" />
+          Easy Setup
+        </button>
+        <button
+          onClick={() => setShowAdvancedWizard(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/50 transition-all text-sm"
+        >
+          <Settings2 className="w-4 h-4" />
+          Advanced Setup
+        </button>
+      </div>
 
       {/* Messages */}
       <AnimatePresence>
@@ -318,11 +310,32 @@ export function TimelineBuilderTab() {
         currentInlineText={storyPickerState.currentInlineText}
       />
 
-      {/* Wizard Modal */}
+      {/* Easy Setup Wizard (Quick, streamlined) */}
+      <QuickSetupWizard
+        isOpen={showEasyWizard}
+        onClose={() => setShowEasyWizard(false)}
+        onComplete={() => {
+          // Refresh phases after wizard completes
+          setShowEasyWizard(false);
+          // Trigger a refetch by toggling flow
+          const otherFlow = selectedFlow === 'buy' ? 'sell' : 'buy';
+          setSelectedFlow(otherFlow);
+          setTimeout(() => setSelectedFlow(selectedFlow), 100);
+        }}
+      />
+
+      {/* Advanced Setup Wizard (Detailed, per-phase) */}
       <TimelineWizardModal
-        isOpen={showWizard}
-        onClose={() => setShowWizard(false)}
-        onComplete={applyWizardPhases}
+        isOpen={showAdvancedWizard}
+        onClose={() => setShowAdvancedWizard(false)}
+        onComplete={(flow, newPhases) => {
+          // Apply wizard results
+          if (flow !== selectedFlow) {
+            setSelectedFlow(flow);
+          }
+          reorderPhases(newPhases);
+          setShowAdvancedWizard(false);
+        }}
         initialFlow={selectedFlow}
         initialPhases={phases}
       />

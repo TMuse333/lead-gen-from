@@ -35,7 +35,7 @@ interface MergedQuestionConfig {
 const FLOW_TABS: { id: TimelineFlow; label: string }[] = [
   { id: 'buy', label: 'Buyers' },
   { id: 'sell', label: 'Sellers' },
-  { id: 'browse', label: 'Browsers' },
+  // { id: 'browse', label: 'Browsers' }, // Commented out for MVP
 ];
 
 export function BotResponsesTab() {

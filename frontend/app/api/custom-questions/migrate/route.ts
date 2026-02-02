@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const flows: TimelineFlow[] = ['buy', 'sell', 'browse'];
+    const flows: TimelineFlow[] = ['buy', 'sell']; // browse commented out for MVP
     const updates: Record<string, any> = {};
     const stats = {
       flowsChecked: 0,
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const flows: TimelineFlow[] = ['buy', 'sell', 'browse'];
+    const flows: TimelineFlow[] = ['buy', 'sell']; // browse commented out for MVP
     const issues: Array<{ flow: string; questionId: string; question: string }> = [];
 
     for (const flow of flows) {

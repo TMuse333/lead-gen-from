@@ -57,3 +57,72 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    // 1. Check if user is admin
+    const session = await checkIsAdmin();
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    // 2. Parse request body
+    const body = await request.json();
+    const { businessName, userId, colorConfig } = body;
+
+    if (!businessName && !userId) {
+      return NextResponse.json(
+        { error: 'businessName or userId is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!colorConfig) {
+      return NextResponse.json(
+        { error: 'colorConfig is required' },
+        { status: 400 }
+      );
+    }
+
+    // 3. Update client configuration
+    const collection = await getClientConfigsCollection();
+
+    const filter = businessName
+      ? { businessName }
+      : { userId };
+
+    const result = await collection.updateOne(
+      filter,
+      {
+        $set: {
+          colorConfig,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { error: 'Client configuration not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Color configuration updated successfully',
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to update client configuration',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+

@@ -40,8 +40,9 @@ export interface CustomPhaseConfig {
 
 /**
  * Flow type for timeline phases
+ * Note: 'browse' is commented out for MVP simplicity - can be re-enabled later
  */
-export type TimelineFlow = 'buy' | 'sell' | 'browse';
+export type TimelineFlow = 'buy' | 'sell'; // | 'browse';
 
 /**
  * Phase configurations organized by flow type
@@ -49,7 +50,7 @@ export type TimelineFlow = 'buy' | 'sell' | 'browse';
 export interface FlowPhaseConfigs {
   buy?: CustomPhaseConfig[];
   sell?: CustomPhaseConfig[];
-  browse?: CustomPhaseConfig[];
+  // browse?: CustomPhaseConfig[]; // Commented out for MVP
 }
 
 // ==================== BOT RESPONSE CONFIGURATION ====================
@@ -71,7 +72,7 @@ export interface BotQuestionConfig {
 export interface FlowBotConfig {
   buy?: BotQuestionConfig[];
   sell?: BotQuestionConfig[];
-  browse?: BotQuestionConfig[];
+  // browse?: BotQuestionConfig[]; // Commented out for MVP
 }
 
 // ==================== CUSTOM QUESTIONS ====================
@@ -116,7 +117,7 @@ export interface CustomQuestion {
 export interface FlowQuestionConfigs {
   buy?: CustomQuestion[];
   sell?: CustomQuestion[];
-  browse?: CustomQuestion[];
+  // browse?: CustomQuestion[]; // Commented out for MVP
 }
 
 // ==================== CONSTRAINTS ====================

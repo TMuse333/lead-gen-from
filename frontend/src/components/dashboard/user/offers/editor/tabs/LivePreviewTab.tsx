@@ -20,7 +20,7 @@ import { getTheme } from '@/lib/colors/colorUtils';
 const FLOW_OPTIONS: { id: TimelineFlow; label: string }[] = [
   { id: 'buy', label: 'Buyer' },
   { id: 'sell', label: 'Seller' },
-  { id: 'browse', label: 'Browser' },
+  // { id: 'browse', label: 'Browser' }, // Commented out for MVP
 ];
 
 // Mock user data for preview

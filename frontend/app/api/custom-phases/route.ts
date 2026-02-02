@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import { getFlowTemplate } from '@/lib/offers/definitions/timeline/timeline-templates';
 import type {
@@ -49,18 +50,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Support admin impersonation
+    const userId = await getEffectiveUserId() || session.user.id;
+
     const { searchParams } = new URL(request.url);
     const flow = searchParams.get('flow') as TimelineFlow | null;
 
-    if (!flow || !['buy', 'sell', 'browse'].includes(flow)) {
+    if (!flow || !['buy', 'sell'].includes(flow)) {
       return NextResponse.json(
-        { error: 'Valid flow parameter (buy, sell, browse) is required' },
+        { error: 'Valid flow parameter (buy, sell) is required' },
         { status: 400 }
       );
     }
 
     const collection = await getClientConfigsCollection();
-    const config = await collection.findOne({ userId: session.user.id });
+    const config = await collection.findOne({ userId });
 
     if (!config) {
       return NextResponse.json(
@@ -102,6 +106,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Support admin impersonation
+    const userId = await getEffectiveUserId() || session.user.id;
+
     const body = await request.json();
     const { flow, phases } = body as {
       flow: TimelineFlow;
@@ -109,9 +116,9 @@ export async function PUT(request: NextRequest) {
     };
 
     // Validate flow
-    if (!flow || !['buy', 'sell', 'browse'].includes(flow)) {
+    if (!flow || !['buy', 'sell'].includes(flow)) {
       return NextResponse.json(
-        { error: 'Valid flow (buy, sell, browse) is required' },
+        { error: 'Valid flow (buy, sell) is required' },
         { status: 400 }
       );
     }
@@ -145,7 +152,7 @@ export async function PUT(request: NextRequest) {
 
     const collection = await getClientConfigsCollection();
     const result = await collection.updateOne(
-      { userId: session.user.id },
+      { userId },
       {
         $set: {
           [`customPhases.${flow}`]: orderedPhases,
@@ -187,6 +194,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Support admin impersonation
+    const userId = await getEffectiveUserId() || session.user.id;
+
     const body = await request.json();
     const { flow, phaseId, updates } = body as {
       flow: TimelineFlow;
@@ -195,9 +205,9 @@ export async function PATCH(request: NextRequest) {
     };
 
     // Validate flow
-    if (!flow || !['buy', 'sell', 'browse'].includes(flow)) {
+    if (!flow || !['buy', 'sell'].includes(flow)) {
       return NextResponse.json(
-        { error: 'Valid flow (buy, sell, browse) is required' },
+        { error: 'Valid flow (buy, sell) is required' },
         { status: 400 }
       );
     }
@@ -217,7 +227,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const collection = await getClientConfigsCollection();
-    const config = await collection.findOne({ userId: session.user.id });
+    const config = await collection.findOne({ userId });
 
     if (!config) {
       return NextResponse.json(
@@ -258,7 +268,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const result = await collection.updateOne(
-      { userId: session.user.id },
+      { userId },
       {
         $set: {
           [`customPhases.${flow}`]: updatedPhases,
@@ -292,19 +302,22 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Support admin impersonation
+    const userId = await getEffectiveUserId() || session.user.id;
+
     const { searchParams } = new URL(request.url);
     const flow = searchParams.get('flow') as TimelineFlow | null;
 
-    if (!flow || !['buy', 'sell', 'browse'].includes(flow)) {
+    if (!flow || !['buy', 'sell'].includes(flow)) {
       return NextResponse.json(
-        { error: 'Valid flow parameter (buy, sell, browse) is required' },
+        { error: 'Valid flow parameter (buy, sell) is required' },
         { status: 400 }
       );
     }
 
     const collection = await getClientConfigsCollection();
     const result = await collection.updateOne(
-      { userId: session.user.id },
+      { userId },
       {
         $unset: { [`customPhases.${flow}`]: '' },
         $set: { updatedAt: new Date() },

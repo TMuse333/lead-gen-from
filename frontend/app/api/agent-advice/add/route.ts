@@ -4,6 +4,7 @@
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import { getEmbedding } from '@/lib/openai/embedding';
 import { storeUserAdvice } from '@/lib/qdrant/collections/vector/advice/upsertUser';
@@ -20,9 +21,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
+
     // 2. Get user's collection name
     const collection = await getClientConfigsCollection();
-    const userConfig = await collection.findOne({ userId: session.user.id });
+    const userConfig = await collection.findOne({ userId });
 
     if (!userConfig || !userConfig.qdrantCollectionName) {
       return NextResponse.json(

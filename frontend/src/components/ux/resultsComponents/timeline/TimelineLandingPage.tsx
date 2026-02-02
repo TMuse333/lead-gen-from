@@ -213,116 +213,228 @@ export function TimelineLandingPage({
     >
       {/* Hero Section - Personalized with user name and animated visualization */}
       <section
-        className={`relative overflow-hidden ${hasCustomTheme ? '' : `bg-gradient-to-r ${colors.heroGradient}`}`}
-        style={heroStyle}
+        className={`relative overflow-hidden ${hasCustomTheme ? '' : 'bg-gray-50'}`}
+        style={hasCustomTheme ? { backgroundColor: colorTheme.background } : undefined}
       >
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
-        </div>
+        {/* Decorative background elements */}
+        {/* Large gradient orb - top right */}
+        <div
+          className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-3xl opacity-20"
+          style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+        />
+        {/* Smaller orb - bottom left */}
+        <div
+          className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full blur-3xl opacity-15"
+          style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+        />
+        {/* Floating accent dots */}
+        <div
+          className="absolute top-20 left-[15%] w-3 h-3 rounded-full opacity-40"
+          style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+        />
+        <div
+          className="absolute top-40 right-[20%] w-2 h-2 rounded-full opacity-30"
+          style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+        />
+        <div
+          className="absolute bottom-32 left-[25%] w-4 h-4 rounded-full opacity-25"
+          style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+        />
+        <div
+          className="absolute top-1/2 right-[10%] w-2 h-2 rounded-full opacity-35"
+          style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+        />
 
-        <div className="relative max-w-6xl mx-auto px-4 py-10 md:py-14">
-          {/* Mobile: flex-col, Desktop: grid */}
-          <div className={`flex flex-col ${forceMobileLayout ? '' : 'lg:grid lg:grid-cols-2 lg:gap-8'} gap-6 items-center`}>
-            {/* Left: Text content */}
-            <div className={`text-white text-center ${forceMobileLayout ? '' : 'lg:text-left'} order-1`}>
-              {/* Personalized greeting badge */}
-              {displayUserName && (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-3">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">
-                    Created for {displayUserName}
-                  </span>
-                </div>
-              )}
+        <div className="relative max-w-5xl mx-auto px-4 py-14 md:py-20">
+          {/* Mobile: flex-col, md+: flex-row, centered */}
+          <div className={`flex ${forceMobileLayout ? 'flex-col items-center' : 'flex-col md:flex-row md:items-center md:justify-center'} gap-10 md:gap-16`}>
 
-              {/* Title - with user's name highlighted */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3">
-                {displayUserName ? (
-                  <>
-                    <span className="text-white">{displayUserName}</span>
-                    <span className="text-white/70">'s </span>
-                  </>
-                ) : (
-                  <span className="text-white/90">Your </span>
-                )}
-                <span className="text-white">{flowLabel.action} Timeline</span>
-              </h1>
-
-              {/* Intro description - prepares user for what this page is */}
-              <p className={`text-base md:text-lg text-white/90 max-w-xl mx-auto ${forceMobileLayout ? '' : 'lg:mx-0'} mb-4 leading-relaxed`}>
-                This is your personalized roadmap — a step-by-step guide designed specifically for your situation.
-                Below you'll find expert advice, actionable tasks, and everything you need to navigate your{' '}
-                {flowLabel.action.toLowerCase()} journey with confidence.
-              </p>
-
-              {/* Your details - shown below the description */}
-              <div className={`flex flex-wrap justify-center ${forceMobileLayout ? '' : 'lg:justify-start'} gap-2 mb-4`}>
-                {data.userSituation.location && (
-                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
-                    📍 {data.userSituation.location}
-                  </span>
-                )}
-                {data.userSituation.isFirstTime && (
-                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
-                    🏠 First-Time {flowLabel.noun}
-                  </span>
-                )}
-                {data.userSituation.budget && (
-                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
-                    💰 {data.userSituation.budget}
-                  </span>
-                )}
-                {data.userSituation.timeline && (
-                  <span className="bg-white/25 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
-                    📅 {data.userSituation.timeline}
-                  </span>
-                )}
-              </div>
-
-              {/* What's included - small text */}
-              <p className="text-xs text-white/70">
-                Includes {data.phases.length} phases, {data.metadata?.totalActionItems || 0} action items
-                {totalStories > 0 && `, and ${totalStories} relevant client stories`}
-              </p>
-
-            </div>
-
-            {/* Right: Headshot and Animated Stats Visualization */}
-            <div className={`flex flex-col items-center order-2 w-full max-w-sm ${forceMobileLayout ? '' : 'lg:max-w-none'}`}>
-              {/* Agent Headshot - Prominent display above timeline */}
-              {(endingCTA || data.agentInfo) && (
-                <div className="mb-6 flex flex-col items-center">
-                  {(endingCTA?.headshot || data.agentInfo?.photo) ? (
-                    <img
-                      src={endingCTA?.headshot || data.agentInfo?.photo}
-                      alt={endingCTA?.displayName || data.agentInfo?.name || 'Agent'}
-                      className="w-32 h-32 lg:w-40 lg:h-40 rounded-full object-cover border-4 border-white/40 shadow-2xl"
+            {/* Left: Agent Headshot with glow effect */}
+            {(endingCTA || data.agentInfo) && (
+              <div className={`flex-shrink-0 ${forceMobileLayout ? '' : 'md:order-1'}`}>
+                <div className="flex flex-col items-center">
+                  {/* Image container with glow */}
+                  <div className="relative">
+                    {/* Outer glow ring */}
+                    <div
+                      className="absolute inset-0 rounded-full blur-xl opacity-50 scale-110"
+                      style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
                     />
-                  ) : (
-                    <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-full bg-white/20 flex items-center justify-center border-4 border-white/40 shadow-2xl">
-                      <Users className="h-16 w-16 lg:h-20 lg:w-20 text-white/80" />
-                    </div>
-                  )}
-                  <div className="mt-4 text-center">
-                    <p className="text-lg lg:text-xl font-bold text-white">
+                    {/* Middle glow ring */}
+                    <div
+                      className="absolute inset-0 rounded-full blur-md opacity-30 scale-105"
+                      style={hasCustomTheme ? { backgroundColor: colorTheme.primary } : { backgroundColor: '#3b82f6' }}
+                    />
+                    {/* Accent ring border */}
+                    <div
+                      className="absolute -inset-1 rounded-full opacity-60"
+                      style={hasCustomTheme
+                        ? { background: `linear-gradient(135deg, ${colorTheme.primary}, ${colorTheme.primary}40, ${colorTheme.primary})` }
+                        : { background: 'linear-gradient(135deg, #3b82f6, #3b82f640, #3b82f6)' }}
+                    />
+                    {(endingCTA?.headshot || data.agentInfo?.photo) ? (
+                      <img
+                        src={endingCTA?.headshot || data.agentInfo?.photo}
+                        alt={endingCTA?.displayName || data.agentInfo?.name || 'Agent'}
+                        className="relative w-44 h-44 md:w-56 md:h-56 lg:w-72 lg:h-72 rounded-full object-cover shadow-2xl"
+                        style={hasCustomTheme
+                          ? { borderWidth: '4px', borderStyle: 'solid', borderColor: colorTheme.background }
+                          : { border: '4px solid #f9fafb' }}
+                      />
+                    ) : (
+                      <div
+                        className="relative w-44 h-44 md:w-56 md:h-56 lg:w-72 lg:h-72 rounded-full flex items-center justify-center shadow-2xl"
+                        style={hasCustomTheme
+                          ? { backgroundColor: colorTheme.surface, borderWidth: '4px', borderStyle: 'solid', borderColor: colorTheme.background }
+                          : { backgroundColor: '#f3f4f6', border: '4px solid #f9fafb' }}
+                      >
+                        <Users
+                          className="h-20 w-20 md:h-24 md:w-24 lg:h-32 lg:w-32"
+                          style={hasCustomTheme ? { color: colorTheme.primary } : { color: '#3b82f6' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {/* Agent name and title */}
+                  <div className="mt-6 text-center">
+                    <p
+                      className="text-xl lg:text-2xl font-bold"
+                      style={hasCustomTheme ? { color: colorTheme.text } : { color: '#111827' }}
+                    >
                       {endingCTA?.displayName || data.agentInfo?.name || 'Your Agent'}
                     </p>
-                    <p className="text-sm lg:text-base text-white/80">
+                    <p
+                      className="text-sm lg:text-base mt-1"
+                      style={hasCustomTheme ? { color: colorTheme.primary } : { color: '#3b82f6' }}
+                    >
                       {endingCTA?.title || 'Your guide for this journey'}
                     </p>
-                    {/* Stat badges inline with agent name */}
                     {agentCredentials && (
-                      <HeroStatBadges agent={agentCredentials} className="mt-1" />
+                      <HeroStatBadges agent={agentCredentials} className="mt-3" />
                     )}
                   </div>
                 </div>
-              )}
-              
-              {/* Animated Stats Visualization */}
-              <div className="flex justify-center w-full">
+              </div>
+            )}
+
+            {/* Right: Text content in a card */}
+            <div className={`flex-1 max-w-xl ${forceMobileLayout ? 'text-center' : 'text-center md:text-left md:order-2'}`}>
+              {/* Card container */}
+              <div
+                className="rounded-2xl p-6 md:p-8 shadow-xl border"
+                style={hasCustomTheme
+                  ? { backgroundColor: `${colorTheme.surface}dd`, borderColor: `${colorTheme.primary}20` }
+                  : { backgroundColor: 'rgba(255,255,255,0.9)', borderColor: '#e5e7eb' }}
+              >
+                {/* Personalized greeting badge */}
+                {displayUserName && (
+                  <div
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 font-medium"
+                    style={hasCustomTheme
+                      ? { backgroundColor: `${colorTheme.primary}20`, color: colorTheme.primary, border: `1px solid ${colorTheme.primary}30` }
+                      : { backgroundColor: '#dbeafe', color: '#2563eb', border: '1px solid #bfdbfe' }}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm">
+                      Created for {displayUserName}
+                    </span>
+                  </div>
+                )}
+
+                {/* Title - with gradient effect */}
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+                  {displayUserName ? (
+                    <>
+                      <span
+                        className="bg-clip-text text-transparent"
+                        style={hasCustomTheme
+                          ? { backgroundImage: `linear-gradient(135deg, ${colorTheme.primary}, ${colorTheme.primary}cc)` }
+                          : { backgroundImage: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}
+                      >
+                        {displayUserName}
+                      </span>
+                      <span style={hasCustomTheme ? { color: colorTheme.textSecondary } : { color: '#6b7280' }}>&apos;s </span>
+                    </>
+                  ) : (
+                    <span style={hasCustomTheme ? { color: colorTheme.textSecondary } : { color: '#6b7280' }}>Your </span>
+                  )}
+                  <span style={hasCustomTheme ? { color: colorTheme.text } : { color: '#111827' }}>{flowLabel.action} Timeline</span>
+                </h1>
+
+                {/* Accent divider line */}
+                <div
+                  className="w-16 h-1 rounded-full mb-4"
+                  style={hasCustomTheme
+                    ? { background: `linear-gradient(to right, ${colorTheme.primary}, ${colorTheme.primary}60)` }
+                    : { background: 'linear-gradient(to right, #3b82f6, #3b82f660)' }}
+                />
+
+                {/* Intro description */}
+                <p
+                  className={`text-base md:text-lg mb-5 leading-relaxed`}
+                  style={hasCustomTheme ? { color: colorTheme.textSecondary } : { color: '#4b5563' }}
+                >
+                  This is your personalized roadmap — a step-by-step guide designed specifically for your situation.
+                  Below you&apos;ll find expert advice, actionable tasks, and everything you need to navigate your{' '}
+                  {flowLabel.action.toLowerCase()} journey with confidence.
+                </p>
+
+                {/* Your details badges */}
+                <div className={`flex flex-wrap ${forceMobileLayout ? 'justify-center' : 'justify-center md:justify-start'} gap-2 mb-5`}>
+                  {data.userSituation.location && (
+                    <span
+                      className="rounded-full px-3 py-1.5 text-xs font-medium border"
+                      style={hasCustomTheme
+                        ? { backgroundColor: `${colorTheme.primary}10`, color: colorTheme.primary, borderColor: `${colorTheme.primary}30` }
+                        : { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}
+                    >
+                      📍 {data.userSituation.location}
+                    </span>
+                  )}
+                  {data.userSituation.isFirstTime && (
+                    <span
+                      className="rounded-full px-3 py-1.5 text-xs font-medium border"
+                      style={hasCustomTheme
+                        ? { backgroundColor: `${colorTheme.primary}10`, color: colorTheme.primary, borderColor: `${colorTheme.primary}30` }
+                        : { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}
+                    >
+                      🏠 First-Time {flowLabel.noun}
+                    </span>
+                  )}
+                  {data.userSituation.budget && (
+                    <span
+                      className="rounded-full px-3 py-1.5 text-xs font-medium border"
+                      style={hasCustomTheme
+                        ? { backgroundColor: `${colorTheme.primary}10`, color: colorTheme.primary, borderColor: `${colorTheme.primary}30` }
+                        : { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}
+                    >
+                      💰 {data.userSituation.budget}
+                    </span>
+                  )}
+                  {data.userSituation.timeline && (
+                    <span
+                      className="rounded-full px-3 py-1.5 text-xs font-medium border"
+                      style={hasCustomTheme
+                        ? { backgroundColor: `${colorTheme.primary}10`, color: colorTheme.primary, borderColor: `${colorTheme.primary}30` }
+                        : { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}
+                    >
+                      📅 {data.userSituation.timeline}
+                    </span>
+                  )}
+                </div>
+
+                {/* What's included */}
+                <p
+                  className="text-xs"
+                  style={hasCustomTheme ? { color: colorTheme.textSecondary } : { color: '#9ca3af' }}
+                >
+                  Includes {data.phases.length} phases, {data.metadata?.totalActionItems || 0} action items
+                  {totalStories > 0 && `, and ${totalStories} relevant client stories`}
+                </p>
+              </div>
+
+              {/* Timeline Stats - below the card */}
+              <div className={`mt-8 ${forceMobileLayout ? 'flex justify-center' : 'flex justify-center md:justify-start'}`}>
                 <HeroTimelineStats
                   duration={data.totalEstimatedTime || '4-5 months'}
                   steps={data.phases.length}
@@ -332,22 +444,18 @@ export function TimelineLandingPage({
                   primaryColor={hasCustomTheme ? colorTheme?.primary : undefined}
                   secondaryColor={hasCustomTheme ? colorTheme?.gradientTo : undefined}
                   width={320}
-                  height={220}
+                  height={200}
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Wave divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
-              fill={hasCustomTheme ? colorTheme.background : "#F9FAFB"}
-            />
-          </svg>
-        </div>
+        {/* Bottom accent border */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1"
+          style={hasCustomTheme ? { background: `linear-gradient(to right, transparent, ${colorTheme.primary}, transparent)` } : { background: 'linear-gradient(to right, transparent, #3b82f6, transparent)' }}
+        />
       </section>
 
       {/* Compact Trust Bar - Quick credibility stats */}

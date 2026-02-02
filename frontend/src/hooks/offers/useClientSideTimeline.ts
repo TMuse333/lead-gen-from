@@ -31,7 +31,7 @@ export interface OfferConfig {
 }
 
 export interface GenerateTimelineInput {
-  flow: 'buy' | 'sell' | 'browse';
+  flow: 'buy' | 'sell'; // browse commented out for MVP
   userInput: Record<string, any>;
   config: OfferConfig;
 }
@@ -206,12 +206,15 @@ export function useClientSideTimeline() {
    * Convenience method that handles everything
    */
   const generateFromScratch = useCallback(async (
-    flow: 'buy' | 'sell' | 'browse',
+    rawFlow: 'buy' | 'sell' | 'browse', // Accept browse for legacy support
     userInput: Record<string, any>,
     clientId?: string
   ): Promise<GenerateTimelineResult | null> => {
     setIsLoading(true);
     setError(null);
+
+    // Map browse to buy for MVP
+    const flow = (rawFlow === 'browse' ? 'buy' : rawFlow) as 'buy' | 'sell';
 
     try {
       // 1. Fetch config

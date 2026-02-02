@@ -37,8 +37,9 @@ export default function AnalysisTracker() {
   const isComplete = progress >= 100;
 
   // Get custom questions from MongoDB if available
-  const customQuestions = currentIntent
-    ? flowQuestions[currentIntent as 'buy' | 'sell' | 'browse'] || []
+  // Note: 'browse' commented out for MVP - handle legacy data gracefully
+  const customQuestions = currentIntent && (currentIntent === 'buy' || currentIntent === 'sell')
+    ? flowQuestions[currentIntent] || []
     : [];
 
   // Get offer-specific tracking config (fallback for styling)

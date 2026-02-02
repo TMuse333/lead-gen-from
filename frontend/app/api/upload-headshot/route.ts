@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put, del } from '@vercel/blob';
 import { auth } from '@/lib/auth/authConfig';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +24,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const userId = session.user.id;
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
@@ -50,9 +52,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get existing headshot URL to delete it if it exists
+    // Get existing config - must exist for upload to work
     const configsCollection = await getClientConfigsCollection();
     const existingConfig = await configsCollection.findOne({ userId });
+
+    if (!existingConfig) {
+      console.error(`[upload-headshot] No config found for userId: ${userId}`);
+      return NextResponse.json(
+        { error: 'User configuration not found. Please complete onboarding first.' },
+        { status: 404 }
+      );
+    }
+
     const existingHeadshotUrl = existingConfig?.endingCTA?.headshot;
 
     // Upload to Vercel Blob
@@ -66,6 +77,8 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    console.log(`[upload-headshot] Uploaded to Vercel Blob: ${blob.url}`);
+
     // Delete old headshot if it exists
     if (existingHeadshotUrl) {
       try {
@@ -78,7 +91,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Update the client config with the new headshot URL
-    await configsCollection.updateOne(
+    const updateResult = await configsCollection.updateOne(
       { userId },
       {
         $set: {
@@ -87,6 +100,23 @@ export async function POST(req: NextRequest) {
         },
       }
     );
+
+    console.log(`[upload-headshot] MongoDB update result: matched=${updateResult.matchedCount}, modified=${updateResult.modifiedCount}`);
+
+    if (updateResult.matchedCount === 0) {
+      // This shouldn't happen since we checked above, but just in case
+      console.error(`[upload-headshot] Failed to update config for userId: ${userId}`);
+      // Try to delete the uploaded blob since we couldn't save the reference
+      try {
+        await del(blob.url);
+      } catch {
+        // Ignore cleanup error
+      }
+      return NextResponse.json(
+        { error: 'Failed to save headshot URL to configuration' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -119,7 +149,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const userId = session.user.id;
+    // Get effective userId (impersonated user if admin is impersonating, otherwise actual user)
+    const userId = await getEffectiveUserId() || session.user.id;
 
     // Get existing headshot URL
     const configsCollection = await getClientConfigsCollection();

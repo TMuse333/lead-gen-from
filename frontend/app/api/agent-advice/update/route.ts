@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import { qdrant } from '@/lib/qdrant/client';
 import OpenAI from 'openai';
@@ -18,6 +19,9 @@ export async function PUT(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
 
     const { id, title, advice, tags, type, kind, placements } = await request.json();
 
@@ -35,7 +39,7 @@ export async function PUT(request: NextRequest) {
 
     // Get user's Qdrant collection name
     const clientConfigsCollection = await getClientConfigsCollection();
-    const userConfig = await clientConfigsCollection.findOne({ userId: session.user.id });
+    const userConfig = await clientConfigsCollection.findOne({ userId });
 
     if (!userConfig || !userConfig.qdrantCollectionName) {
       return NextResponse.json(

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 
 export const runtime = 'nodejs';
@@ -42,8 +43,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
+
     // Get user's collection name
-    const collectionName = await getUserCollectionName(session.user.id);
+    const collectionName = await getUserCollectionName(userId);
     if (!collectionName) {
       return NextResponse.json(
         { error: 'No knowledge base collection found' },

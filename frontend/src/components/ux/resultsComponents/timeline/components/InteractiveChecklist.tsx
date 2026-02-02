@@ -6,10 +6,6 @@ import {
   CheckCircle2,
   Circle,
   Clock,
-  MessageCircle,
-  Bell,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
 } from 'lucide-react';
 import type { ActionItem } from '@/lib/offers/definitions/timeline/timeline-types';
@@ -65,8 +61,6 @@ export function InteractiveChecklist({
   const [checkedItems, setCheckedItems] = useState<Set<number>>(
     new Set(items.map((item, idx) => item.isCompleted ? idx : -1).filter(idx => idx >= 0))
   );
-  const [expandedItem, setExpandedItem] = useState<number | null>(null);
-  const [notes, setNotes] = useState<Record<number, string>>({});
 
   const completedCount = checkedItems.size;
   const totalCount = items.length;
@@ -111,11 +105,6 @@ export function InteractiveChecklist({
     onItemToggle?.(index, newChecked.has(index));
   };
 
-  const handleNoteChange = (index: number, note: string) => {
-    setNotes(prev => ({ ...prev, [index]: note }));
-    onAddNote?.(index, note);
-  };
-
   return (
     <div className="space-y-4">
       {/* Header with progress */}
@@ -150,7 +139,6 @@ export function InteractiveChecklist({
           const priority = item.priority || 'medium';
           const style = getPriorityStyle(priority);
           const isChecked = checkedItems.has(idx);
-          const isExpanded = expandedItem === idx;
 
           return (
             <div
@@ -213,62 +201,8 @@ export function InteractiveChecklist({
                       {priority}
                     </span>
                   </div>
-
-                  {/* Note (if exists) */}
-                  {notes[idx] && (
-                    <div className={`mt-2 p-2 rounded-lg text-sm border ${isDarkTheme ? 'bg-amber-900/30 text-amber-300 border-amber-700/50' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
-                      <span className="font-medium">Note:</span> {notes[idx]}
-                    </div>
-                  )}
                 </div>
-
-                {/* Actions */}
-                {interactive && (
-                  <button
-                    onClick={() => setExpandedItem(isExpanded ? null : idx)}
-                    className={`flex-shrink-0 p-1.5 rounded-lg transition ${isDarkTheme ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className={`h-4 w-4 ${isDarkTheme ? 'text-gray-500' : 'text-gray-400'}`} />
-                    ) : (
-                      <ChevronDown className={`h-4 w-4 ${isDarkTheme ? 'text-gray-500' : 'text-gray-400'}`} />
-                    )}
-                  </button>
-                )}
               </div>
-
-              {/* Expanded actions */}
-              {interactive && isExpanded && (
-                <div className={`px-4 pb-4 pt-0 border-t ${isDarkTheme ? 'border-gray-700' : 'border-gray-100'}`}>
-                  <div className="pt-3 space-y-3">
-                    {/* Add note */}
-                    <div>
-                      <label className={`text-xs font-medium uppercase tracking-wide ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Add a personal note
-                      </label>
-                      <textarea
-                        value={notes[idx] || ''}
-                        onChange={(e) => handleNoteChange(idx, e.target.value)}
-                        placeholder="e.g., Call John at the bank on Monday..."
-                        className={`mt-1 w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none ${isDarkTheme ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500' : 'border-gray-200 text-gray-900'}`}
-                        rows={2}
-                      />
-                    </div>
-
-                    {/* Quick actions */}
-                    <div className="flex gap-2">
-                      <button className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${isDarkTheme ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}>
-                        <Bell className="h-3 w-3" />
-                        Set Reminder
-                      </button>
-                      <button className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${isDarkTheme ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}>
-                        <MessageCircle className="h-3 w-3" />
-                        Ask a Question
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}

@@ -255,11 +255,10 @@ export async function POST(request: NextRequest) {
     const existing = await collection.findOne({ businessName: sanitizedSlug });
 
     if (existing) {
-      // Update existing - preserve questions if they exist
+      // Update existing - preserve questions if they exist (browse commented out for MVP)
       const hasExistingQuestions =
         (existing.customQuestions?.buy?.length || 0) > 0 ||
-        (existing.customQuestions?.sell?.length || 0) > 0 ||
-        (existing.customQuestions?.browse?.length || 0) > 0;
+        (existing.customQuestions?.sell?.length || 0) > 0;
 
       await collection.updateOne(
         { businessName: sanitizedSlug },

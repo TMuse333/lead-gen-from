@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const flows: TimelineFlow[] = flow ? [flow] : ['buy', 'sell', 'browse'];
+    const flows: TimelineFlow[] = flow ? [flow] : ['buy', 'sell']; // browse commented out for MVP
     const seeded: string[] = [];
     const skipped: string[] = [];
 

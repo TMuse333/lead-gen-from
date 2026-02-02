@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import { getAdviceTypeFromTags, DEFAULT_ADVICE_TYPE } from '@/types/advice.types';
 
@@ -28,18 +29,24 @@ export async function GET(request: NextRequest) {
     // 1. Authenticate user
     const session = await auth();
     if (!session?.user?.id) {
+      console.error('[agent-advice/get] Unauthorized - no session');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
+    console.log('[agent-advice/get] User authenticated:', session.user.id, 'effective:', userId);
+
     // 2. Get user's collection name
-    const COLLECTION_NAME = await getUserCollectionName(session.user.id);
-    
+    const COLLECTION_NAME = await getUserCollectionName(userId);
+
     if (!COLLECTION_NAME) {
+      console.error('[agent-advice/get] No Qdrant collection found for user:', session.user.id);
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: 'Configuration not found',
           message: 'Please complete onboarding first',
@@ -48,16 +55,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('[agent-advice/get] Fetching from collection:', COLLECTION_NAME);
+
     const { searchParams } = new URL(request.url);
     const agentId = searchParams.get('agentId');
     const limit = parseInt(searchParams.get('limit') || '100');
 
     // Fetch from Qdrant
-    const response = await client.scroll(COLLECTION_NAME, {
-      limit,
-      with_payload: true,
-      with_vector: false,
-    });
+    let response;
+    try {
+      response = await client.scroll(COLLECTION_NAME, {
+        limit,
+        with_payload: true,
+        with_vector: false,
+      });
+      console.log('[agent-advice/get] Fetched', response.points.length, 'points from Qdrant');
+    } catch (qdrantError) {
+      console.error('[agent-advice/get] Qdrant error:', qdrantError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch from Qdrant',
+          message: qdrantError instanceof Error ? qdrantError.message : 'Unknown Qdrant error',
+        },
+        { status: 500 }
+      );
+    }
 
     // Transform to friendly format (FIXED - properly extract applicableWhen)
     const adviceList = response.points
@@ -105,10 +128,12 @@ export async function GET(request: NextRequest) {
       advice: adviceList,
     });
   } catch (error) {
+    console.error('[agent-advice/get] Unexpected error:', error);
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
@@ -126,8 +151,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
+
     // 2. Get user's collection name
-    const COLLECTION_NAME = await getUserCollectionName(session.user.id);
+    const COLLECTION_NAME = await getUserCollectionName(userId);
     
     if (!COLLECTION_NAME) {
       return NextResponse.json(

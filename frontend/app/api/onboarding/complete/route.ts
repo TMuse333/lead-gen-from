@@ -218,11 +218,10 @@ export async function POST(request: NextRequest) {
       // Preserve existing customQuestions if they have any content
       const { _id, customQuestions: newQuestions, ...updateData } = clientConfig;
 
-      // Only overwrite questions if existing ones are empty/missing
+      // Only overwrite questions if existing ones are empty/missing (browse commented out for MVP)
       const hasExistingQuestions =
         (existing.customQuestions?.buy?.length || 0) > 0 ||
-        (existing.customQuestions?.sell?.length || 0) > 0 ||
-        (existing.customQuestions?.browse?.length || 0) > 0;
+        (existing.customQuestions?.sell?.length || 0) > 0;
 
       await collection.updateOne(
         { userId },

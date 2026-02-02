@@ -44,7 +44,7 @@ import { QUESTION_CONSTRAINTS, PHASE_CONSTRAINTS } from '@/types/timelineBuilder
 const FLOW_OPTIONS: { id: TimelineFlow; label: string; description: string }[] = [
   { id: 'buy', label: 'Buyer Flow', description: 'Questions and timeline for home buyers' },
   { id: 'sell', label: 'Seller Flow', description: 'Questions and timeline for home sellers' },
-  { id: 'browse', label: 'Browser Flow', description: 'Questions and timeline for browsers' },
+  // { id: 'browse', label: 'Browser Flow', description: 'Questions and timeline for browsers' }, // Commented out for MVP
 ];
 
 interface FlowData {

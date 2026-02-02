@@ -9,12 +9,13 @@ import AdminTokenUsage from '@/components/dashboard/admin/tokenUsage/adminTokenU
 import AdminRateLimits from '@/components/dashboard/admin/rateLimits/AdminRateLimits';
 import AdminConversations from '@/components/dashboard/admin/conversations/AdminConversations';
 import IframeTest from '@/components/dashboard/admin/iframeTest/IframeTest';
-import { BarChart3, Building2, Loader2, DollarSign, Shield, MessageSquare, ShieldX, Code } from 'lucide-react';
+import AdminIntelMessages from '@/components/dashboard/admin/intelMessages/AdminIntelMessages';
+import { BarChart3, Building2, Loader2, DollarSign, Shield, MessageSquare, ShieldX, Code, Mail } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'configs' | 'token-usage' | 'rate-limits' | 'conversations' | 'iframe-test'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'configs' | 'token-usage' | 'rate-limits' | 'conversations' | 'iframe-test' | 'intel-messages'>('analytics');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -148,6 +149,17 @@ export default function AdminDashboardPage() {
               <Code size={20} />
               Iframe Test
             </button>
+            <button
+              onClick={() => setActiveTab('intel-messages')}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+                activeTab === 'intel-messages'
+                  ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
+                  : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
+              }`}
+            >
+              <Mail size={20} />
+              Intel Messages
+            </button>
           </div>
         </div>
 
@@ -159,6 +171,7 @@ export default function AdminDashboardPage() {
           {activeTab === 'rate-limits' && <AdminRateLimits />}
           {activeTab === 'conversations' && <AdminConversations />}
           {activeTab === 'iframe-test' && <IframeTest />}
+          {activeTab === 'intel-messages' && <AdminIntelMessages />}
         </div>
       </div>
     </div>

@@ -177,8 +177,9 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
   const currentStep = completedSteps < totalSteps ? completedSteps : totalSteps - 1;
 
   // Get custom questions for current intent (from MongoDB)
-  const customQuestions = currentIntent
-    ? flowQuestions[currentIntent as 'buy' | 'sell' | 'browse'] || []
+  // Note: 'browse' commented out for MVP - handle legacy data gracefully
+  const customQuestions = currentIntent && (currentIntent === 'buy' || currentIntent === 'sell')
+    ? flowQuestions[currentIntent] || []
     : [];
 
   // Calculate total questions from MongoDB or fallback to static
@@ -396,7 +397,8 @@ export default function ChatWithTracker({ clientConfig, embedMode = false }: Cha
       setGenerationPercent(50);
       setGenerationMessage('Creating your personalized timeline...');
 
-      const flow = freshIntent as 'buy' | 'sell' | 'browse';
+      // Map browse to buy for MVP (browse is commented out)
+      const flow = (freshIntent === 'browse' ? 'buy' : freshIntent) as 'buy' | 'sell';
       const result = await generateTimeline({
         flow,
         userInput: mergedUserInput,

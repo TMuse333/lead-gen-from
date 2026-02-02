@@ -56,14 +56,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check existing questions
+    // Check existing questions (browse commented out for MVP)
     const existingCounts = {
       buy: config.customQuestions?.buy?.length || 0,
       sell: config.customQuestions?.sell?.length || 0,
-      browse: config.customQuestions?.browse?.length || 0,
+      // browse: config.customQuestions?.browse?.length || 0,
     };
 
-    const hasExisting = existingCounts.buy > 0 || existingCounts.sell > 0 || existingCounts.browse > 0;
+    const hasExisting = existingCounts.buy > 0 || existingCounts.sell > 0;
 
     if (hasExisting && !force) {
       return NextResponse.json({
@@ -169,16 +169,11 @@ export async function GET(request: NextRequest) {
               order: q.order,
             })) || [],
           },
-          browse: {
-            count: config.customQuestions?.browse?.length || 0,
-            questions: config.customQuestions?.browse?.map((q: any) => ({
-              id: q.id,
-              question: q.question?.substring(0, 50),
-              inputType: q.inputType,
-              mappingKey: q.mappingKey,
-              order: q.order,
-            })) || [],
-          },
+          // browse commented out for MVP
+          // browse: {
+          //   count: config.customQuestions?.browse?.length || 0,
+          //   questions: config.customQuestions?.browse?.map((q: any) => ({...})) || [],
+          // },
         },
         defaultPreview: getDefaultQuestionsSummary(),
       });
@@ -196,12 +191,12 @@ export async function GET(request: NextRequest) {
         hasQuestions: {
           buy: (c.customQuestions?.buy?.length || 0) > 0,
           sell: (c.customQuestions?.sell?.length || 0) > 0,
-          browse: (c.customQuestions?.browse?.length || 0) > 0,
+          // browse commented out for MVP
         },
         counts: {
           buy: c.customQuestions?.buy?.length || 0,
           sell: c.customQuestions?.sell?.length || 0,
-          browse: c.customQuestions?.browse?.length || 0,
+          // browse commented out for MVP
         },
       })),
       defaultPreview: getDefaultQuestionsSummary(),

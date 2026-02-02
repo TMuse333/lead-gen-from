@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, MessageSquare, Settings, Home,
 Eye, ExternalLink, Menu, X, Users, Play, MessageSquareHeart, Code } from 'lucide-react';
@@ -8,6 +8,7 @@ import logo from '../../../../../public/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUserConfig } from '@/contexts/UserConfigContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 // Define user dashboard sections organized by category
 interface DashboardSection {
@@ -85,9 +86,9 @@ const SECTION_GROUPS: SectionGroup[] = [
     sections: [
       {
         id: 'feedback',
-        label: 'Feedback',
+        label: 'Feedback & Intel',
         icon: MessageSquareHeart,
-        description: 'Help us improve with your feedback'
+        description: 'Chat with us and share feedback'
       }
     ]
   }
@@ -97,12 +98,35 @@ const SECTION_GROUPS: SectionGroup[] = [
 const USER_SECTIONS: DashboardSection[] = SECTION_GROUPS.flatMap(group => group.sections);
 
 function DashboardSidebarContent() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { config } = useUserConfig();
-  
+
+  // Unread intel messages count
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread count on mount and periodically
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await fetch('/api/intel-messages/unread-count');
+        const data = await res.json();
+        if (data.success) {
+          setUnreadCount(data.unreadCount || 0);
+        }
+      } catch (err) {
+        // Silently fail - not critical
+      }
+    };
+
+    fetchUnreadCount();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Determine active section based on pathname
   const getActiveSection = (): string => {
     // Check if we're on conversation detail route
@@ -154,7 +178,7 @@ function DashboardSidebarContent() {
             </div>
           )}
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={toggleSidebar}
             className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -204,24 +228,41 @@ function DashboardSidebarContent() {
                       );
                     }
                     
+                    // Check if this section has a notification badge
+                    const hasBadge = section.id === 'feedback' && unreadCount > 0;
+
                     return (
                       <button
                         key={section.id}
                         onClick={() => {
                           router.push(`/dashboard?section=${section.id}`);
+                          // Clear badge when navigating to feedback
+                          if (section.id === 'feedback') {
+                            setUnreadCount(0);
+                          }
                         }}
                         className={`
-                          w-full flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all text-sm
-                          ${isActive 
-                            ? 'bg-indigo-600 text-white shadow-lg' 
+                          w-full flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all text-sm relative
+                          ${isActive
+                            ? 'bg-indigo-600 text-white shadow-lg'
                             : 'text-slate-400 hover:text-white hover:bg-slate-700'
                           }
                         `}
                         title={sidebarOpen ? undefined : section.label}
                       >
-                        <Icon size={18} className="flex-shrink-0" />
+                        <div className="relative flex-shrink-0">
+                          <Icon size={18} />
+                          {hasBadge && !sidebarOpen && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full" />
+                          )}
+                        </div>
                         {sidebarOpen && (
-                          <span className="truncate">{section.label}</span>
+                          <span className="truncate flex-1">{section.label}</span>
+                        )}
+                        {hasBadge && sidebarOpen && (
+                          <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-cyan-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
                         )}
                       </button>
                     );
@@ -253,7 +294,7 @@ function DashboardSidebarContent() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={toggleSidebar}
         />
       )}
     </>

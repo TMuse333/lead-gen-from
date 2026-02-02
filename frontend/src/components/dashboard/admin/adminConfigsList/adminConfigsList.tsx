@@ -18,6 +18,9 @@ import {
   ChevronDown,
   ChevronUp,
   Tag,
+  Palette,
+  Save,
+  UserCircle,
 } from "lucide-react";
 
 interface ClientConfig {
@@ -48,6 +51,23 @@ interface FullClientConfig extends ClientConfig {
     tags: string[];
     source: string;
   }>;
+  colorConfig?: {
+    name?: string;
+    primary: string;
+    secondary: string;
+    background: string;
+    surface: string;
+    text: string;
+    textSecondary: string;
+    border: string;
+    success: string;
+    error: string;
+    warning: string;
+    accent: string;
+    buttonHover: string;
+    gradientFrom: string;
+    gradientTo: string;
+  };
 }
 
 interface QdrantItem {
@@ -74,14 +94,20 @@ export default function AdminConfigsList() {
     offers: boolean;
     qdrant: boolean;
     flows: boolean;
+    colors: boolean;
   }>({
     offers: false,
     qdrant: false,
     flows: false,
+    colors: false,
   });
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [editedColors, setEditedColors] = useState<FullClientConfig['colorConfig'] | null>(null);
+  const [savingColors, setSavingColors] = useState(false);
+  const [colorSaveStatus, setColorSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [impersonating, setImpersonating] = useState<string | null>(null);
 
   useEffect(() => {
     fetchConfigs();
@@ -92,6 +118,12 @@ export default function AdminConfigsList() {
       fetchFullConfig(selectedConfig.id);
     }
   }, [selectedConfig]);
+
+  useEffect(() => {
+    if (fullConfigData?.colorConfig) {
+      setEditedColors(fullConfigData.colorConfig);
+    }
+  }, [fullConfigData]);
 
   const fetchConfigs = async () => {
     try {
@@ -182,11 +214,96 @@ export default function AdminConfigsList() {
     setDeleteConfirm({ id: config.id, name: config.businessName });
   };
 
-  const toggleSection = (section: 'offers' | 'qdrant' | 'flows') => {
+  const toggleSection = (section: 'offers' | 'qdrant' | 'flows' | 'colors') => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
     }));
+  };
+
+  const handleColorChange = (field: keyof NonNullable<FullClientConfig['colorConfig']>, value: string) => {
+    if (!editedColors) return;
+    const updated = { ...editedColors, [field]: value };
+    // Auto-update gradient colors if primary/secondary changes
+    if (field === 'primary') {
+      updated.gradientFrom = value;
+      updated.buttonHover = value;
+    }
+    if (field === 'secondary') {
+      updated.gradientTo = value;
+    }
+    setEditedColors(updated);
+    setColorSaveStatus('idle');
+  };
+
+  const handleSaveColors = async () => {
+    if (!selectedConfig || !editedColors) return;
+
+    setSavingColors(true);
+    setColorSaveStatus('idle');
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/client-configs', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          businessName: selectedConfig.businessName,
+          colorConfig: editedColors,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save color configuration');
+      }
+
+      setColorSaveStatus('success');
+      // Update fullConfigData with new colors
+      if (fullConfigData) {
+        setFullConfigData({ ...fullConfigData, colorConfig: editedColors });
+      }
+      // Refresh configs list
+      await fetchConfigs();
+
+      setTimeout(() => {
+        setColorSaveStatus('idle');
+      }, 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save color configuration');
+      setColorSaveStatus('error');
+    } finally {
+      setSavingColors(false);
+    }
+  };
+
+  const handleImpersonate = async (userId: string, businessName: string) => {
+    setImpersonating(userId);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, businessName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start impersonation');
+      }
+
+      const data = await response.json();
+      // Redirect to user dashboard
+      window.location.href = data.redirectTo;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start impersonation');
+      setImpersonating(null);
+    }
   };
 
   if (loading) {
@@ -199,41 +316,69 @@ export default function AdminConfigsList() {
 
   return (
     <div>
-      {/* Stats Summary */}
+      {/* Lead Generation Stats - Agent Intel Style */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white/5 backdrop-blur-md rounded-lg border border-cyan-500/20 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="h-5 w-5 text-cyan-400" />
-            <span className="text-sm text-cyan-200/70">Total Clients</span>
+        {/* Total Agents */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-white/10 p-6 shadow-lg">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="h-5 w-5 text-cyan-400" />
+              <span className="text-sm text-white/60 font-medium">Active Agents</span>
+            </div>
+            <p className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              {configs.filter((c) => c.isActive).length}
+            </p>
+            <p className="text-xs text-white/40 mt-1">of {configs.length} total</p>
           </div>
-          <p className="text-2xl font-bold text-cyan-200">{configs.length}</p>
         </div>
-        <div className="bg-white/5 backdrop-blur-md rounded-lg border border-cyan-500/20 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="h-5 w-5 text-green-400" />
-            <span className="text-sm text-cyan-200/70">Active</span>
+
+        {/* Knowledge Base */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-white/10 p-6 shadow-lg">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="h-5 w-5 text-purple-400" />
+              <span className="text-sm text-white/60 font-medium">Knowledge Items</span>
+            </div>
+            <p className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              {configs.reduce((sum, c) => sum + c.knowledgeBaseItemsCount, 0)}
+            </p>
+            <p className="text-xs text-white/40 mt-1">across all agents</p>
           </div>
-          <p className="text-2xl font-bold text-green-400">
-            {configs.filter((c) => c.isActive).length}
-          </p>
         </div>
-        <div className="bg-white/5 backdrop-blur-md rounded-lg border border-cyan-500/20 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <MessageSquare className="h-5 w-5 text-cyan-400" />
-            <span className="text-sm text-cyan-200/70">Total Flows</span>
+
+        {/* System Health */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-white/10 p-6 shadow-lg">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="h-5 w-5 text-green-400" />
+              <span className="text-sm text-white/60 font-medium">System Health</span>
+            </div>
+            <p className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+              {Math.round((configs.filter(c => c.isActive).length / configs.length) * 100)}%
+            </p>
+            <p className="text-xs text-white/40 mt-1">agents online</p>
           </div>
-          <p className="text-2xl font-bold text-cyan-200">
-            {configs.reduce((sum, c) => sum + c.conversationFlowsCount, 0)}
-          </p>
         </div>
-        <div className="bg-white/5 backdrop-blur-md rounded-lg border border-cyan-500/20 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="h-5 w-5 text-cyan-400" />
-            <span className="text-sm text-cyan-200/70">Knowledge Items</span>
+
+        {/* Avg KB per Agent */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-white/10 p-6 shadow-lg">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-2">
+              <Database className="h-5 w-5 text-blue-400" />
+              <span className="text-sm text-white/60 font-medium">Avg KB/Agent</span>
+            </div>
+            <p className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              {configs.length > 0
+                ? Math.round(configs.reduce((sum, c) => sum + c.knowledgeBaseItemsCount, 0) / configs.length)
+                : 0
+              }
+            </p>
+            <p className="text-xs text-white/40 mt-1">items per chatbot</p>
           </div>
-          <p className="text-2xl font-bold text-cyan-200">
-            {configs.reduce((sum, c) => sum + c.knowledgeBaseItemsCount, 0)}
-          </p>
         </div>
       </div>
 
@@ -244,13 +389,18 @@ export default function AdminConfigsList() {
         </div>
       )}
 
-      {/* Configurations List */}
-      <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-6 shadow-2xl">
+      {/* Agent Configurations - Lead Intel Style */}
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-md rounded-2xl border border-white/10 p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-cyan-200">Client Configurations</h2>
+          <div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              Agent Chatbots
+            </h2>
+            <p className="text-sm text-white/50 mt-1">Manage AI assistants and configurations</p>
+          </div>
           <button
             onClick={fetchConfigs}
-            className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 rounded-lg transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-white border border-cyan-500/30 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/10"
           >
             <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -259,7 +409,9 @@ export default function AdminConfigsList() {
 
         {configs.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-cyan-200/70">No client configurations found</p>
+            <Brain className="h-16 w-16 text-white/20 mx-auto mb-4" />
+            <p className="text-white/50 text-lg">No agent chatbots found</p>
+            <p className="text-white/30 text-sm mt-2">Get started by onboarding your first agent</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -269,68 +421,114 @@ export default function AdminConfigsList() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-cyan-500/50 transition-colors"
+                className="relative group bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-white/10 rounded-xl p-5 hover:border-cyan-500/50 transition-all shadow-lg hover:shadow-cyan-500/10"
               >
-                <div className="flex items-start justify-between">
+                {/* Status indicator glow */}
+                {config.isActive && (
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-full blur-2xl" />
+                )}
+
+                <div className="relative flex items-start justify-between">
                   <div className="flex-1 cursor-pointer" onClick={() => setSelectedConfig(config)}>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-cyan-200">
-                        {config.businessName}
-                      </h3>
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center border border-cyan-500/30">
+                        <Building2 className="h-5 w-5 text-cyan-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-white">
+                          {config.businessName}
+                        </h3>
+                        <p className="text-xs text-white/40 capitalize">{config.industry}</p>
+                      </div>
                       {config.isActive ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-400" />
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
+                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                          <span className="text-xs font-medium text-green-400">ACTIVE</span>
+                        </div>
                       ) : (
-                        <XCircle className="h-4 w-4 text-red-400" />
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/20 border border-red-500/30 rounded-full">
+                          <div className="w-1.5 h-1.5 bg-red-400 rounded-full" />
+                          <span className="text-xs font-medium text-red-400">OFFLINE</span>
+                        </div>
                       )}
                     </div>
-                    <p className="text-sm text-cyan-200/60 mb-3 capitalize">
-                      {config.industry}
-                    </p>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4 text-cyan-400" />
-                        <span className="text-sm text-cyan-200/80">
-                          {config.conversationFlowsCount} Flow{config.conversationFlowsCount !== 1 ? 's' : ''}
-                        </span>
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Brain className="h-3.5 w-3.5 text-purple-400" />
+                          <span className="text-xs text-white/50">Knowledge</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">
+                          {config.knowledgeBaseItemsCount}
+                        </p>
+                        <p className="text-xs text-white/40">items</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Gift className="h-4 w-4 text-cyan-400" />
-                        <span className="text-sm text-cyan-200/80">
-                          {config.selectedOffers.length} Offer{config.selectedOffers.length !== 1 ? 's' : ''}
-                        </span>
+
+                      <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Gift className="h-3.5 w-3.5 text-blue-400" />
+                          <span className="text-xs text-white/50">Offers</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">
+                          {config.selectedOffers.length}
+                        </p>
+                        <p className="text-xs text-white/40">configured</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Brain className="h-4 w-4 text-cyan-400" />
-                        <span className="text-sm text-cyan-200/80">
-                          {config.knowledgeBaseItemsCount} KB Item{config.knowledgeBaseItemsCount !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4 text-cyan-400" />
-                        <span className="text-xs text-cyan-200/60 font-mono truncate">
-                          {config.qdrantCollectionName}
-                        </span>
+
+                      <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+                        <div className="flex items-center gap-2 mb-1">
+                          <MessageSquare className="h-3.5 w-3.5 text-cyan-400" />
+                          <span className="text-xs text-white/50">Flows</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">
+                          {config.conversationFlowsCount}
+                        </p>
+                        <p className="text-xs text-white/40">active</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-cyan-200/50">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Completed: {formatDate(config.onboardingCompletedAt)}</span>
-                      </div>
+                    {/* Last Updated */}
+                    <div className="flex items-center gap-2 text-xs text-white/30">
+                      <Calendar className="h-3 w-3" />
+                      <span>Last updated {formatDate(config.updatedAt)}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleImpersonate(config.userId, config.businessName);
+                      }}
+                      disabled={impersonating === config.userId}
+                      className="px-3 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 text-green-400 border border-green-500/30 rounded-lg transition-all flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/5"
+                      title="Login as User"
+                    >
+                      {impersonating === config.userId ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Loading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserCircle className="h-4 w-4" />
+                          <span>Login</span>
+                        </>
+                      )}
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedConfig(config);
                       }}
-                      className="p-2 text-cyan-400/50 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
+                      className="px-3 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-400 border border-cyan-500/30 rounded-lg transition-all flex items-center gap-2 text-sm font-medium shadow-lg shadow-cyan-500/5"
                       title="View Details"
                     >
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-4 w-4" />
+                      <span>Details</span>
                     </button>
                     <button
                       onClick={(e) => {
@@ -338,13 +536,19 @@ export default function AdminConfigsList() {
                         openDeleteConfirm(config);
                       }}
                       disabled={deletingId === config.id}
-                      className="p-2 text-red-400/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 bg-gradient-to-r from-red-500/20 to-pink-500/20 hover:from-red-500/30 hover:to-pink-500/30 text-red-400 border border-red-500/30 rounded-lg transition-all flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-500/5"
                       title="Delete Configuration"
                     >
                       {deletingId === config.id ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Deleting...</span>
+                        </>
                       ) : (
-                        <Trash2 className="h-5 w-5" />
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          <span>Delete</span>
+                        </>
                       )}
                     </button>
                   </div>
@@ -364,7 +568,9 @@ export default function AdminConfigsList() {
               setSelectedConfig(null);
               setFullConfigData(null);
               setQdrantItems([]);
-              setExpandedSections({ offers: false, qdrant: false, flows: false });
+              setExpandedSections({ offers: false, qdrant: false, flows: false, colors: false });
+              setEditedColors(null);
+              setColorSaveStatus('idle');
             }}
           >
             <motion.div
@@ -400,7 +606,9 @@ export default function AdminConfigsList() {
                       setSelectedConfig(null);
                       setFullConfigData(null);
                       setQdrantItems([]);
-                      setExpandedSections({ offers: false, qdrant: false, flows: false });
+                      setExpandedSections({ offers: false, qdrant: false, flows: false, colors: false });
+                      setEditedColors(null);
+                      setColorSaveStatus('idle');
                     }}
                     className="text-cyan-200/70 hover:text-cyan-200 p-2 hover:bg-cyan-500/10 rounded-lg transition-colors"
                   >
@@ -453,6 +661,214 @@ export default function AdminConfigsList() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Color Configuration - Expandable & Editable */}
+                  {editedColors && (
+                    <div className="bg-slate-800/50 rounded-lg border border-slate-700">
+                      <button
+                        onClick={() => toggleSection('colors')}
+                        className="w-full flex items-center justify-between p-4 hover:bg-slate-700/50 transition-colors rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Palette className="h-5 w-5 text-cyan-400" />
+                          <h4 className="text-lg font-semibold text-cyan-200">
+                            Color Configuration
+                          </h4>
+                          {editedColors.name && (
+                            <span className="text-xs text-cyan-200/50">
+                              {editedColors.name}
+                            </span>
+                          )}
+                        </div>
+                        {expandedSections.colors ? (
+                          <ChevronUp className="h-5 w-5 text-cyan-400" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-cyan-400" />
+                        )}
+                      </button>
+                      <AnimatePresence>
+                        {expandedSections.colors && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-4 pt-0 space-y-4">
+                              {/* Success/Error Messages */}
+                              {colorSaveStatus === 'success' && (
+                                <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3 flex items-center gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-green-400" />
+                                  <p className="text-green-300 text-sm">Colors saved successfully!</p>
+                                </div>
+                              )}
+                              {colorSaveStatus === 'error' && error && (
+                                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 flex items-center gap-2">
+                                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                                  <p className="text-red-300 text-sm">{error}</p>
+                                </div>
+                              )}
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Primary Colors */}
+                                <div className="space-y-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                                      Primary Color
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={editedColors.primary}
+                                        onChange={(e) => handleColorChange('primary', e.target.value)}
+                                        className="w-12 h-12 rounded border-2 border-slate-600 cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editedColors.primary}
+                                        onChange={(e) => handleColorChange('primary', e.target.value)}
+                                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                                      Secondary Color
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={editedColors.secondary}
+                                        onChange={(e) => handleColorChange('secondary', e.target.value)}
+                                        className="w-12 h-12 rounded border-2 border-slate-600 cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editedColors.secondary}
+                                        onChange={(e) => handleColorChange('secondary', e.target.value)}
+                                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                                      Accent Color
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={editedColors.accent}
+                                        onChange={(e) => handleColorChange('accent', e.target.value)}
+                                        className="w-12 h-12 rounded border-2 border-slate-600 cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editedColors.accent}
+                                        onChange={(e) => handleColorChange('accent', e.target.value)}
+                                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Background Colors */}
+                                <div className="space-y-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                                      Background Color
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={editedColors.background}
+                                        onChange={(e) => handleColorChange('background', e.target.value)}
+                                        className="w-12 h-12 rounded border-2 border-slate-600 cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editedColors.background}
+                                        onChange={(e) => handleColorChange('background', e.target.value)}
+                                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                                      Surface Color
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={editedColors.surface}
+                                        onChange={(e) => handleColorChange('surface', e.target.value)}
+                                        className="w-12 h-12 rounded border-2 border-slate-600 cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editedColors.surface}
+                                        onChange={(e) => handleColorChange('surface', e.target.value)}
+                                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                                      Text Color
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="color"
+                                        value={editedColors.text}
+                                        onChange={(e) => handleColorChange('text', e.target.value)}
+                                        className="w-12 h-12 rounded border-2 border-slate-600 cursor-pointer"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editedColors.text}
+                                        onChange={(e) => handleColorChange('text', e.target.value)}
+                                        className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Save Button */}
+                              <div className="flex justify-end pt-2">
+                                <button
+                                  onClick={handleSaveColors}
+                                  disabled={savingColors}
+                                  className={`
+                                    flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
+                                    ${savingColors
+                                      ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700'
+                                    }
+                                  `}
+                                >
+                                  {savingColors ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <span>Saving...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="h-4 w-4" />
+                                      <span>Save Colors</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
 
                   {/* Offers - Expandable */}
                   <div className="bg-slate-800/50 rounded-lg border border-slate-700">

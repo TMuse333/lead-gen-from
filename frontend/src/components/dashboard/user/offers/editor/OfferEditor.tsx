@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Image,
   Award,
+  Sparkles,
 } from 'lucide-react';
 import type { OfferType } from '@/stores/onboardingStore/onboarding.store';
 import type { EditorTab } from '@/types/offers/offerCustomization.types';
@@ -39,12 +40,14 @@ import { InstructionsTab } from './tabs/InstructionsTab';
 import { EndingCTATab } from './tabs/EndingCTATab';
 import { HeroSectionTab } from './tabs/HeroSectionTab';
 import { AgentStatsTab } from './tabs/AgentStatsTab';
+import { QuickSetupWizard } from './tabs/QuickSetupWizard';
 import type { EndingCTAConfig } from '@/lib/mongodb/models/clientConfig';
 import type { AgentProfile } from '@/lib/userConfig/getUserConfig';
 
-// Tab structure - Instructions, Setup Wizard, Hero/CTA/Stats (personal touch), then Summary, Live Preview, Settings, Analytics
+// Tab structure - Instructions, Setup Wizard, Hero/CTA/Stats, Summary, Live Preview, Settings, Analytics
 const TABS = [
   { id: 'instructions', label: 'Instructions', icon: BookOpen, highlight: true },
+  // { id: 'easy-setup', label: 'Easy Setup', icon: Sparkles, highlight: true }, // Commented out for now
   { id: 'setup-wizard', label: 'Setup Wizard', icon: Wand2, highlight: true },
   { id: 'hero-section', label: 'Hero Section', icon: Image, highlight: true },
   { id: 'ending-cta', label: 'Ending CTA', icon: MessageSquare, highlight: true },
@@ -131,7 +134,6 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
   // Handle opening wizard from InstructionsTab
   const handleOpenWizard = () => {
     setActiveTab('setup-wizard' as EditorTab);
-    setShowWizard(true);
     setShowTabHint(false);
     setShowTabGlow(false);
   };
@@ -446,6 +448,19 @@ export function OfferEditor({ offerType, onBack }: OfferEditorProps) {
         {activeTab === 'instructions' && (
           <InstructionsTab onOpenWizard={handleOpenWizard} />
         )}
+        {/* Easy Setup commented out for now
+        {activeTab === 'easy-setup' && (
+          <QuickSetupWizard
+            isOpen={true}
+            onClose={() => setActiveTab('summary' as EditorTab)}
+            onComplete={() => {
+              setSuccess('Timeline setup saved successfully!');
+              setActiveTab('summary' as EditorTab);
+            }}
+            embedded={true}
+          />
+        )}
+        */}
         {activeTab === 'setup-wizard' && (
           <UnifiedOfferBuilder
             externalShowWizard={true}

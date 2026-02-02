@@ -37,7 +37,7 @@ import { QUESTION_CONSTRAINTS } from '@/types/timelineBuilder.types';
 const FLOW_OPTIONS: { id: TimelineFlow; label: string }[] = [
   { id: 'buy', label: 'Buyer Flow' },
   { id: 'sell', label: 'Seller Flow' },
-  { id: 'browse', label: 'Browser Flow' },
+  // { id: 'browse', label: 'Browser Flow' }, // Commented out for MVP
 ];
 
 const INPUT_TYPE_OPTIONS: { id: QuestionInputType; label: string; icon: typeof Type }[] = [

@@ -240,12 +240,16 @@ const STORY_EMPHASIS_PHASES = [
   'review-offers',    // "We received 5 offers and here's how we chose..."
 ];
 
-// ==================== PERSONALIZED AGENT ADVICE ====================
+// ==================== PERSONALIZED AGENT ADVICE (DEPRECATED) ====================
 
 /**
  * Generate personalized agent advice for each phase based on user situation
+ *
+ * @deprecated This function is no longer used. Agents should add their own advice
+ * through the timeline wizard (inlineExperience) or knowledge base stories.
+ * Generic fallback advice was removed to ensure only authentic agent content is shown.
  */
-function getPersonalizedAdvice(
+function _getPersonalizedAdvice_DEPRECATED(
   phaseId: string,
   input: UserTimelineInput
 ): string[] {
@@ -490,20 +494,13 @@ export function generateFastTimeline(
     // Merge and limit to 5-6 items
     const allItems = [...conditionalItems, ...baseActionItems].slice(0, 6);
 
-    // Use custom agent advice from wizard if available, otherwise generate defaults
-    // Priority: 1) Custom advice from inlineExperience, 2) Fallback to generated advice
+    // Use custom agent advice from wizard if available
+    // No longer falling back to generic advice - only show advice the agent explicitly added
     const hasCustomAdvice = extendedPhase.customAgentAdvice && extendedPhase.customAgentAdvice.length > 0;
-    const agentAdvice = hasCustomAdvice
-      ? extendedPhase.customAgentAdvice
-      : getPersonalizedAdvice(phase.id, input);
+    const agentAdvice = hasCustomAdvice ? extendedPhase.customAgentAdvice : undefined;
 
     // Debug: Log advice source for each phase
-    console.log(`\n🎯 [Phase: ${phase.name}] Advice source: ${hasCustomAdvice ? '✅ CUSTOM (from wizard)' : '⚙️ FALLBACK (generated)'}`);
-    if (hasCustomAdvice) {
-      console.log(`   Custom advice items: ${extendedPhase.customAgentAdvice!.length}`);
-    } else {
-      console.log(`   Generated ${agentAdvice?.length ?? 0} advice items based on user input`);
-    }
+    console.log(`\n🎯 [Phase: ${phase.name}] Advice: ${hasCustomAdvice ? `✅ CUSTOM (${extendedPhase.customAgentAdvice!.length} items)` : '⏭️ NONE (no generic fallback)'}`)
 
     return {
       id: phase.id,

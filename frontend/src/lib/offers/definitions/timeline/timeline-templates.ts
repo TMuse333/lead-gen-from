@@ -295,29 +295,31 @@ const BROWSING_PHASES: PhaseTemplate[] = [
   },
 ];
 
-export const BROWSING_TEMPLATE: FlowTemplate = {
-  flow: 'browse',
-  displayName: 'Real Estate Exploration Timeline',
-  description: 'Educational guide for those exploring real estate options',
-  phases: BROWSING_PHASES,
-  defaultTotalTime: '2-3 months',
-};
+// Commented out for MVP - browse adds complexity without substantial benefit
+// export const BROWSING_TEMPLATE: FlowTemplate = {
+//   flow: 'browse',
+//   displayName: 'Real Estate Exploration Timeline',
+//   description: 'Educational guide for those exploring real estate options',
+//   phases: BROWSING_PHASES,
+//   defaultTotalTime: '2-3 months',
+// };
 
 // ==================== TEMPLATE REGISTRY ====================
 
 /**
  * Get template by flow type
+ * Note: browse is commented out for MVP, but we handle it gracefully for legacy data
  */
-export function getFlowTemplate(flow: TimelineFlow): FlowTemplate {
+export function getFlowTemplate(flow: TimelineFlow | string): FlowTemplate {
   switch (flow) {
     case 'buy':
       return BUYING_TEMPLATE;
     case 'sell':
       return SELLING_TEMPLATE;
-    case 'browse':
-      return BROWSING_TEMPLATE;
+    // case 'browse':
+    //   return BROWSING_TEMPLATE;
     default:
-      return BUYING_TEMPLATE; // Fallback
+      return BUYING_TEMPLATE; // Fallback (handles legacy 'browse' values gracefully)
   }
 }
 
@@ -325,7 +327,7 @@ export function getFlowTemplate(flow: TimelineFlow): FlowTemplate {
  * Get all templates
  */
 export function getAllTemplates(): FlowTemplate[] {
-  return [BUYING_TEMPLATE, SELLING_TEMPLATE, BROWSING_TEMPLATE];
+  return [BUYING_TEMPLATE, SELLING_TEMPLATE]; // BROWSING_TEMPLATE commented out for MVP
 }
 
 /**

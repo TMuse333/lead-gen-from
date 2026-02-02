@@ -29,7 +29,7 @@ import type { CustomPhaseConfig, TimelineFlow } from '@/types/timelineBuilder.ty
 const FLOW_OPTIONS: { id: TimelineFlow; label: string; icon: typeof Users }[] = [
   { id: 'buy', label: 'Buyers', icon: Home },
   { id: 'sell', label: 'Sellers', icon: Users },
-  { id: 'browse', label: 'Browsers', icon: Search },
+  // { id: 'browse', label: 'Browsers', icon: Search }, // Commented out for MVP
 ];
 
 const PRIORITY_STYLES = {

@@ -19,8 +19,9 @@ export type ActionPriority = 'high' | 'medium' | 'low';
 
 /**
  * User's real estate flow type
+ * Note: 'browse' is commented out for MVP simplicity - can be re-enabled later
  */
-export type TimelineFlow = 'buy' | 'sell' | 'browse';
+export type TimelineFlow = 'buy' | 'sell'; // | 'browse';
 
 /**
  * Individual action item within a phase

@@ -131,6 +131,7 @@ export interface OfferTestResponse {
  */
 export type EditorTab =
   | 'instructions'
+  | 'easy-setup'
   | 'setup-wizard'
   | 'summary'
   | 'live-preview'

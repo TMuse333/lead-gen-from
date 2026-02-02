@@ -165,7 +165,9 @@ function buildTimelinePrompt(
   }
 ): string {
   // Get the base template for this flow
-  const flow = (userInput.flow || context.flow || 'buy') as 'buy' | 'sell' | 'browse';
+  // Note: 'browse' commented out for MVP - defaults to 'buy' if browse is encountered
+  const rawFlow = userInput.flow || context.flow || 'buy';
+  const flow = (rawFlow === 'browse' ? 'buy' : rawFlow) as 'buy' | 'sell';
   const template = getFlowTemplate(flow);
   let phases = getTemplatePhases(flow);
 

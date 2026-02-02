@@ -9,7 +9,7 @@ import LeadsDashboard from '../leads/leadsDashboard';
 import SettingsDashboard from '../settings/SettingsDashboard';
 import KnowledgeBaseDashboard from '../knowledgeBase/KnowledgeBaseDashboard';
 import TimelineDashboard from '../timeline/TimelineDashboard';
-import FeedbackDashboard from '../feedback/FeedbackDashboard';
+import IntelChatDashboard from '../feedback/IntelChatDashboard';
 import IframeTestDashboard from '../iframeTest/IframeTestDashboard';
 
 // Define user dashboard sections (matching DashboardSidebar)
@@ -63,12 +63,12 @@ const USER_SECTIONS: DashboardSection[] = [
     component: IframeTestDashboard,
     description: 'Preview your bot in iframe and get embed code'
   },
-  // Feedback - MVP feedback collection
+  // Feedback & Intel - Chat interface with developer team
   {
     id: 'feedback',
-    label: 'Feedback',
-    component: FeedbackDashboard,
-    description: 'Help us improve with your feedback'
+    label: 'Feedback & Intel',
+    component: IntelChatDashboard,
+    description: 'Chat with us and share feedback'
   }
 ];
 

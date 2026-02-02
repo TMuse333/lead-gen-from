@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/authConfig';
+import { getEffectiveUserId } from '@/lib/auth/impersonation';
 import { getUserCollectionName } from '@/lib/userConfig/getUserCollection';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 import { storeUserStory } from '@/lib/qdrant/collections/vector/advice/upsertUser';
@@ -127,8 +128,11 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get effective userId (impersonated user if admin is impersonating)
+    const userId = await getEffectiveUserId() || session.user.id;
+
     // Get user's collection name
-    const collectionName = await getUserCollectionName(session.user.id);
+    const collectionName = await getUserCollectionName(userId);
     if (!collectionName) {
       return NextResponse.json(
         { error: 'No knowledge base collection found. Complete onboarding first.' },
@@ -138,7 +142,7 @@ export async function POST() {
 
     // Get MongoDB collection for updating phases
     const configCollection = await getClientConfigsCollection();
-    const userConfig = await configCollection.findOne({ userId: session.user.id });
+    const userConfig = await configCollection.findOne({ userId });
     if (!userConfig) {
       return NextResponse.json({ error: 'User config not found' }, { status: 404 });
     }
@@ -225,7 +229,7 @@ export async function POST() {
 
       // Save updated phases back to MongoDB
       await configCollection.updateOne(
-        { userId: session.user.id },
+        { userId },
         {
           $set: {
             [`customPhases.${flow}`]: updatedPhases,
