@@ -3,11 +3,10 @@
  * Email notification utility for Agent Intel messaging system
  * Sends notifications when messages are exchanged between admin and agents
  *
- * Uses Resend (preferred) or falls back to SMTP/nodemailer
+ * Uses Resend with onboarding@focusflowsoftware.com
  */
 
 import { Resend } from 'resend';
-import nodemailer from 'nodemailer';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 
 // Dev test email - in development, all emails go here
@@ -16,21 +15,18 @@ const DEV_TEST_EMAIL = 'thomaslmusial@gmail.com';
 // Check if we're in development mode
 const isDev = process.env.NODE_ENV === 'development';
 
-// Initialize Resend if API key is available
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// Resend config - matches orchestrator pattern
+const FROM_EMAIL = process.env.FROM_EMAIL || 'FocusFlow LeadGen <onboarding@focusflowsoftware.com>';
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || 'thomaslmusial@gmail.com';
 
-// Create SMTP transporter as fallback
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
-};
+// Lazy-init Resend to avoid build-time errors when API key isn't available
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 // Get admin emails from environment
 const getAdminEmails = (): string[] => {
@@ -317,7 +313,7 @@ function buildDeveloperEmailHtml(params: {
 }
 
 /**
- * Send email using Resend or fallback to SMTP
+ * Send email using Resend
  */
 async function sendEmail(params: {
   to: string;
@@ -327,55 +323,36 @@ async function sendEmail(params: {
 }): Promise<{ success: boolean; error?: string }> {
   const { to, subject, html, text } = params;
 
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[sendIntelNotification] RESEND_API_KEY not configured');
+    return { success: false, error: 'RESEND_API_KEY not configured' };
+  }
+
   // In dev mode, override recipient to test email
   const actualRecipient = isDev ? DEV_TEST_EMAIL : to;
   const actualSubject = isDev ? `[DEV TEST - would go to: ${to}] ${subject}` : subject;
 
-  // Try Resend first
-  if (resend) {
-    try {
-      const { error } = await resend.emails.send({
-        from: 'Agent Intel <notifications@focusflowsoftware.com>',
-        to: actualRecipient,
-        subject: actualSubject,
-        html,
-        text,
-      });
+  try {
+    const { error } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
+      to: actualRecipient,
+      subject: actualSubject,
+      html,
+      text,
+    });
 
-      if (error) {
-        console.error('[sendIntelNotification] Resend error:', error);
-        // Fall through to SMTP
-      } else {
-        console.log(`[sendIntelNotification] Email sent via Resend to: ${actualRecipient}`);
-        return { success: true };
-      }
-    } catch (err) {
-      console.error('[sendIntelNotification] Resend exception:', err);
-      // Fall through to SMTP
+    if (error) {
+      console.error('[sendIntelNotification] Resend error:', error);
+      return { success: false, error: String(error) };
     }
-  }
 
-  // Fallback to SMTP
-  if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
-    try {
-      const transporter = createTransporter();
-      await transporter.sendMail({
-        from: `"Agent Intel" <${process.env.SMTP_USER}>`,
-        to: actualRecipient,
-        subject: actualSubject,
-        text,
-        html,
-      });
-      console.log(`[sendIntelNotification] Email sent via SMTP to: ${actualRecipient}`);
-      return { success: true };
-    } catch (err) {
-      console.error('[sendIntelNotification] SMTP error:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'SMTP failed' };
-    }
+    console.log(`[sendIntelNotification] Email sent via Resend to: ${actualRecipient}`);
+    return { success: true };
+  } catch (err) {
+    console.error('[sendIntelNotification] Resend exception:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Email send failed' };
   }
-
-  console.warn('[sendIntelNotification] No email provider configured');
-  return { success: false, error: 'No email provider configured' };
 }
 
 /**

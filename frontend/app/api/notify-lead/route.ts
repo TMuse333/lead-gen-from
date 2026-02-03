@@ -2,11 +2,11 @@
 /**
  * Lead Notification API
  * Sends email to agent/owner when a new lead submits their contact info
- * Uses nodemailer with Gmail SMTP
+ * Uses Resend with onboarding@focusflowsoftware.com
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { getClientConfigsCollection } from '@/lib/mongodb/db';
 
 interface LeadNotificationRequest {
@@ -22,18 +22,17 @@ interface LeadNotificationRequest {
   environment?: 'test' | 'production';
 }
 
-// Create reusable transporter with SMTP (uses same config as auth system)
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
-};
+// Resend config - matches orchestrator pattern
+const FROM_EMAIL = process.env.FROM_EMAIL || 'FocusFlow LeadGen <onboarding@focusflowsoftware.com>';
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || 'thomaslmusial@gmail.com';
+
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 // Format user answers for email display
 function formatUserAnswers(userInput: Record<string, string>): string {
@@ -83,8 +82,8 @@ function getFlowDisplayName(flow?: string): string {
 export async function POST(request: NextRequest) {
   try {
     // Validate environment variables
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
-      console.error('Email configuration missing: SMTP_USER or SMTP_PASSWORD not set');
+    if (!process.env.RESEND_API_KEY) {
+      console.error('Email configuration missing: RESEND_API_KEY not set');
       return NextResponse.json(
         { success: false, error: 'Email service not configured' },
         { status: 500 }
@@ -96,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     // In test mode, we'll send to admin email instead of the agent
     const isTestMode = environment === 'test';
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+    const adminEmail = process.env.ADMIN_EMAIL || 'thomaslmusial@gmail.com';
 
     // Validate required fields
     if (!clientId || !lead?.name || !lead?.email) {
@@ -243,16 +242,20 @@ This lead was captured via your ${businessName} chatbot
 ${conversationId ? `Conversation ID: ${conversationId}` : ''}
     `.trim();
 
-    // Send email
-    const transporter = createTransporter();
-
-    await transporter.sendMail({
-      from: `"${businessName} Lead Bot" <${process.env.SMTP_USER}>`,
+    // Send email via Resend
+    const { error: sendError } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       to: notificationEmail,
       subject,
       text: plainTextContent,
       html: htmlContent,
     });
+
+    if (sendError) {
+      console.error('Resend error:', sendError);
+      throw new Error(String(sendError));
+    }
 
     console.log(`Lead notification sent to ${notificationEmail} for lead: ${lead.name}${isTestMode ? ' [TEST MODE]' : ''}`);
 

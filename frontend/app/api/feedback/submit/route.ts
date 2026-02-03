@@ -1,20 +1,17 @@
 // app/api/feedback/submit/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: Number(process.env.SMTP_PORT) === 465,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+const FROM_EMAIL = process.env.FROM_EMAIL || 'FocusFlow LeadGen <onboarding@focusflowsoftware.com>';
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || 'thomaslmusial@gmail.com';
 
-transporter.verify(() => {
-  // SMTP connection verified
-});
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 interface FeedbackData {
   name: string;
@@ -95,10 +92,10 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"Neural Engine Feedback" <${process.env.SMTP_USER}>`,
-      to: process.env.SMTP_USER,
-      replyTo: process.env.SMTP_USER,
+    await getResend().emails.send({
+      from: FROM_EMAIL,
+      to: REPLY_TO_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       subject: `Neural Engine Request – ${body.name || 'New Agent'} is Ready!`,
       html,
     });
