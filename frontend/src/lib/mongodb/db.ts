@@ -8,7 +8,7 @@ import { TokenUsageDocument } from './models/tokenUsage';
 import { RateLimitConfigDocument } from './models/rateLimitConfig';
 import { LeadQuestionDocument } from './models/leadQuestion';
 
-const dbName = process.env.MONGODB_DB_NAME || 'agent_lead_gen';
+const dbName = process.env.MONGODB_DB_NAME || process.env.DB_NAME || 'agent_lead_gen';
 
 export async function getDatabase(): Promise<Db> {
   const client = await clientPromise;
