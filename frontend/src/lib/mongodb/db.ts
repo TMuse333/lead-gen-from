@@ -7,6 +7,7 @@ import { RuleRecommendationDocument } from './models/ruleRecommendation';
 import { TokenUsageDocument } from './models/tokenUsage';
 import { RateLimitConfigDocument } from './models/rateLimitConfig';
 import { LeadQuestionDocument } from './models/leadQuestion';
+import { IntelItemDocument } from './models/intelItem';
 
 const dbName = process.env.MONGODB_DB_NAME || process.env.DB_NAME || 'agent_lead_gen';
 
@@ -48,4 +49,9 @@ export async function getRateLimitConfigsCollection() {
 export async function getLeadQuestionsCollection() {
   const db = await getDatabase();
   return db.collection<LeadQuestionDocument>('lead_questions');
+}
+
+export async function getIntelItemsCollection() {
+  const db = await getDatabase();
+  return db.collection<IntelItemDocument>('intel_items');
 }

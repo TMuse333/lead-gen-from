@@ -1,13 +1,20 @@
-// app/api/chat/smart/route.ts - UNIFIED OFFER SYSTEM
+// app/api/chat/smart/route.ts - UNIFIED OFFER SYSTEM + STATE MACHINE
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { normalizeToRealEstateSchemaPrompt } from '@/lib/openai/normalizers/normalizeToRealEstateSchema';
 import { classifyIntentPrompt } from '@/lib/openai/classifiers/classifyIntent';
+import {
+  classifyAndExtractPrompt,
+  parseClassifyAndExtractResponse,
+  type ClassifyAndExtractParams,
+} from '@/lib/openai/classifiers/classifyAndExtract';
 import { auth } from '@/lib/auth/authConfig';
 import { createBaseTrackingObject, updateTrackingWithResponse } from '@/lib/tokenUsage/createTrackingObject';
 import { trackUsageAsync } from '@/lib/tokenUsage/trackUsage';
 import type { ChatIntentClassificationUsage, ChatReplyGenerationUsage } from '@/types/tokenUsage.types';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
+import { getIntelItemsCollection } from '@/lib/mongodb/db';
+import type { IntelItemDocument } from '@/lib/mongodb/models/intelItem';
 import {
   getOffer,
   getQuestion,
@@ -16,6 +23,7 @@ import {
   type OfferType,
   type Intent,
 } from '@/lib/offers/unified';
+import type { ConversationState, ClassifyAndExtractResult } from '@/types/stateMachine.types';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -41,6 +49,22 @@ interface ChatRequest {
   flowConfig?: any;
   questionConfig?: any;
   nextQuestionConfig?: any; // MongoDB next question for LLM context
+  // Intel tracking
+  clientIdentifier?: string;
+  conversationId?: string;
+  // State machine (Phase 2)
+  currentState?: {
+    id: string;
+    goal: string;
+    prompt: string;
+    collects: ConversationState['collects'];
+  };
+  allCollectableFields?: Array<{
+    mappingKey: string;
+    label: string;
+    extractionHint: string;
+  }>;
+  objectionCounter?: string; // Pre-looked-up objection response from engine
 }
 
 // ————————————————————————
@@ -220,10 +244,16 @@ export async function POST(req: NextRequest) {
       messages,
       questionConfig,
       nextQuestionConfig, // MongoDB next question for LLM context
+      clientIdentifier,
+      conversationId: bodyConversationId,
       // Legacy
       currentFlow,
       currentNodeId,
       flowConfig,
+      // State machine
+      currentState: smCurrentState,
+      allCollectableFields,
+      objectionCounter,
     } = body;
 
     console.log('[API] Received request:', {
@@ -231,7 +261,217 @@ export async function POST(req: NextRequest) {
       hasQuestionConfig: !!questionConfig,
       hasNextQuestionConfig: !!nextQuestionConfig,
       nextQuestionId: nextQuestionConfig?.id,
+      hasStateMachine: !!smCurrentState,
     });
+
+    // ——————————————————
+    // STATE MACHINE BRANCH: If currentState is present, use state-machine-aware logic
+    // ——————————————————
+    if (smCurrentState && allCollectableFields) {
+      console.log('[API] State machine branch — state:', smCurrentState.id);
+      const offerLabelSM = currentIntent
+        ? `${currentIntent.charAt(0).toUpperCase() + currentIntent.slice(1)} Journey`
+        : 'Real Estate Assistant';
+
+      const isButtonClickSM = !!buttonId && !!buttonValue;
+      const isFreeTextSM = !!freeText && !isButtonClickSM;
+
+      // For button clicks, fast path: return extracted value + generate reply
+      if (isButtonClickSM) {
+        // Find which mappingKey this button maps to
+        const mappingKey = smCurrentState.collects[0]?.mappingKey || currentQuestionId || smCurrentState.id;
+
+        const replyPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
+User clicked a button: "${buttonValue}"
+State goal: ${smCurrentState.goal}
+Reply in 1-2 warm, natural sentences acknowledging their choice. Be kind and engaging.`;
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: replyPrompt }],
+          temperature: 0.75,
+          max_tokens: 120,
+        });
+
+        const reply = completion.choices[0].message.content?.trim() || 'Got it!';
+
+        return NextResponse.json({
+          reply,
+          classifyResult: {
+            intent: { primary: 'direct_answer', confidence: 1.0 },
+            extracted: [{ mappingKey, value: buttonValue!, confidence: 1.0 }],
+          } as ClassifyAndExtractResult,
+        });
+      }
+
+      // For free text, use unified classify-and-extract
+      if (isFreeTextSM) {
+        const previousContext = messages
+          ?.slice(-3)
+          .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+          .join('\n');
+
+        const classifyParams: ClassifyAndExtractParams = {
+          userMessage: freeText!,
+          currentState: smCurrentState,
+          allCollectableFields,
+          alreadyCollected: userInput || {},
+          flowName: offerLabelSM,
+          previousContext,
+        };
+
+        const prompt = classifyAndExtractPrompt(classifyParams);
+        const startTime = Date.now();
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          max_tokens: 800,
+        });
+        const endTime = Date.now();
+
+        const content = completion.choices[0].message.content?.trim();
+        if (!content) {
+          return NextResponse.json({
+            reply: 'I didn\'t quite catch that. Could you try again?',
+            classifyResult: {
+              intent: { primary: 'clarification_question', confidence: 0.5 },
+              extracted: [],
+            },
+          });
+        }
+
+        const classifyResult = parseClassifyAndExtractResponse(JSON.parse(content));
+
+        // Track usage
+        const baseTracking = createBaseTrackingObject({
+          userId,
+          sessionId: bodyConversationId,
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          apiType: 'chat',
+          startTime,
+        });
+        const usageSM: ChatIntentClassificationUsage = {
+          ...updateTrackingWithResponse(baseTracking, {
+            inputTokens: completion.usage?.prompt_tokens || 0,
+            outputTokens: completion.usage?.completion_tokens || 0,
+            finishReason: completion.choices[0].finish_reason || undefined,
+            contentLength: content.length,
+            endTime,
+          }),
+          feature: 'chat.intentClassification',
+          apiType: 'chat',
+          model: 'gpt-4o-mini',
+          featureData: {
+            conversationId: bodyConversationId,
+            currentQuestion: smCurrentState.prompt,
+            userMessage: freeText!,
+            flow: offerLabelSM,
+            intentResult: {
+              primary: classifyResult.intent.primary,
+              confidence: classifyResult.intent.confidence,
+            },
+          },
+        };
+        trackUsageAsync(usageSM);
+
+        // Generate contextual reply based on intent
+        let replySystemPrompt: string;
+        const intentPrimary = classifyResult.intent.primary;
+
+        if (intentPrimary === 'direct_answer' || intentPrimary === 'multi_answer') {
+          const fieldsExtracted = classifyResult.extracted.map((e) => e.mappingKey).join(', ');
+          replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
+User answered: "${freeText}"
+State goal: ${smCurrentState.goal}
+Fields extracted: ${fieldsExtracted || 'none'}
+Reply in 1-2 warm, natural sentences acknowledging their answer. Be kind and engaging.`;
+        } else if (intentPrimary === 'objection') {
+          // Use pre-computed objection counter if available
+          if (objectionCounter) {
+            return NextResponse.json({
+              reply: objectionCounter,
+              classifyResult,
+            });
+          }
+          const tone = classifyResult.intent.suggestedTone || 'empathetic';
+          replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
+User said: "${freeText}" (this is an objection)
+State goal: ${smCurrentState.goal}
+Question was: "${smCurrentState.prompt}"
+Tone: ${tone}
+Respond warmly to their concern in 2-3 sentences, then gently redirect back to the question.`;
+        } else if (intentPrimary === 'change_previous_answer') {
+          replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
+User wants to change a previous answer: "${freeText}"
+Acknowledge the change warmly in 1-2 sentences.`;
+        } else {
+          // chitchat, off_topic, clarification, etc.
+          replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
+User said: "${freeText}"
+Question was: "${smCurrentState.prompt}"
+They seem to be going off-topic or need clarification.
+Respond briefly and kindly, then steer back to the question.`;
+        }
+
+        const replyCompletion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: replySystemPrompt }],
+          temperature: 0.75,
+          max_tokens: 180,
+        });
+
+        const reply = replyCompletion.choices[0].message.content?.trim() || 'Got it!';
+
+        // Save intel for objections/questions
+        if (
+          (intentPrimary === 'clarification_question' || intentPrimary === 'objection') &&
+          clientIdentifier &&
+          freeText &&
+          freeText.length > 15
+        ) {
+          const intelType = intentPrimary === 'objection' ? 'pain_point' : 'question';
+          const tagKeywords = ['mortgage', 'down payment', 'closing cost', 'inspection', 'appraisal', 'pre-approval', 'credit', 'interest rate', 'first-time', 'investment', 'condo', 'townhouse', 'detached', 'school', 'neighbourhood', 'neighborhood', 'renovation', 'property tax', 'offer', 'bidding', 'market', 'price', 'afford'];
+          const lowerFreeText = freeText.toLowerCase();
+          const tags = tagKeywords.filter((kw) => lowerFreeText.includes(kw));
+          const origin = req.headers.get('origin') || '';
+          const intelEnvironment = origin.includes('localhost') || origin.includes('127.0.0.1') ? 'test' : 'production';
+
+          (async () => {
+            try {
+              const intelCollection = await getIntelItemsCollection();
+              const intelItem: IntelItemDocument = {
+                clientId: clientIdentifier,
+                conversationId: bodyConversationId || undefined,
+                type: intelType,
+                content: freeText,
+                summary: freeText.slice(0, 120),
+                tags,
+                environment: intelEnvironment,
+                createdAt: new Date(),
+              };
+              await intelCollection.insertOne(intelItem);
+            } catch (err) {
+              console.error('[Intel] Failed to save state-machine intel:', err);
+            }
+          })();
+        }
+
+        return NextResponse.json({
+          reply,
+          classifyResult,
+        });
+      }
+
+      return NextResponse.json({ error: 'No input provided' }, { status: 400 });
+    }
+
+    // ——————————————————
+    // LEGACY BRANCH: Original linear question flow logic (unchanged)
+    // ——————————————————
 
     // ——————————————————
     // Resolve current question - PRIORITY: MongoDB custom questions > unified offer system
@@ -393,6 +633,45 @@ Keep it short and kind.`;
         });
 
         const reply = completion.choices[0].message.content?.trim() || `Got it! Just to clarify: ${currentQuestion.text}`;
+
+        // Save as intel if user asked a genuine question or raised an objection
+        // Skip trivial clarifications like "what do you mean?" or "I don't understand"
+        if (
+          (intent.primary === 'clarification_question' || intent.primary === 'objection') &&
+          clientIdentifier &&
+          freeText &&
+          freeText.length > 15
+        ) {
+          const intelType = intent.primary === 'objection' ? 'pain_point' : 'question';
+          const tagKeywords = ['mortgage', 'down payment', 'closing cost', 'inspection', 'appraisal', 'pre-approval', 'credit', 'interest rate', 'first-time', 'investment', 'condo', 'townhouse', 'detached', 'school', 'neighbourhood', 'neighborhood', 'renovation', 'property tax', 'offer', 'bidding', 'market', 'price', 'afford'];
+          const lowerFreeText = freeText.toLowerCase();
+          const tags = tagKeywords.filter(kw => lowerFreeText.includes(kw));
+
+          // Detect environment from request headers
+          const origin = req.headers.get('origin') || '';
+          const intelEnvironment = origin.includes('localhost') || origin.includes('127.0.0.1') ? 'test' : 'production';
+
+          // Save in background - don't block the response
+          (async () => {
+            try {
+              const intelCollection = await getIntelItemsCollection();
+              const intelItem: IntelItemDocument = {
+                clientId: clientIdentifier,
+                conversationId: bodyConversationId || undefined,
+                type: intelType,
+                content: freeText,
+                summary: freeText.slice(0, 120),
+                tags,
+                environment: intelEnvironment,
+                createdAt: new Date(),
+              };
+              await intelCollection.insertOne(intelItem);
+              console.log('[Intel] Saved during-flow intel:', intelType, freeText.slice(0, 50));
+            } catch (err) {
+              console.error('[Intel] Failed to save during-flow intel:', err);
+            }
+          })();
+        }
 
         return NextResponse.json({
           reply,

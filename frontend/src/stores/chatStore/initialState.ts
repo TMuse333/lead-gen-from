@@ -90,6 +90,13 @@ export const initialChatState: ChatStateData = {
   flowQuestions: {},
   questionsLoaded: false,
 
+  // State machine
+  currentStateId: '',
+  stateMachineConfig: null,
+  stateAttempts: {},
+  stateHistory: [],
+  stateMachineLoaded: false,
+
   // Legacy (backwards compatibility)
   currentFlow: null,
   enabledOffers: [],

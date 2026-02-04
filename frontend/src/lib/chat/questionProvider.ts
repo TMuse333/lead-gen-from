@@ -2,6 +2,11 @@
 /**
  * Question Provider - Fetches questions from MongoDB
  *
+ * @deprecated The question provider is superseded by the state machine system.
+ * New code should use src/lib/stateMachine/provider.ts instead.
+ * This module is retained for backwards compatibility and as a data source
+ * for the questionsToStateMachine converter.
+ *
  * Replaces the hardcoded unified offer system with dynamic questions.
  * If custom questions exist in MongoDB, uses those.
  * Otherwise falls back to default questions from the unified offer system.

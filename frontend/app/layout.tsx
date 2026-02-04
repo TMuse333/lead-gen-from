@@ -35,7 +35,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider>
+        <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
           <ErrorBoundary>
             {children}
           </ErrorBoundary>

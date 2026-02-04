@@ -207,6 +207,17 @@ export async function PATCH(
       setFields.currentNodeId = body.currentNodeId;
     }
 
+    // State machine tracking fields
+    if (body.currentStateId) {
+      setFields.currentStateId = body.currentStateId;
+    }
+    if (body.stateHistory) {
+      setFields.stateHistory = body.stateHistory;
+    }
+    if (body.stateAttempts) {
+      setFields.stateAttempts = body.stateAttempts;
+    }
+
     // Handle contact modal tracking - merge with existing data
     if (body.contactModal) {
       const existingContactModal = existing.contactModal || {

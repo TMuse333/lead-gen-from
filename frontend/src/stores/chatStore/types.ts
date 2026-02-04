@@ -11,6 +11,7 @@ import { ButtonOption } from '@/types/conversation.types';
 import { QdrantRetrievalMetadata } from '@/types/qdrant.types';
 import type { OfferType, Intent } from '@/lib/offers/unified';
 import type { CustomQuestion, TimelineFlow } from '@/types/timelineBuilder.types';
+import type { StateMachineConfig } from '@/types/stateMachine.types';
 
 // Re-export for convenience
 export type { OfferType, Intent };
@@ -98,6 +99,18 @@ export interface ChatStateData {
   /** Whether questions have been loaded */
   questionsLoaded: boolean;
 
+  // ==================== STATE MACHINE ====================
+  /** Current state ID in the state machine */
+  currentStateId: string;
+  /** Loaded state machine config (null = not loaded or using legacy flow) */
+  stateMachineConfig: StateMachineConfig | null;
+  /** Attempt count per state (for objection counters and max_attempts) */
+  stateAttempts: Record<string, number>;
+  /** History of visited state IDs */
+  stateHistory: string[];
+  /** Whether state machine config has been loaded */
+  stateMachineLoaded: boolean;
+
   // ==================== LEGACY (for backwards compatibility) ====================
   /** @deprecated Use selectedOffer + currentIntent instead */
   currentFlow: Intent | null;
@@ -171,6 +184,14 @@ export interface ChatStateActions {
   loadAllQuestions: (clientId?: string) => Promise<void>;
   /** Get questions for current intent */
   getQuestionsForCurrentIntent: () => CustomQuestion[];
+
+  // ==================== STATE MACHINE ACTIONS ====================
+  /** Load state machine config for a flow */
+  loadStateMachineConfig: (flow: Intent, clientId?: string) => Promise<void>;
+  /** Set current state ID */
+  setCurrentStateId: (stateId: string) => void;
+  /** Increment attempt count for a state */
+  incrementStateAttempt: (stateId: string) => void;
 
   // ==================== RESET ====================
   reset: () => void;

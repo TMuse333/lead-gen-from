@@ -10,12 +10,13 @@ import AdminRateLimits from '@/components/dashboard/admin/rateLimits/AdminRateLi
 import AdminConversations from '@/components/dashboard/admin/conversations/AdminConversations';
 import IframeTest from '@/components/dashboard/admin/iframeTest/IframeTest';
 import AdminIntelMessages from '@/components/dashboard/admin/intelMessages/AdminIntelMessages';
-import { BarChart3, Building2, Loader2, DollarSign, Shield, MessageSquare, ShieldX, Code, Mail } from 'lucide-react';
+import BotSandbox from '@/components/dashboard/admin/botSandbox/BotSandbox';
+import { BarChart3, Building2, Loader2, DollarSign, Shield, MessageSquare, ShieldX, Code, Mail, GitBranch } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'configs' | 'token-usage' | 'rate-limits' | 'conversations' | 'iframe-test' | 'intel-messages'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'configs' | 'token-usage' | 'rate-limits' | 'conversations' | 'iframe-test' | 'intel-messages' | 'bot-sandbox'>('analytics');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -35,7 +36,13 @@ export default function AdminDashboardPage() {
     }
   }, [session, status]);
 
-  if (status === "loading" || (status === "authenticated" && isAdmin === null)) {
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin?callbackUrl=/admin/dashboard");
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "unauthenticated" || (status === "authenticated" && isAdmin === null)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a1525] via-[#0f1b2e] to-[#0a1525]">
         <div className="text-center">
@@ -44,11 +51,6 @@ export default function AdminDashboardPage() {
         </div>
       </div>
     );
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin?callbackUrl=/admin/dashboard");
-    return null;
   }
 
   if (!isAdmin) {
@@ -81,11 +83,11 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white/5 backdrop-blur-md rounded-lg border border-cyan-500/20 mb-6 overflow-hidden">
-          <div className="flex border-b border-cyan-500/20">
+        <div className="bg-white/5 backdrop-blur-md rounded-lg border border-cyan-500/20 mb-6">
+          <div className="flex overflow-x-auto border-b border-cyan-500/20 scrollbar-thin scrollbar-thumb-cyan-500/20">
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'analytics'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -96,7 +98,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('configs')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'configs'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -107,7 +109,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('token-usage')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'token-usage'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -118,7 +120,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('rate-limits')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'rate-limits'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -129,7 +131,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('conversations')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'conversations'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -140,7 +142,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('iframe-test')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'iframe-test'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -151,7 +153,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab('intel-messages')}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 font-semibold transition ${
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
                 activeTab === 'intel-messages'
                   ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
                   : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
@@ -159,6 +161,17 @@ export default function AdminDashboardPage() {
             >
               <Mail size={20} />
               Intel Messages
+            </button>
+            <button
+              onClick={() => setActiveTab('bot-sandbox')}
+              className={`shrink-0 flex items-center justify-center gap-2 py-4 px-5 font-semibold transition whitespace-nowrap ${
+                activeTab === 'bot-sandbox'
+                  ? 'bg-cyan-500/20 text-cyan-200 border-b-2 border-cyan-400'
+                  : 'text-cyan-200/50 hover:text-cyan-200 hover:bg-cyan-500/10'
+              }`}
+            >
+              <GitBranch size={20} />
+              Bot Sandbox
             </button>
           </div>
         </div>
@@ -172,6 +185,7 @@ export default function AdminDashboardPage() {
           {activeTab === 'conversations' && <AdminConversations />}
           {activeTab === 'iframe-test' && <IframeTest />}
           {activeTab === 'intel-messages' && <AdminIntelMessages />}
+          {activeTab === 'bot-sandbox' && <BotSandbox />}
         </div>
       </div>
     </div>

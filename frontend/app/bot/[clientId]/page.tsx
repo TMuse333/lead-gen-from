@@ -11,6 +11,7 @@ import ChatWithTracker from '@/components/ux/chatWithTracker/chatWithTracker';
 import CookieConsent, { getCookieConsent, type ConsentStatus } from '@/components/ux/CookieConsent';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { injectColorTheme, getTheme } from '@/lib/colors/colorUtils';
+import { startSandboxBroadcaster } from '@/lib/sandbox/sandboxBroadcaster';
 import {
   initVisitorTracking,
   getFullVisitorData,
@@ -45,6 +46,7 @@ export default function BotPage() {
   const searchParams = useSearchParams();
   const clientId = params.clientId as string;
   const isEmbed = searchParams.get('embed') === 'true';
+  const isSandbox = searchParams.get('sandbox') === 'true';
 
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +62,13 @@ export default function BotPage() {
       setVisitorData(data);
     }
   }, []);
+
+  // Start sandbox broadcaster when loaded in sandbox mode
+  useEffect(() => {
+    if (!isSandbox) return;
+    const stop = startSandboxBroadcaster();
+    return stop;
+  }, [isSandbox]);
 
   // Initialize visitor tracking and check consent on mount
   useEffect(() => {

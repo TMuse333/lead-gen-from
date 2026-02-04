@@ -7,12 +7,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, MessageSquare, Play, FlaskConical, Globe, Layers } from 'lucide-react';
+import { BarChart3, MessageSquare, Play, FlaskConical, Globe, Layers, Lightbulb } from 'lucide-react';
 import UserAnalytics from './userAnalytics';
 import ConversationAnalytics from '../conversations/ConversationAnalytics';
 import ConversationViewer from './ConversationViewer';
+import IntelDashboard from './IntelDashboard';
 
-type AnalyticsTab = 'overview' | 'conversations' | 'replay';
+type AnalyticsTab = 'overview' | 'conversations' | 'replay' | 'intel';
 type EnvironmentFilter = 'production' | 'test' | 'all';
 
 export default function AnalyticsDashboard() {
@@ -57,6 +58,7 @@ export default function AnalyticsDashboard() {
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
     { id: 'conversations' as const, label: 'Funnel', icon: MessageSquare },
     { id: 'replay' as const, label: 'Replay', icon: Play },
+    { id: 'intel' as const, label: 'Intel', icon: Lightbulb },
   ];
 
   return (
@@ -136,6 +138,11 @@ export default function AnalyticsDashboard() {
         {activeTab === 'replay' && (
           <div className="p-6">
             <ConversationViewer environment={environmentFilter} />
+          </div>
+        )}
+        {activeTab === 'intel' && (
+          <div className="p-6">
+            <IntelDashboard environment={environmentFilter} />
           </div>
         )}
       </div>

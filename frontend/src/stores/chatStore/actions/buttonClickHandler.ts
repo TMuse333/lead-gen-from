@@ -131,7 +131,47 @@ export function createButtonClickHandler(
 
       await loadQuestionsForFlow(selectedIntent as TimelineFlow, clientId);
 
-      // Get questions from store and filter to only those linked to phases
+      // Load state machine config (uses questions as fallback converter)
+      const { loadStateMachineConfig } = get();
+      await loadStateMachineConfig(selectedIntent, clientId);
+
+      // Check if state machine was loaded
+      const smState = get();
+      if (smState.stateMachineConfig && smState.currentStateId) {
+        console.log('[ButtonHandler] State machine active, first state:', smState.currentStateId);
+
+        // Get the first state and show its prompt/buttons
+        const { getStateById } = await import('@/lib/stateMachine/engine');
+        const firstState = getStateById(smState.stateMachineConfig, smState.currentStateId);
+
+        if (firstState) {
+          const buttons = firstState.buttons && firstState.inputType !== 'text'
+            ? firstState.buttons.map(b => ({ id: b.id, label: b.label, value: b.value }))
+            : undefined;
+
+          const aiMsg: ChatMessage = {
+            role: 'assistant',
+            content: firstState.prompt,
+            buttons,
+            timestamp: new Date(),
+          };
+          set((s) => ({
+            messages: [...s.messages, aiMsg],
+            currentQuestionId: firstState.id,
+            currentNodeId: firstState.id,
+          }));
+
+          const { updateConversation } = get();
+          await updateConversation({
+            messages: get().messages,
+            currentQuestionId: firstState.id,
+          });
+        }
+
+        return;
+      }
+
+      // Fallback: legacy question flow (if state machine didn't load)
       const updatedState = get();
       const allQuestions = updatedState.flowQuestions[selectedIntent as TimelineFlow] || [];
       const questions = getBotQuestions(allQuestions);

@@ -1,10 +1,13 @@
-// stores/chatStore/createActions.ts - MONGODB QUESTIONS (NO FALLBACKS)
+// stores/chatStore/createActions.ts - STATE MACHINE + LEGACY HANDLERS
 import { ChatMessage, ChatStateActions, ChatState, Intent, OfferType } from './types';
 import { LlmOutput } from '@/types/componentSchema';
 import { GenerationDebugInfo } from './types';
 import { createButtonClickHandler } from './actions/buttonClickHandler';
 import { createSendMessageHandler } from './actions/sendMessageHandler';
+import { createStateMachineMessageHandler } from './actions/stateMachineMessageHandler';
+import { createStateMachineButtonHandler } from './actions/stateMachineButtonHandler';
 import { fetchQuestionsForFlow } from '@/lib/chat/questionProvider';
+import { fetchStateMachineConfig } from '@/lib/stateMachine/provider';
 import type { TimelineFlow, CustomQuestion } from '@/types/timelineBuilder.types';
 
 export function createActions(
@@ -146,8 +149,34 @@ export function createActions(
     clearCelebration: () => set({ shouldCelebrate: false }),
 
     // ==================== MAIN HANDLERS ====================
-    handleButtonClick: createButtonClickHandler(set, get),
-    sendMessage: createSendMessageHandler(set, get),
+    // These dispatch to state machine handlers when SM is active,
+    // otherwise fall back to the legacy handlers.
+    handleButtonClick: (() => {
+      const legacyHandler = createButtonClickHandler(set, get);
+      const smHandler = createStateMachineButtonHandler(set, get);
+      return async (button: import('@/types/conversation.types').ButtonOption) => {
+        const state = get();
+        // Use state machine handler if config is loaded AND we're past intent selection
+        // (intent selection buttons should still go through legacy handler)
+        const isIntentOrOffer = ['buy', 'sell', 'browse', 'real-estate-timeline', 'pdf', 'video', 'home-estimate'].includes(button.value);
+        if (state.stateMachineConfig && state.currentStateId && !isIntentOrOffer) {
+          return smHandler(button);
+        }
+        return legacyHandler(button);
+      };
+    })(),
+    sendMessage: (() => {
+      const legacyHandler = createSendMessageHandler(set, get);
+      const smHandler = createStateMachineMessageHandler(set, get);
+      return async (message: string, displayText?: string) => {
+        const state = get();
+        // Use state machine handler if config is loaded AND we have an active state
+        if (state.stateMachineConfig && state.currentStateId && state.currentIntent) {
+          return smHandler(message, displayText);
+        }
+        return legacyHandler(message, displayText);
+      };
+    })(),
 
     // ==================== CONVERSATION TRACKING ====================
     setConversationId: (id: string | null) => {
@@ -374,6 +403,47 @@ export function createActions(
       const intent = state.currentIntent as TimelineFlow | null;
       if (!intent) return [];
       return state.flowQuestions[intent] || [];
+    },
+
+    // ==================== STATE MACHINE ACTIONS ====================
+    loadStateMachineConfig: async (flow: Intent, clientId?: string) => {
+      try {
+        console.log(`[ChatStore] Loading state machine config for ${flow}`);
+        const config = await fetchStateMachineConfig(flow, clientId);
+        if (config) {
+          set({
+            stateMachineConfig: config,
+            currentStateId: config.initialStateId,
+            stateHistory: [config.initialStateId],
+            stateMachineLoaded: true,
+          });
+          console.log(`[ChatStore] State machine loaded: ${config.states.length} states, initial: ${config.initialStateId}`);
+        } else {
+          console.warn(`[ChatStore] No state machine config available for ${flow}`);
+          set({ stateMachineLoaded: true });
+        }
+      } catch (error) {
+        console.error(`[ChatStore] Failed to load state machine config:`, error);
+        set({ stateMachineLoaded: true });
+      }
+    },
+
+    setCurrentStateId: (stateId: string) => {
+      set((s) => ({
+        currentStateId: stateId,
+        currentQuestionId: stateId,
+        currentNodeId: stateId,
+        stateHistory: [...s.stateHistory, stateId],
+      }));
+    },
+
+    incrementStateAttempt: (stateId: string) => {
+      set((s) => ({
+        stateAttempts: {
+          ...s.stateAttempts,
+          [stateId]: (s.stateAttempts[stateId] || 0) + 1,
+        },
+      }));
     },
 
     // ==================== RESET ====================

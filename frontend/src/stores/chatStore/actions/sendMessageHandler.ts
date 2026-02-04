@@ -45,6 +45,12 @@ export function createSendMessageHandler(
       // Theme: We're here to help create their personalized timeline with real stories from the agent
       const lowerMessage = message.toLowerCase();
       let response = '';
+      let isIntel = false;
+
+      // Get agent display name from session storage
+      const agentDisplayName = typeof window !== 'undefined'
+        ? sessionStorage.getItem('businessName') || 'your agent'
+        : 'your agent';
 
       if (lowerMessage.includes('buy') || lowerMessage.includes('purchase') || lowerMessage.includes('looking for') || lowerMessage.includes('house') || lowerMessage.includes('home')) {
         // They mentioned buying - warm and helpful
@@ -55,12 +61,14 @@ export function createSendMessageHandler(
       } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey') || lowerMessage.includes('help')) {
         // Greeting - warm welcome
         response = "Hey! Great to have you here. I'm here to create a personalized real estate timeline just for you - complete with step-by-step guidance and real stories from your agent about how they handle different situations. Are you looking to buy or sell?";
-      } else if (lowerMessage.includes('question') || lowerMessage.includes('how') || lowerMessage.includes('what') || lowerMessage.includes('when') || lowerMessage.includes('?')) {
-        // They're asking a question - be helpful and caring
-        response = "I'd be happy to help answer that! Once I know a bit more about your situation, I can give you much better guidance. I'll even share relevant stories from your agent about similar scenarios. Are you currently looking to buy or sell?";
+      } else if (lowerMessage.includes('?') || lowerMessage.includes('how') || lowerMessage.includes('what') || lowerMessage.includes('when') || lowerMessage.includes('why') || lowerMessage.includes('where') || lowerMessage.includes('question')) {
+        // They're asking a question - this is intel!
+        isIntel = true;
+        response = `Great question! ${agentDisplayName} actually covers topics like this regularly. Once I know a bit more about your situation, I can point you in the right direction. Are you looking to buy or sell?`;
       } else {
-        // General statement - acknowledge and guide warmly
-        response = "Thanks for sharing that! I want to make sure I give you the most helpful guidance possible. I can create a personalized timeline with actionable steps and real stories from your agent. To get started, are you looking to buy or sell?";
+        // General statement with substance - treat as intel (topic interest)
+        isIntel = true;
+        response = `Thanks for sharing that! That's really helpful context. I'd love to build you a personalized timeline with real stories from ${agentDisplayName}. To get started, are you looking to buy or sell?`;
       }
 
       const promptMsg: ChatMessage = {
@@ -70,6 +78,40 @@ export function createSendMessageHandler(
         timestamp: new Date(),
       };
       set((s) => ({ messages: [...s.messages, promptMsg] }));
+
+      // Save intel in the background if detected
+      if (isIntel) {
+        const clientId = typeof window !== 'undefined'
+          ? sessionStorage.getItem('clientId') || ''
+          : '';
+        const environment = typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'test' : 'production';
+
+        if (clientId) {
+          // Determine intel type based on message content
+          const hasQuestion = lowerMessage.includes('?') || lowerMessage.includes('how') || lowerMessage.includes('what') || lowerMessage.includes('when') || lowerMessage.includes('why');
+          const intelType = hasQuestion ? 'question' : 'topic_interest';
+
+          // Extract simple tags from the message
+          const tagKeywords = ['mortgage', 'down payment', 'closing cost', 'inspection', 'appraisal', 'pre-approval', 'credit', 'interest rate', 'first-time', 'investment', 'condo', 'townhouse', 'detached', 'school', 'neighbourhood', 'neighborhood', 'renovation', 'property tax', 'offer', 'bidding', 'market', 'price', 'afford'];
+          const tags = tagKeywords.filter(kw => lowerMessage.includes(kw));
+
+          fetch('/api/intel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clientId,
+              conversationId: state.conversationId || undefined,
+              content: message,
+              summary: message.slice(0, 120),
+              type: intelType,
+              tags,
+              environment,
+            }),
+          }).catch(err => console.error('[Intel] Failed to save pre-flow intel:', err));
+        }
+      }
 
       return;
     }
@@ -110,6 +152,11 @@ export function createSendMessageHandler(
 
       console.log('[SendMessage] Next question for context:', nextQuestionForContext?.id, nextQuestionForContext?.question);
 
+      // Pass clientIdentifier for intel tracking
+      const clientIdentifier = typeof window !== 'undefined'
+        ? sessionStorage.getItem('clientId') || undefined
+        : undefined;
+
       const response = await fetch('/api/chat/smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,6 +169,8 @@ export function createSendMessageHandler(
           messages: state.messages.slice(-5),
           questionConfig: currentQuestion,
           nextQuestionConfig: nextQuestionForContext, // Pass next question for LLM context
+          clientIdentifier,
+          conversationId: state.conversationId || undefined,
         }),
       });
 

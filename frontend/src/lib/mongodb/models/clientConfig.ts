@@ -7,6 +7,7 @@ import type { DataCollectionType, FlowIntention, OfferType } from '@/stores/onbo
 import type { ColorTheme } from '@/lib/colors/defaultTheme';
 import type { AdviceType, StoryMappings } from '@/types/advice.types';
 import type { FlowPhaseConfigs, FlowBotConfig, FlowQuestionConfigs } from '@/types/timelineBuilder.types';
+import type { StateMachineConfig } from '@/types/stateMachine.types';
 
 /**
  * CTA Style options for the results page ending section
@@ -124,6 +125,13 @@ export interface ClientConfigDocument {
   // Custom Questions Configuration
   // Allows agents to customize chatbot questions per flow
   customQuestions?: FlowQuestionConfigs;
+
+  // State Machine Configurations (conversational state machine)
+  // Optional — existing clients won't have it; the fallback converter handles them
+  stateMachineConfigs?: {
+    buy?: StateMachineConfig;
+    sell?: StateMachineConfig;
+  };
 
   // Ending CTA Configuration
   // Controls the "Questions?" section and CTA on the results page
