@@ -29,10 +29,17 @@ export async function GET(req: NextRequest) {
     const conversationsCollection = await getConversationsCollection();
     const generationsCollection = await getGenerationsCollection();
 
-    // Build query filter
+    // Build query filters with $or fallback for pre-migration documents missing environment field
     const conversationFilter: Record<string, unknown> = { userId };
-    if (environment !== 'all') {
+    const generationFilter: Record<string, unknown> = { userId };
+
+    if (environment === 'production') {
+      const envMatch = { $or: [{ environment: 'production' }, { environment: { $exists: false } }] };
+      Object.assign(conversationFilter, envMatch);
+      Object.assign(generationFilter, envMatch);
+    } else if (environment !== 'all') {
       conversationFilter.environment = environment;
+      generationFilter.environment = environment;
     }
 
     // Get all conversations for this user (filtered by environment)
@@ -40,9 +47,9 @@ export async function GET(req: NextRequest) {
       .find(conversationFilter)
       .toArray();
 
-    // Get all generations for this user
+    // Get all generations for this user (filtered by environment)
     const generations = await generationsCollection
-      .find({ userId })
+      .find(generationFilter)
       .toArray();
 
     // Calculate stats

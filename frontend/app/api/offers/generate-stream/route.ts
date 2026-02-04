@@ -386,6 +386,11 @@ export async function POST(req: NextRequest) {
         if (conversationId && ObjectId.isValid(conversationId)) {
           try {
             const generationsCollection = await getGenerationsCollection();
+
+            // Determine environment from request origin
+            const origin = req.headers.get('origin') || '';
+            const generationEnvironment = origin.includes('localhost') || origin.includes('127.0.0.1') ? 'test' : 'production';
+
             await generationsCollection.insertOne({
               conversationId: new ObjectId(conversationId),
               userId,
@@ -399,6 +404,7 @@ export async function POST(req: NextRequest) {
               status: 'success',
               outputSize: JSON.stringify(results).length,
               componentCount: Object.keys(results).length,
+              environment: generationEnvironment,
             } as GenerationDocument);
           } catch {
             // Don't fail if save fails

@@ -286,6 +286,10 @@ export async function POST(req: NextRequest) {
         const outputSize = JSON.stringify(results).length;
         const componentCount = generatedOffers.length;
 
+        // Determine environment from request origin
+        const origin = req.headers.get('origin') || '';
+        const generationEnvironment = origin.includes('localhost') || origin.includes('127.0.0.1') ? 'test' : 'production';
+
         const generation: Omit<GenerationDocument, '_id'> = {
           conversationId: new ObjectId(conversationId),
           userId,
@@ -299,6 +303,7 @@ export async function POST(req: NextRequest) {
           status: 'success',
           outputSize,
           componentCount,
+          environment: generationEnvironment,
         };
 
         await generationsCollection.insertOne(generation as GenerationDocument);

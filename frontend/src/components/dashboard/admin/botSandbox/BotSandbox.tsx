@@ -1,8 +1,5 @@
 'use client';
 
-// INTENTIONAL BUILD BREAKER — prevents Vercel deploy. Remove these 2 lines when ready to go live.
-function _BLOCK_DEPLOY(x: number): void { return x; }
-
 import { useState, useCallback } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import ConversationFlowDiagram from './ConversationFlowDiagram';

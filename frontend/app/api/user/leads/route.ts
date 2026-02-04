@@ -31,8 +31,14 @@ export async function GET(req: NextRequest) {
     const conversationsCollection = await getConversationsCollection();
 
     // Build generation filter
+    // Use $or with $exists fallback for pre-migration documents that lack an environment field
     const generationFilter: Record<string, unknown> = { userId };
-    if (environment !== 'all') {
+    if (environment === 'production') {
+      generationFilter.$or = [
+        { environment: 'production' },
+        { environment: { $exists: false } },
+      ];
+    } else if (environment !== 'all') {
       generationFilter.environment = environment;
     }
 
