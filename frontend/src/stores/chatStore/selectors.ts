@@ -26,3 +26,7 @@ export const selectSelectedOffer = (state: ChatState) => state.selectedOffer;
 
 // Modal selectors
 export const selectShowContactModal = (state: ChatState) => state.showContactModal;
+
+// Question loading selectors
+export const selectQuestionsLoaded = (state: ChatState) => state.questionsLoaded;
+export const selectFlowQuestions = (state: ChatState) => state.flowQuestions;
