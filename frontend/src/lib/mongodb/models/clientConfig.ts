@@ -141,6 +141,33 @@ export interface ClientConfigDocument {
   // Email address to receive notifications when new leads submit contact info
   notificationEmail?: string;
 
+  // Agent Knowledge Entries
+  // General knowledge about the business (website copy, FAQs, value props)
+  // Used for contextual responses during objections, off-topic, and hesitation
+  agentKnowledgeEntries?: Array<{
+    id: string;
+    title: string;
+    category?: string; // e.g., "about", "services", "faq", "value-proposition", or custom category id
+    text: string; // Original full text
+    chunkCount: number; // How many Qdrant vectors
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+
+  // Custom Knowledge Categories
+  // User-defined categories and subcategories for organizing knowledge
+  customKnowledgeCategories?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    icon?: string; // emoji character (e.g., "🏠", "💰")
+    color?: string; // tailwind color name (e.g., "rose", "indigo")
+    parentId?: string | null; // for subcategories - references another category id
+    order?: number; // for custom ordering
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+
   // Status
   isActive: boolean;
   onboardingCompletedAt: Date;

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, Mic, Sparkles, Heart } from 'lucide-react';
-import AgentAdviceDashboard from '../adviceDashboard/agentAdviceDashboard';
+import { Mic, Sparkles, Brain } from 'lucide-react';
 import AgentAdviceSpeechUploader from '../agentSpeechUploader/agentSpeechUploader';
-import StoriesDashboard from './StoriesDashboard';
 import RecommendedStories from './RecommendedStories';
+import { KnowledgeBrainDashboard } from './brain';
 
-type KnowledgeBaseTab = 'stories' | 'advice' | 'upload' | 'recommended';
+type KnowledgeBaseTab = 'brain' | 'recommended' | 'upload';
 
 interface TabConfig {
   id: KnowledgeBaseTab;
@@ -19,17 +18,11 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   {
-    id: 'stories',
-    label: 'Stories',
-    icon: Heart,
-    description: 'Client success stories that build trust',
+    id: 'brain',
+    label: 'Knowledge Brain',
+    icon: Brain,
+    description: 'All knowledge: stories, tips, website copy, FAQs',
     highlight: true,
-  },
-  {
-    id: 'advice',
-    label: 'Tips & Advice',
-    icon: BookOpen,
-    description: 'Expert knowledge and market insights',
   },
   {
     id: 'recommended',
@@ -46,20 +39,26 @@ const TABS: TabConfig[] = [
 ];
 
 export default function KnowledgeBaseDashboard() {
-  const [activeTab, setActiveTab] = useState<KnowledgeBaseTab>('stories');
+  const [activeTab, setActiveTab] = useState<KnowledgeBaseTab>('brain');
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'stories':
-        return <StoriesDashboard />;
-      case 'advice':
-        return <AgentAdviceDashboard />;
+      case 'brain':
+        return (
+          <div className="h-[calc(100vh-60px)]">
+            <KnowledgeBrainDashboard />
+          </div>
+        );
       case 'recommended':
         return <RecommendedStories />;
       case 'upload':
         return <AgentAdviceSpeechUploader />;
       default:
-        return <StoriesDashboard />;
+        return (
+          <div className="h-[calc(100vh-60px)]">
+            <KnowledgeBrainDashboard />
+          </div>
+        );
     }
   };
 
@@ -72,9 +71,7 @@ export default function KnowledgeBaseDashboard() {
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-
-              // Special styling for Stories tab
-              const isStoriesTab = tab.id === 'stories';
+              const isBrainTab = tab.id === 'brain';
 
               return (
                 <button
@@ -83,20 +80,20 @@ export default function KnowledgeBaseDashboard() {
                   className={`
                     flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all whitespace-nowrap
                     ${isActive
-                      ? isStoriesTab
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      : isStoriesTab
-                        ? 'text-amber-400/70 hover:text-amber-300 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20'
+                      ? isBrainTab
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                        : 'bg-slate-700/50 text-slate-200 border border-slate-600'
+                      : isBrainTab
+                        ? 'text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                     }
                   `}
                   title={tab.description}
                 >
-                  <Icon className={`h-4 w-4 ${isStoriesTab && !isActive ? 'animate-pulse' : ''}`} />
+                  <Icon className={`h-4 w-4 ${isBrainTab && isActive ? 'text-cyan-400' : ''}`} />
                   <span>{tab.label}</span>
-                  {isStoriesTab && !isActive && (
-                    <span className="ml-1 text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">Important</span>
+                  {isBrainTab && !isActive && (
+                    <span className="ml-1 text-xs px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded">Main</span>
                   )}
                 </button>
               );

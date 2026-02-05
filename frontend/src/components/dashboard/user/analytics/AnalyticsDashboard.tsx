@@ -7,13 +7,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, MessageSquare, Play, FlaskConical, Globe, Layers, Lightbulb } from 'lucide-react';
+import { BarChart3, MessageSquare, Play, FlaskConical, Globe, Layers, Lightbulb, Brain } from 'lucide-react';
 import UserAnalytics from './userAnalytics';
 import ConversationAnalytics from '../conversations/ConversationAnalytics';
 import ConversationViewer from './ConversationViewer';
 import IntelDashboard from './IntelDashboard';
+import KnowledgeAnalytics from './KnowledgeAnalytics';
 
-type AnalyticsTab = 'overview' | 'conversations' | 'replay' | 'intel';
+type AnalyticsTab = 'overview' | 'conversations' | 'replay' | 'intel' | 'knowledge';
 type EnvironmentFilter = 'production' | 'test' | 'all';
 
 export default function AnalyticsDashboard() {
@@ -59,6 +60,7 @@ export default function AnalyticsDashboard() {
     { id: 'conversations' as const, label: 'Funnel', icon: MessageSquare },
     { id: 'replay' as const, label: 'Replay', icon: Play },
     { id: 'intel' as const, label: 'Intel', icon: Lightbulb },
+    { id: 'knowledge' as const, label: 'Knowledge', icon: Brain },
   ];
 
   return (
@@ -143,6 +145,11 @@ export default function AnalyticsDashboard() {
         {activeTab === 'intel' && (
           <div className="p-6">
             <IntelDashboard environment={environmentFilter} />
+          </div>
+        )}
+        {activeTab === 'knowledge' && (
+          <div className="p-6">
+            <KnowledgeAnalytics environment={environmentFilter} />
           </div>
         )}
       </div>

@@ -102,6 +102,7 @@ interface NotificationParams {
 
 /**
  * Build email HTML for AGENT receiving message from developer
+ * Simple notification - just tells them there's a message waiting
  */
 function buildAgentEmailHtml(params: {
   agentName: string;
@@ -110,7 +111,7 @@ function buildAgentEmailHtml(params: {
   categoryEmoji: string;
   dashboardUrl: string;
 }): string {
-  const { agentName, message, category, categoryEmoji, dashboardUrl } = params;
+  const { agentName, dashboardUrl } = params;
 
   return `
 <!DOCTYPE html>
@@ -142,45 +143,23 @@ function buildAgentEmailHtml(params: {
                 Hi ${agentName},
               </p>
 
-              <p style="color: #6b7280; font-size: 15px; margin: 0 0 24px 0; line-height: 1.6;">
-                The LeadGen Team has sent you a new ${category.toLowerCase()} about your chatbot:
+              <p style="color: #6b7280; font-size: 16px; margin: 0 0 32px 0; line-height: 1.7;">
+                The developer has some new feedback/message for you. It's waiting in the Feedback and Intel dashboard.
               </p>
 
-              <!-- Message box -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 12px; padding: 20px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td>
-                          <span style="display: inline-block; background: #7c3aed; color: white; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin-bottom: 12px;">
-                            ${categoryEmoji} ${category}
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-top: 8px;">
-                          <p style="color: #1f2937; font-size: 15px; line-height: 1.7; margin: 0; white-space: pre-wrap;">${message}</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
               <!-- CTA -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 32px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center">
                     <a href="${dashboardUrl}" style="display: inline-block; background: #7c3aed; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
-                      View in Dashboard
+                      View Message
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="color: #9ca3af; font-size: 13px; margin: 24px 0 0 0; text-align: center;">
-                You can reply directly from your Feedback & Intel page
+              <p style="color: #9ca3af; font-size: 13px; margin: 32px 0 0 0; text-align: center;">
+                <a href="${dashboardUrl}" style="color: #7c3aed; text-decoration: underline;">${dashboardUrl}</a>
               </p>
 
             </td>
@@ -429,11 +408,9 @@ User ID: ${userId}
     const text = `
 Hi ${agentName},
 
-The LeadGen Team has sent you a new ${categoryDisplay.toLowerCase()} about your chatbot:
+The developer has some new feedback/message for you. It's waiting in the Feedback and Intel dashboard.
 
-${message}
-
-View in Dashboard: ${dashboardUrl}
+View it here: ${dashboardUrl}
 
 ---
 Powered by FocusFlow LeadGen
@@ -441,7 +418,7 @@ Powered by FocusFlow LeadGen
 
     return sendEmail({
       to: recipientEmail || DEV_TEST_EMAIL,
-      subject: `${categoryEmoji} New ${categoryDisplay} from LeadGen Team`,
+      subject: `${categoryEmoji} New message waiting for you`,
       html,
       text,
     });

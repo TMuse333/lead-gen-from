@@ -8,6 +8,7 @@ import { TokenUsageDocument } from './models/tokenUsage';
 import { RateLimitConfigDocument } from './models/rateLimitConfig';
 import { LeadQuestionDocument } from './models/leadQuestion';
 import { IntelItemDocument } from './models/intelItem';
+import { KnowledgeRetrievalDocument } from './models/knowledgeRetrieval';
 
 const dbName = process.env.MONGODB_DB_NAME || process.env.DB_NAME || 'agent_lead_gen';
 
@@ -54,4 +55,9 @@ export async function getLeadQuestionsCollection() {
 export async function getIntelItemsCollection() {
   const db = await getDatabase();
   return db.collection<IntelItemDocument>('intel_items');
+}
+
+export async function getKnowledgeRetrievalsCollection() {
+  const db = await getDatabase();
+  return db.collection<KnowledgeRetrievalDocument>('knowledge_retrievals');
 }

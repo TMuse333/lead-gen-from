@@ -13,8 +13,9 @@ import { createBaseTrackingObject, updateTrackingWithResponse } from '@/lib/toke
 import { trackUsageAsync } from '@/lib/tokenUsage/trackUsage';
 import type { ChatIntentClassificationUsage, ChatReplyGenerationUsage } from '@/types/tokenUsage.types';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit/getRateLimit';
-import { getIntelItemsCollection } from '@/lib/mongodb/db';
+import { getIntelItemsCollection, getClientConfigsCollection, getKnowledgeRetrievalsCollection } from '@/lib/mongodb/db';
 import type { IntelItemDocument } from '@/lib/mongodb/models/intelItem';
+import { createKnowledgeRetrievalRecord, type RetrievedItem } from '@/lib/mongodb/models/knowledgeRetrieval';
 import {
   getOffer,
   getQuestion,
@@ -24,6 +25,11 @@ import {
   type Intent,
 } from '@/lib/offers/unified';
 import type { ConversationState, ClassifyAndExtractResult } from '@/types/stateMachine.types';
+import {
+  queryAgentKnowledge,
+  queryKnowledgeForIntent,
+  formatKnowledgeContext,
+} from '@/lib/qdrant/collections/vector/agentKnowledge';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -382,13 +388,109 @@ Reply in 1-2 warm, natural sentences acknowledging their choice. Be kind and eng
         let replySystemPrompt: string;
         const intentPrimary = classifyResult.intent.primary;
 
+        // Fetch agent knowledge context based on intent (stories, tips, agent knowledge)
+        let agentKnowledgeContext = '';
+        const shouldFetchKnowledge =
+          clientIdentifier &&
+          (intentPrimary === 'objection' ||
+            intentPrimary === 'chitchat' ||
+            intentPrimary === 'off_topic' ||
+            intentPrimary === 'clarification_question' ||
+            intentPrimary === 'direct_answer' ||
+            intentPrimary === 'multi_answer');
+
+        if (shouldFetchKnowledge) {
+          try {
+            // Get collection name from client config
+            const clientConfigCollection = await getClientConfigsCollection();
+            const clientConfig = await clientConfigCollection.findOne({
+              businessName: clientIdentifier,
+              isActive: true,
+            });
+
+            if (clientConfig?.qdrantCollectionName) {
+              // Track retrieval timing
+              const retrievalStart = Date.now();
+
+              // Use intent-based smart retrieval (queries stories, tips, and agent knowledge)
+              const knowledge = await queryKnowledgeForIntent(
+                clientConfig.qdrantCollectionName,
+                freeText!,
+                intentPrimary,
+                classifyResult.intent.objection // Pass objection subtype if available
+              );
+
+              const retrievalTimeMs = Date.now() - retrievalStart;
+
+              // Format into a structured context string with intent-specific instructions
+              agentKnowledgeContext = formatKnowledgeContext(knowledge, intentPrimary);
+
+              // Track knowledge retrieval analytics (async, non-blocking)
+              const allRetrievedItems: RetrievedItem[] = [
+                ...knowledge.agentKnowledge.map((k) => ({
+                  id: k.id,
+                  title: k.title,
+                  text: k.text.slice(0, 200), // Truncate for storage
+                  category: k.category,
+                  kind: 'agent_knowledge' as const,
+                  score: k.score,
+                })),
+                ...knowledge.stories.map((k) => ({
+                  id: k.id,
+                  title: k.title,
+                  text: k.text.slice(0, 200),
+                  category: 'stories',
+                  kind: 'story' as const,
+                  score: k.score,
+                })),
+                ...knowledge.tips.map((k) => ({
+                  id: k.id,
+                  title: k.title,
+                  text: k.text.slice(0, 200),
+                  category: 'tips',
+                  kind: 'tip' as const,
+                  score: k.score,
+                })),
+              ];
+
+              if (allRetrievedItems.length > 0) {
+                const origin = req.headers.get('origin') || '';
+                const trackingEnvironment = origin.includes('localhost') || origin.includes('127.0.0.1') ? 'test' : 'production';
+
+                (async () => {
+                  try {
+                    const retrievalsCollection = await getKnowledgeRetrievalsCollection();
+                    const record = createKnowledgeRetrievalRecord({
+                      conversationId: bodyConversationId,
+                      clientId: clientIdentifier,
+                      environment: trackingEnvironment,
+                      userMessage: freeText!.slice(0, 500), // Truncate for storage
+                      intent: intentPrimary,
+                      objectionType: classifyResult.intent.objection,
+                      questionContext: smCurrentState.prompt?.slice(0, 200),
+                      retrievedItems: allRetrievedItems,
+                      retrievalTimeMs,
+                    });
+                    await retrievalsCollection.insertOne(record);
+                  } catch (trackErr) {
+                    console.error('[Knowledge Tracking] Failed to save:', trackErr);
+                  }
+                })();
+              }
+            }
+          } catch (err) {
+            console.error('[Agent Knowledge] Failed to fetch:', err);
+            // Continue without agent knowledge - non-blocking
+          }
+        }
+
         if (intentPrimary === 'direct_answer' || intentPrimary === 'multi_answer') {
           const fieldsExtracted = classifyResult.extracted.map((e) => e.mappingKey).join(', ');
           replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
 User answered: "${freeText}"
 State goal: ${smCurrentState.goal}
 Fields extracted: ${fieldsExtracted || 'none'}
-Reply in 1-2 warm, natural sentences acknowledging their answer. Be kind and engaging.`;
+Reply in 1-2 warm, natural sentences acknowledging their answer. Be kind, personable, and engaging.${agentKnowledgeContext}`;
         } else if (intentPrimary === 'objection') {
           // Use pre-computed objection counter if available
           if (objectionCounter) {
@@ -398,30 +500,41 @@ Reply in 1-2 warm, natural sentences acknowledging their answer. Be kind and eng
             });
           }
           const tone = classifyResult.intent.suggestedTone || 'empathetic';
+          const objectionType = classifyResult.intent.objection || 'general';
           replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
-User said: "${freeText}" (this is an objection)
+User said: "${freeText}" (this is a ${objectionType} objection)
 State goal: ${smCurrentState.goal}
 Question was: "${smCurrentState.prompt}"
 Tone: ${tone}
-Respond warmly to their concern in 2-3 sentences, then gently redirect back to the question.`;
+
+IMPORTANT: Address their specific concern with empathy. If you have client success stories or testimonials in the context below, naturally reference them as social proof (e.g., "I had a client in a similar situation who..."). Don't force it if irrelevant.
+
+Respond warmly in 2-3 sentences, then gently redirect back to the question.${agentKnowledgeContext}`;
         } else if (intentPrimary === 'change_previous_answer') {
           replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
 User wants to change a previous answer: "${freeText}"
 Acknowledge the change warmly in 1-2 sentences.`;
+        } else if (intentPrimary === 'clarification_question') {
+          // User is asking a question - provide helpful answer
+          replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
+User asked: "${freeText}"
+Question we were asking: "${smCurrentState.prompt}"
+
+The user is asking for clarification or has a question. If you have relevant knowledge below, use it to give a helpful, accurate answer. Keep it conversational and concise (2-3 sentences), then gently return to the original question.${agentKnowledgeContext}`;
         } else {
-          // chitchat, off_topic, clarification, etc.
+          // chitchat, off_topic
           replySystemPrompt = `You are a friendly AI assistant for ${offerLabelSM}.
 User said: "${freeText}"
 Question was: "${smCurrentState.prompt}"
-They seem to be going off-topic or need clarification.
-Respond briefly and kindly, then steer back to the question.`;
+
+They seem to be going off-topic or making small talk. Be friendly and personable, but steer back to the question. Keep response brief (1-2 sentences).${agentKnowledgeContext}`;
         }
 
         const replyCompletion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [{ role: 'system', content: replySystemPrompt }],
           temperature: 0.75,
-          max_tokens: 180,
+          max_tokens: agentKnowledgeContext ? 250 : 180, // More tokens when using knowledge context
         });
 
         const reply = replyCompletion.choices[0].message.content?.trim() || 'Got it!';
