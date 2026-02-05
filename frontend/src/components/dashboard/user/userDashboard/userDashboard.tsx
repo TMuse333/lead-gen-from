@@ -29,12 +29,12 @@ const USER_SECTIONS: DashboardSection[] = [
     component: HomeDashboard,
     description: 'Setup guide and quick stats'
   },
-  // Stories - Knowledge base content
+  // Knowledge - Knowledge base content
   {
-    id: 'stories',
-    label: 'Stories',
+    id: 'knowledge',
+    label: 'Knowledge',
     component: KnowledgeBaseDashboard,
-    description: 'Add client stories and expert advice'
+    description: 'Manage your knowledge base'
   },
   // Timeline - Direct timeline configuration
   {

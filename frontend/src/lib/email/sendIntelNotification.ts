@@ -7,7 +7,8 @@
  */
 
 import { Resend } from 'resend';
-import { getClientConfigsCollection } from '@/lib/mongodb/db';
+import { getClientConfigsCollection, getDatabase } from '@/lib/mongodb/db';
+import { ObjectId } from 'mongodb';
 
 // Dev test email - in development, all emails go here
 const DEV_TEST_EMAIL = 'thomaslmusial@gmail.com';
@@ -35,12 +36,44 @@ const getAdminEmails = (): string[] => {
   return adminEmail.split(',').map(email => email.trim());
 };
 
-// Get user email by userId
+// Get user email by userId - checks client_configs first, then falls back to users collection
 async function getUserEmail(userId: string): Promise<string | null> {
   try {
-    const collection = await getClientConfigsCollection();
-    const config = await collection.findOne({ userId });
-    return config?.notificationEmail || config?.endingCTA?.email || config?.agentProfile?.email || null;
+    // First try client_configs
+    const configCollection = await getClientConfigsCollection();
+    const config = await configCollection.findOne({ userId });
+
+    if (config) {
+      // Check multiple possible email fields in config
+      const configEmail = config.notificationEmail
+        || config.endingCTA?.email
+        || config.agentProfile?.email;
+
+      if (configEmail) {
+        return configEmail;
+      }
+    }
+
+    // Fallback: look up email from users collection (NextAuth)
+    const db = await getDatabase();
+    const usersCollection = db.collection('users');
+
+    // Try to find by ObjectId first, then by string
+    let user = null;
+    try {
+      user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    } catch {
+      // userId might not be a valid ObjectId, try string match
+      user = await usersCollection.findOne({ id: userId });
+    }
+
+    if (user?.email) {
+      console.log('[sendIntelNotification] Found email from users collection for:', userId);
+      return user.email;
+    }
+
+    console.warn('[sendIntelNotification] No email found for userId:', userId);
+    return null;
   } catch (error) {
     console.error('[sendIntelNotification] Error getting user email:', error);
     return null;
