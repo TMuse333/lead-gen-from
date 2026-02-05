@@ -10,7 +10,16 @@ if (!process.env.MONGODB_URI!) {
 }
 
 const uri = process.env.MONGODB_URI;
-const options = {};
+const options = {
+  // Connection reliability settings
+  connectTimeoutMS: 10000,      // 10s to establish connection
+  socketTimeoutMS: 45000,       // 45s for operations
+  serverSelectionTimeoutMS: 10000, // 10s to find a server
+  maxPoolSize: 10,              // Connection pool
+  minPoolSize: 1,               // Keep at least 1 connection ready
+  retryWrites: true,            // Auto-retry failed writes
+  retryReads: true,             // Auto-retry failed reads
+};
 
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;

@@ -47,12 +47,21 @@ export function createStateMachineButtonHandler(
     };
     set((s) => ({ messages: [...s.messages, userMsg], loading: true }));
 
-    // Determine mappingKey: from button config, or from state's first collectable field
+    // Determine mappingKey: prefer button's mappingKey (passed through from UI),
+    // then check state config, then fallback to state ID
     const stateButton = currentState.buttons?.find((b) => b.id === button.id);
     const mappingKey =
-      stateButton?.mappingKey ||
+      button.mappingKey ||  // From UI button (most reliable)
+      stateButton?.mappingKey ||  // From state machine config
       currentState.collects[0]?.mappingKey ||
       currentStateId;
+
+    console.log('🔷 [SM Button] Mapping key resolution:', {
+      fromUIButton: button.mappingKey,
+      fromStateButton: stateButton?.mappingKey,
+      fromCollects: currentState.collects[0]?.mappingKey,
+      final: mappingKey,
+    });
 
     // Save answer
     const { addAnswer, updateConversation } = get();
@@ -156,6 +165,7 @@ function convertStateButtons(state: ConversationState | null) {
     id: btn.id,
     label: btn.label,
     value: btn.value,
+    mappingKey: btn.mappingKey, // Include mappingKey for reliable advancement
   }));
 }
 
@@ -169,6 +179,12 @@ async function advanceStateMachine(
   const updatedState = get();
   const context = buildContext(updatedState);
 
+  console.log('🔄 [SM Advance] Starting advancement check:', {
+    currentStateId: context.currentStateId,
+    userInput: context.userInput,
+    stateCollects: currentState.collects.map(c => c.mappingKey),
+  });
+
   // Create a dummy extraction to trigger transition evaluation
   const extractions = currentState.collects.map((c) => ({
     mappingKey: c.mappingKey,
@@ -176,7 +192,16 @@ async function advanceStateMachine(
     confidence: 1.0,
   })).filter((e) => e.value);
 
+  console.log('🔄 [SM Advance] Extractions:', extractions);
+
   const result = processExtraction(config, context, extractions);
+
+  console.log('🔄 [SM Advance] Result:', {
+    advanced: result.advanced,
+    newStateId: result.newStateId,
+    fieldsCollected: result.fieldsCollected,
+    isComplete: result.isComplete,
+  });
 
   if (result.isComplete) {
     console.log('🎉 STATE MACHINE COMPLETE via button!');
@@ -195,9 +220,15 @@ async function advanceStateMachine(
   } else if (result.advanced) {
     const nextState = getStateById(config, result.newStateId);
     if (nextState) {
+      // Combine the warm acknowledgment with the next question's prompt
+      // This ensures the bot transitions smoothly to the next question
+      const fullReply = nextState.prompt
+        ? `${reply}\n\n${nextState.prompt}`
+        : reply;
+
       const aiMsg: ChatMessage = {
         role: 'assistant',
-        content: reply,
+        content: fullReply,
         buttons: convertStateButtons(nextState),
         timestamp: new Date(),
       };

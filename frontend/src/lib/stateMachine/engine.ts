@@ -57,7 +57,13 @@ function isConditionMet(
   switch (condition.type) {
     case 'data_collected':
       // All specified mappingKeys must be present in userInput
-      return condition.mappingKeys.every((key) => !!context.userInput[key]);
+      const result = condition.mappingKeys.every((key) => !!context.userInput[key]);
+      console.log('[SM Engine] data_collected check:', {
+        mappingKeys: condition.mappingKeys,
+        values: condition.mappingKeys.map(key => ({ key, value: context.userInput[key] })),
+        result,
+      });
+      return result;
 
     case 'any_data_collected':
       // At least one of the specified mappingKeys must be present
@@ -94,6 +100,12 @@ export function processExtraction(
   const fieldsCollected: string[] = [];
   const skippedStates: string[] = [];
 
+  console.log('[SM Engine] processExtraction called:', {
+    currentStateId: context.currentStateId,
+    existingUserInput: context.userInput,
+    extractions,
+  });
+
   // Apply high-confidence extractions to a copy of userInput
   const newUserInput = { ...context.userInput };
   for (const extraction of extractions) {
@@ -102,6 +114,11 @@ export function processExtraction(
       fieldsCollected.push(extraction.mappingKey);
     }
   }
+
+  console.log('[SM Engine] After applying extractions:', {
+    newUserInput,
+    fieldsCollected,
+  });
 
   // Create updated context with new userInput
   const updatedContext: StateMachineContext = {
@@ -117,9 +134,18 @@ export function processExtraction(
   let maxCascade = config.states.length; // Safety limit
   while (maxCascade-- > 0) {
     const currentState = getStateById(config, currentStateId);
-    if (!currentState) break;
+    if (!currentState) {
+      console.log('[SM Engine] State not found:', currentStateId);
+      break;
+    }
+
+    console.log('[SM Engine] Evaluating transitions for state:', currentStateId, {
+      transitions: currentState.transitions,
+    });
 
     const targetId = evaluateTransitions(currentState, updatedContext);
+    console.log('[SM Engine] Transition result:', { targetId, currentStateId });
+
     if (!targetId || targetId === currentStateId) break;
 
     // Check if the target state can be skipped

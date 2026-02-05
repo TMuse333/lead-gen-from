@@ -4,10 +4,18 @@ import { useState, useCallback } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import ConversationFlowDiagram from './ConversationFlowDiagram';
 import LiveDebugPanel from './LiveDebugPanel';
+import { QuestionsDebugModal } from './QuestionsDebugModal';
 import type { FlowNodeData } from './flowData';
 import { getOutgoingEdges, getIncomingEdges, flowNodes } from './flowData';
 import { useSandboxDebug } from '@/hooks/useSandboxDebug';
 import { ChevronDown, ChevronUp, RotateCcw, FileCode, HelpCircle, X, ArrowRightLeft, Database, MessageSquare } from 'lucide-react';
+import type { TimelineFlow } from '@/types/timelineBuilder.types';
+
+// Available clients for sandbox testing
+const SANDBOX_CLIENTS = [
+  { id: 'chris-crowell-real-estate', label: 'Chris Crowell' },
+  { id: 'thomas-musial-real-estate', label: 'Thomas Musial' },
+];
 
 interface SelectedNodeInfo {
   id: string;
@@ -20,7 +28,14 @@ export default function BotSandbox() {
   const [detailTab, setDetailTab] = useState<'prompt' | 'connections' | 'data'>('prompt');
   const [iframeKey, setIframeKey] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [questionsModalOpen, setQuestionsModalOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(SANDBOX_CLIENTS[0].id);
   const { debugState, activeNodeId, sessionEvents, clearEvents, possibleNextNodes, lastTransition } = useSandboxDebug();
+
+  // Extract current flow and question from debug state
+  const currentFlow = (debugState?.currentIntent as TimelineFlow) || null;
+  const currentQuestionId = debugState?.currentQuestionId || null;
+  const collectedData = debugState?.userInput || {};
 
   const handleNodeSelect = useCallback((id: string | null, data: FlowNodeData | null) => {
     if (id && data) {
@@ -217,21 +232,48 @@ export default function BotSandbox() {
       {/* Bot iframe + Debug panel */}
       <div className="bg-[#0a1228]/80 backdrop-blur-md rounded-lg border border-blue-500/25 overflow-hidden">
         <div className="px-4 py-3 border-b border-blue-500/20 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Live Bot Preview</h2>
-          <button
-            onClick={() => { setIframeKey((k) => k + 1); clearEvents(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition"
-          >
-            <RotateCcw size={12} />
-            Reset Bot
-          </button>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-white">Live Bot Preview</h2>
+            {/* Client selector */}
+            <select
+              value={selectedClientId}
+              onChange={(e) => {
+                setSelectedClientId(e.target.value);
+                setIframeKey((k) => k + 1);
+                clearEvents();
+              }}
+              className="text-xs bg-slate-800 border border-slate-600 text-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-500"
+            >
+              {SANDBOX_CLIENTS.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setQuestionsModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg transition"
+            >
+              <Database size={12} />
+              View Questions
+            </button>
+            <button
+              onClick={() => { setIframeKey((k) => k + 1); clearEvents(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition"
+            >
+              <RotateCcw size={12} />
+              Reset Bot
+            </button>
+          </div>
         </div>
         <div className="flex p-4 gap-4">
           {/* Iframe */}
           <div className="flex-shrink-0">
             <iframe
               key={iframeKey}
-              src="/bot/thomas-musial-real-estate?embed=true&sandbox=true"
+              src={`/bot/${selectedClientId}?embed=true&sandbox=true`}
               className="w-[450px] rounded-xl border border-slate-700/50"
               style={{ height: 500 }}
               title="Bot Sandbox Preview"
@@ -239,7 +281,7 @@ export default function BotSandbox() {
           </div>
           {/* Debug panel */}
           <div className="flex-1 min-w-0 bg-[#060d1f]/80 rounded-xl border border-blue-500/15" style={{ height: 500 }}>
-            <LiveDebugPanel debugState={debugState} activeNodeId={activeNodeId} sessionEvents={sessionEvents} possibleNextNodes={possibleNextNodes} lastTransition={lastTransition} />
+            <LiveDebugPanel debugState={debugState} activeNodeId={activeNodeId} sessionEvents={sessionEvents} possibleNextNodes={possibleNextNodes} lastTransition={lastTransition} clientId={selectedClientId} />
           </div>
         </div>
       </div>
@@ -384,6 +426,16 @@ export default function BotSandbox() {
           </div>
         </div>
       )}
+
+      {/* Questions Debug Modal */}
+      <QuestionsDebugModal
+        isOpen={questionsModalOpen}
+        onClose={() => setQuestionsModalOpen(false)}
+        clientId={selectedClientId}
+        currentFlow={currentFlow}
+        currentQuestionId={currentQuestionId}
+        collectedData={collectedData}
+      />
     </div>
   );
 }

@@ -41,6 +41,7 @@ export interface ButtonOption {
   id: string;
   label: string;
   value: string;
+  mappingKey?: string; // For state machine advancement
   visual?: VisualAttachment;
   prompt?: PromptConfig;
   tracker?:ButtonTracker

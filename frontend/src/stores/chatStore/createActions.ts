@@ -6,7 +6,7 @@ import { createButtonClickHandler } from './actions/buttonClickHandler';
 import { createSendMessageHandler } from './actions/sendMessageHandler';
 import { createStateMachineMessageHandler } from './actions/stateMachineMessageHandler';
 import { createStateMachineButtonHandler } from './actions/stateMachineButtonHandler';
-import { fetchQuestionsForFlow } from '@/lib/chat/questionProvider';
+import { fetchQuestionsForFlow, fetchAllQuestions } from '@/lib/chat/questionProvider';
 import { fetchStateMachineConfig } from '@/lib/stateMachine/provider';
 import type { TimelineFlow, CustomQuestion } from '@/types/timelineBuilder.types';
 
@@ -382,20 +382,18 @@ export function createActions(
     },
 
     loadAllQuestions: async (clientId?: string) => {
-      const flows: TimelineFlow[] = ['buy', 'sell']; // browse commented out for MVP
-      await Promise.all(
-        flows.map(flow => fetchQuestionsForFlow(flow, clientId))
-      ).then((results) => {
-        const flowQuestions: Partial<Record<TimelineFlow, CustomQuestion[]>> = {};
-        flows.forEach((flow, i) => {
-          flowQuestions[flow] = results[i];
+      try {
+        // Single API call to fetch all questions (faster than multiple calls)
+        const allQuestions = await fetchAllQuestions(clientId);
+        set({
+          flowQuestions: allQuestions,
+          questionsLoaded: true
         });
-        set({ flowQuestions, questionsLoaded: true });
-        console.log('[ChatStore] All questions loaded');
-      }).catch((error) => {
+        console.log(`[ChatStore] All questions loaded: buy=${allQuestions.buy.length}, sell=${allQuestions.sell.length}`);
+      } catch (error) {
         console.error('[ChatStore] Failed to load questions:', error);
         set({ questionsLoaded: true }); // Mark as loaded even on error to prevent infinite loops
-      });
+      }
     },
 
     getQuestionsForCurrentIntent: () => {

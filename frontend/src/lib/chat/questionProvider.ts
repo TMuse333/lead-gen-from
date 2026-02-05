@@ -1,19 +1,20 @@
 // src/lib/chat/questionProvider.ts
 /**
- * Question Provider - Fetches questions from MongoDB
+ * Question Provider - Fetches questions from MongoDB with default fallbacks
  *
- * @deprecated The question provider is superseded by the state machine system.
- * New code should use src/lib/stateMachine/provider.ts instead.
- * This module is retained for backwards compatibility and as a data source
- * for the questionsToStateMachine converter.
+ * Flow:
+ * 1. Try to fetch custom questions from MongoDB via /api/custom-questions
+ * 2. If fetch fails or returns empty, fall back to default questions
+ * 3. Default questions ensure the bot always has something to ask
  *
- * Replaces the hardcoded unified offer system with dynamic questions.
- * If custom questions exist in MongoDB, uses those.
- * Otherwise falls back to default questions from the unified offer system.
+ * Agents can customize questions via the setup wizard. The defaults cover:
+ * - Buy: reason, location, budget, timeline, pre-approval
+ * - Sell: reason, location, home value, timeline
  */
 
 import type { CustomQuestion, TimelineFlow } from '@/types/timelineBuilder.types';
 import type { ButtonOption } from '@/types/conversation.types';
+import { getDefaultQuestions, getAllDefaultQuestions } from './defaultQuestions';
 
 // Cache for fetched questions per flow
 const questionCache: Map<TimelineFlow, CustomQuestion[]> = new Map();
@@ -52,26 +53,26 @@ export async function fetchQuestionsForFlow(
     const response = await fetch(url);
 
     if (!response.ok) {
-      console.warn(`[QuestionProvider] ❌ API returned ${response.status} for ${flow}`);
-      const errorData = await response.json().catch(() => ({}));
-      console.warn(`[QuestionProvider] Error details:`, errorData);
-      return [];
+      console.warn(`[QuestionProvider] ❌ API returned ${response.status} for ${flow}, using defaults`);
+      const defaults = getDefaultQuestions(flow);
+      questionCache.set(flow, defaults);
+      return defaults;
     }
 
     const data = await response.json();
     console.log(`[QuestionProvider] 📥 API response for ${flow}:`, data);
 
-    const questions = data.questions || [];
+    let questions = data.questions || [];
 
-    // Log each question's structure
-    if (questions.length > 0) {
+    // Fall back to defaults if API returned empty
+    if (questions.length === 0) {
+      console.warn(`[QuestionProvider] ⚠️ No questions from API for ${flow}, using defaults`);
+      questions = getDefaultQuestions(flow);
+    } else {
       console.log(`[QuestionProvider] 📋 Questions loaded for ${flow}:`);
       questions.forEach((q: CustomQuestion, i: number) => {
         console.log(`  ${i + 1}. ${q.id} | type: ${q.inputType} | order: ${q.order} | mappingKey: ${q.mappingKey || 'MISSING'} | buttons: ${q.buttons?.length || 0}`);
       });
-    } else {
-      console.warn(`[QuestionProvider] ⚠️ NO QUESTIONS returned for ${flow} flow!`);
-      console.warn(`[QuestionProvider] Full API response:`, JSON.stringify(data, null, 2));
     }
 
     // Cache the result
@@ -80,17 +81,84 @@ export async function fetchQuestionsForFlow(
     return questions;
   } catch (error) {
     console.error('[QuestionProvider] ❌ Error fetching questions:', error);
-    return [];
+    // Fall back to defaults on any error
+    const defaults = getDefaultQuestions(flow);
+    console.log(`[QuestionProvider] 🔄 Using ${defaults.length} default questions for ${flow}`);
+    questionCache.set(flow, defaults);
+    return defaults;
   }
 }
 
 /**
- * Prefetch questions for all flows
+ * Fetch ALL questions for all flows in a single API call (faster)
+ * Returns questions keyed by flow, with fallbacks to defaults
+ */
+export async function fetchAllQuestions(
+  clientId?: string
+): Promise<Record<TimelineFlow, CustomQuestion[]>> {
+  console.log(`[QuestionProvider] 🔍 Fetching ALL questions, clientId: ${clientId || 'none'}`);
+
+  // Invalidate cache if clientId changed
+  if (clientId !== cacheClientId) {
+    console.log(`[QuestionProvider] Cache invalidated (clientId changed)`);
+    questionCache.clear();
+    cacheClientId = clientId || null;
+  }
+
+  // Check if both flows are already cached
+  if (questionCache.has('buy') && questionCache.has('sell')) {
+    console.log(`[QuestionProvider] ✅ Returning cached questions for all flows`);
+    return {
+      buy: questionCache.get('buy')!,
+      sell: questionCache.get('sell')!,
+    };
+  }
+
+  try {
+    const url = clientId
+      ? `/api/custom-questions/all?clientId=${encodeURIComponent(clientId)}`
+      : `/api/custom-questions/all`;
+
+    console.log(`[QuestionProvider] 📡 Fetching from: ${url}`);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.warn(`[QuestionProvider] ❌ API returned ${response.status}, using defaults`);
+      const defaults = getAllDefaultQuestions();
+      questionCache.set('buy', defaults.buy);
+      questionCache.set('sell', defaults.sell);
+      return defaults;
+    }
+
+    const data = await response.json();
+    console.log(`[QuestionProvider] 📥 Loaded: buy=${data.counts?.buy || 0}, sell=${data.counts?.sell || 0}`);
+
+    // Use defaults for any empty flows
+    const result: Record<TimelineFlow, CustomQuestion[]> = {
+      buy: data.questions?.buy?.length > 0 ? data.questions.buy : getDefaultQuestions('buy'),
+      sell: data.questions?.sell?.length > 0 ? data.questions.sell : getDefaultQuestions('sell'),
+    };
+
+    // Cache results
+    questionCache.set('buy', result.buy);
+    questionCache.set('sell', result.sell);
+
+    return result;
+  } catch (error) {
+    console.error('[QuestionProvider] ❌ Error fetching all questions:', error);
+    const defaults = getAllDefaultQuestions();
+    questionCache.set('buy', defaults.buy);
+    questionCache.set('sell', defaults.sell);
+    return defaults;
+  }
+}
+
+/**
+ * Prefetch questions for all flows (uses single API call)
  * Call this on chatbot init for faster question loading
  */
 export async function prefetchAllQuestions(clientId?: string): Promise<void> {
-  const flows: TimelineFlow[] = ['buy', 'sell']; // browse commented out for MVP
-  await Promise.all(flows.map(flow => fetchQuestionsForFlow(flow, clientId)));
+  await fetchAllQuestions(clientId);
 }
 
 /**

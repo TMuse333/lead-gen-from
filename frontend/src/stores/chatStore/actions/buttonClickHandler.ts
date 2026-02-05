@@ -146,7 +146,12 @@ export function createButtonClickHandler(
 
         if (firstState) {
           const buttons = firstState.buttons && firstState.inputType !== 'text'
-            ? firstState.buttons.map(b => ({ id: b.id, label: b.label, value: b.value }))
+            ? firstState.buttons.map(b => ({
+                id: b.id,
+                label: b.label,
+                value: b.value,
+                mappingKey: b.mappingKey, // Include mappingKey for state machine advancement
+              }))
             : undefined;
 
           const aiMsg: ChatMessage = {
@@ -222,6 +227,16 @@ export function createButtonClickHandler(
           messages: get().messages,
           currentQuestionId: firstQuestion.id,
         });
+      } else {
+        // This should rarely happen now since questionProvider has default fallbacks
+        // But just in case, show a message instead of silent failure
+        console.error('[ButtonHandler] ❌ No questions available (even defaults failed)');
+        const fallbackMsg: ChatMessage = {
+          role: 'assistant',
+          content: "I'd love to help you get started! Please try refreshing the page, or feel free to reach out directly to the agent.",
+          timestamp: new Date(),
+        };
+        set((s) => ({ messages: [...s.messages, fallbackMsg] }));
       }
 
       return;

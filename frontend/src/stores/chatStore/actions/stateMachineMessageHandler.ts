@@ -221,9 +221,15 @@ async function handleAnswer(
     // Move to next state
     const nextState = getStateById(config, result.newStateId);
     if (nextState) {
+      // Combine the warm acknowledgment with the next question's prompt
+      // This ensures the bot transitions smoothly to the next question
+      const fullReply = apiData.reply && nextState.prompt
+        ? `${apiData.reply}\n\n${nextState.prompt}`
+        : apiData.reply || nextState.prompt;
+
       const aiMsg: ChatMessage = {
         role: 'assistant',
-        content: apiData.reply || nextState.prompt,
+        content: fullReply,
         buttons: convertStateButtons(nextState),
         timestamp: new Date(),
       };

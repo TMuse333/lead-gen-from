@@ -15,7 +15,8 @@ import {
   selectProgress,
   selectEnabledOffers,
   selectSelectedOffer,
-  selectShowContactModal
+  selectShowContactModal,
+  selectQuestionsLoaded,
 } from '@/stores/chatStore';
 
 import { GameChat } from './chat/gameChat';
@@ -94,6 +95,10 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
   const flowQuestions = useChatStore((s) => s.flowQuestions);
   const currentQuestionId = useChatStore((s) => s.currentQuestionId);
 
+  // Questions preloading - ensures questions are loaded before user can interact
+  const questionsLoaded = useChatStore(selectQuestionsLoaded);
+  const loadAllQuestions = useChatStore((s) => s.loadAllQuestions);
+
   // Local state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -108,6 +113,7 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
   const [generationError, setGenerationError] = useState<string | null>(null);
   const submissionCalledRef = useRef(false);
   const clientConfigLoadedRef = useRef(false);
+  const questionsPreloadedRef = useRef(false);
   const contactAnalyticsRef = useRef<ContactAnalytics>({
     firstAttemptShown: false,
     firstAttemptCompleted: false,
@@ -164,6 +170,39 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
       clientConfigLoadedRef.current = true;
     }
   }, [clientConfig, updateInitialMessage, visitorData]);
+
+  // Preload questions when client config is ready
+  // This ensures questions are available BEFORE user selects an intent
+  useEffect(() => {
+    if (!clientConfig || !clientConfigLoadedRef.current || questionsPreloadedRef.current) {
+      return;
+    }
+
+    const preloadWithRetry = async (retries = 3) => {
+      const clientId = clientConfig.businessName;
+      console.log(`[ChatWithTracker] Preloading questions for ${clientId}...`);
+
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          await loadAllQuestions(clientId);
+          console.log(`[ChatWithTracker] ✅ Questions preloaded successfully (attempt ${attempt})`);
+          questionsPreloadedRef.current = true;
+          return;
+        } catch (error) {
+          console.warn(`[ChatWithTracker] ⚠️ Question preload attempt ${attempt} failed:`, error);
+          if (attempt < retries) {
+            // Wait before retry (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+      }
+      console.error('[ChatWithTracker] ❌ Failed to preload questions after all retries');
+      // Mark as attempted even on failure to prevent infinite loops
+      questionsPreloadedRef.current = true;
+    };
+
+    preloadWithRetry();
+  }, [clientConfig, loadAllQuestions]);
 
   // Initialize on mount
   useEffect(() => {
@@ -301,15 +340,6 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
       contactAnalyticsRef.current.retryCompleted = true;
     }
 
-    // Track contact modal completed in conversation
-    updateConversation({
-      contactModal: {
-        completed: true,
-        completedAt: new Date(),
-        skippedCount: contactAnalyticsRef.current.skippedCount,
-      },
-    });
-
     // Add contact info to userInput using addAnswer for each field
     const { addAnswer, setComplete, userInput: currentUserInput, conversationId: currentConversationId } = useChatStore.getState();
     addAnswer('contactName', contact.name);
@@ -322,6 +352,26 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
 
     // Mark as complete since contact was the final step
     setComplete(true);
+
+    // Build complete userInput with contact info for persistence
+    const completeUserInput = {
+      ...currentUserInput,
+      contactName: contact.name,
+      contactEmail: contact.email,
+      contactPhone: contact.phone || '',
+      email: contact.email,
+    };
+
+    // Track contact modal completed AND save userInput with contact info to MongoDB
+    updateConversation({
+      contactModal: {
+        completed: true,
+        completedAt: new Date(),
+        skippedCount: contactAnalyticsRef.current.skippedCount,
+      },
+      userInput: completeUserInput,
+      status: 'completed',
+    });
 
     // Send email notification to agent/owner (fire and forget - don't block generation)
     const clientId = clientConfig?.qdrantCollectionName || clientConfig?.businessName;
@@ -483,6 +533,32 @@ export default function ChatWithTracker({ clientConfig, embedMode = false, track
 
       setLlmOutput(llmOutput as any);
       setDebugInfo(debugInfo);
+
+      // Save generation to database for leads tracking
+      if (freshConversationId) {
+        try {
+          const generationEnvironment = typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'test'
+            : 'production';
+
+          await fetch('/api/generations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: freshConversationId,
+              clientIdentifier: clientId,
+              flow: freshIntent,
+              llmOutput,
+              debugInfo,
+              userInput: mergedUserInput,
+              environment: generationEnvironment,
+            }),
+          });
+        } catch (e) {
+          console.warn('Failed to save generation:', e);
+        }
+      }
 
       // Update conversation status
       if (freshConversationId) {

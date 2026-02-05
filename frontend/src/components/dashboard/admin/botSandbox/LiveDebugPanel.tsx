@@ -4,7 +4,8 @@ import { useRef, useEffect, useState } from 'react';
 import type { SandboxDebugState } from '@/lib/sandbox/sandboxBroadcaster';
 import type { SessionEvent, SessionEventKind, TransitionInfo } from '@/hooks/useSandboxDebug';
 import type { OutgoingEdge } from '@/components/dashboard/admin/botSandbox/flowData';
-import { Loader2, MessageSquare, CheckCircle2, ArrowRight, ChevronDown, ChevronUp, ArrowRightCircle, Circle } from 'lucide-react';
+import type { CustomQuestion, TimelineFlow } from '@/types/timelineBuilder.types';
+import { Loader2, MessageSquare, CheckCircle2, ArrowRight, ChevronDown, ChevronUp, ArrowRightCircle, Circle, Database } from 'lucide-react';
 
 interface Props {
   debugState: SandboxDebugState | null;
@@ -12,6 +13,7 @@ interface Props {
   sessionEvents: SessionEvent[];
   possibleNextNodes: OutgoingEdge[];
   lastTransition: TransitionInfo | null;
+  clientId?: string;
 }
 
 const nodeLabels: Record<string, string> = {
@@ -42,7 +44,40 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function LiveDebugPanel({ debugState, activeNodeId, sessionEvents, possibleNextNodes, lastTransition }: Props) {
+interface LoadedQuestions {
+  buy: CustomQuestion[];
+  sell: CustomQuestion[];
+}
+
+export default function LiveDebugPanel({ debugState, activeNodeId, sessionEvents, possibleNextNodes, lastTransition, clientId }: Props) {
+  const [questions, setQuestions] = useState<LoadedQuestions | null>(null);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+
+  // Fetch questions when clientId changes
+  useEffect(() => {
+    if (!clientId) return;
+
+    const fetchQuestions = async () => {
+      setQuestionsLoading(true);
+      try {
+        const response = await fetch(`/api/custom-questions/all?clientId=${encodeURIComponent(clientId)}`);
+        const data = await response.json();
+        if (data.success) {
+          setQuestions({
+            buy: data.questions?.buy || [],
+            sell: data.questions?.sell || [],
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch questions:', err);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [clientId]);
+
   if (!debugState) {
     return (
       <div className="h-full flex items-center justify-center px-4">
@@ -55,6 +90,9 @@ export default function LiveDebugPanel({ debugState, activeNodeId, sessionEvents
   }
 
   const answerEntries = Object.entries(debugState.userInput);
+  const currentFlow = debugState.currentIntent as TimelineFlow | null;
+  const currentQuestions = currentFlow && questions ? questions[currentFlow] : [];
+  const sortedQuestions = [...currentQuestions].sort((a, b) => a.order - b.order);
 
   return (
     <div className="h-full overflow-y-auto space-y-4 p-4 text-sm">
@@ -117,12 +155,77 @@ export default function LiveDebugPanel({ debugState, activeNodeId, sessionEvents
         </div>
       </Section>
 
+      {/* Current Question (MongoDB) */}
+      {(() => {
+        // Find current question from MongoDB based on state ID
+        const currentQ = sortedQuestions.find(q =>
+          `q_${q.id}` === debugState.currentQuestionId || q.id === debugState.currentQuestionId
+        );
+        const questionIndex = currentQ ? sortedQuestions.indexOf(currentQ) : -1;
+        const mappingKey = currentQ?.mappingKey || currentQ?.id;
+
+        return currentQ ? (
+          <Section title="Current Question (MongoDB)">
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-mono bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded">
+                  #{questionIndex + 1} of {sortedQuestions.length}
+                </span>
+                <span className="text-[10px] font-mono text-cyan-400">
+                  {mappingKey}
+                </span>
+                <span className={`text-[9px] px-1 py-0.5 rounded ${
+                  currentQ.inputType === 'buttons'
+                    ? 'bg-purple-500/20 text-purple-300'
+                    : 'bg-blue-500/20 text-blue-300'
+                }`}>
+                  {currentQ.inputType}
+                </span>
+              </div>
+              <p className="text-sm text-white font-medium leading-snug">
+                {currentQ.question}
+              </p>
+              {currentQ.buttons && currentQ.buttons.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {currentQ.buttons.map((btn) => (
+                    <span
+                      key={btn.id}
+                      className="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300"
+                    >
+                      {btn.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 pt-2 border-t border-cyan-500/20 text-[10px] text-slate-400">
+                <span className="text-slate-500">State ID: </span>
+                <span className="font-mono text-cyan-400">{debugState.currentQuestionId}</span>
+                <span className="text-slate-600 mx-1">→</span>
+                <span className="text-slate-500">Collects: </span>
+                <span className="font-mono text-green-400">{mappingKey}</span>
+              </div>
+            </div>
+          </Section>
+        ) : debugState.currentQuestionId ? (
+          <Section title="Current State">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+              <p className="text-xs text-amber-300">
+                State: <span className="font-mono">{debugState.currentQuestionId}</span>
+              </p>
+              <p className="text-[10px] text-amber-400/70 mt-1">
+                (Not a MongoDB question - may be system state)
+              </p>
+            </div>
+          </Section>
+        ) : null;
+      })()}
+
       {/* Flow State */}
       <Section title="Flow State">
         <div className="space-y-2 bg-[#060d1f] rounded-lg px-3 py-2.5 border border-blue-500/15">
           <Row label="Offer" value={debugState.selectedOffer || '—'} />
           <Row label="Intent" value={debugState.currentIntent || '—'} />
-          <Row label="Question" value={debugState.currentQuestionId || '—'} />
+          <Row label="State ID" value={debugState.currentQuestionId || '—'} />
           <Row label="Messages" value={String(debugState.messageCount)} />
           {/* Progress bar */}
           <div className="pt-1">
@@ -145,6 +248,92 @@ export default function LiveDebugPanel({ debugState, activeNodeId, sessionEvents
           </div>
         </div>
       </Section>
+
+      {/* MongoDB Question Flow */}
+      {currentFlow && (
+        <Section title={`Question Flow (${currentFlow.toUpperCase()})`}>
+          {questionsLoading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
+              <Loader2 size={12} className="animate-spin" />
+              Loading questions...
+            </div>
+          ) : sortedQuestions.length === 0 ? (
+            <p className="text-xs text-slate-600 italic">No questions configured</p>
+          ) : (
+            <div className="bg-[#060d1f] rounded-lg border border-blue-500/15 overflow-hidden">
+              {sortedQuestions.map((q, index) => {
+                const stateId = `q_${q.id}`;
+                const mappingKey = q.mappingKey || q.id;
+                const isCurrent = stateId === debugState.currentQuestionId || q.id === debugState.currentQuestionId;
+                const isCompleted = mappingKey ? debugState.userInput[mappingKey] !== undefined : false;
+                const isNext = !isCurrent && !isCompleted && sortedQuestions.slice(0, index).every(pq => {
+                  const pk = pq.mappingKey || pq.id;
+                  return pk ? debugState.userInput[pk] !== undefined : false;
+                }) && index > 0;
+
+                return (
+                  <div
+                    key={q.id}
+                    className={`px-3 py-2 border-b border-blue-500/10 last:border-b-0 ${
+                      isCurrent
+                        ? 'bg-cyan-500/15 border-l-2 border-l-cyan-400'
+                        : isCompleted
+                        ? 'bg-green-500/5'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* Status indicator */}
+                      {isCompleted ? (
+                        <CheckCircle2 size={12} className="text-green-400 shrink-0" />
+                      ) : isCurrent ? (
+                        <ArrowRight size={12} className="text-cyan-400 shrink-0 animate-pulse" />
+                      ) : (
+                        <Circle size={12} className="text-slate-600 shrink-0" />
+                      )}
+
+                      {/* Question number and key */}
+                      <span className="text-[10px] font-mono text-slate-500">#{index + 1}</span>
+                      <span className={`text-[10px] font-mono ${isCurrent ? 'text-cyan-400' : 'text-slate-500'}`}>
+                        {mappingKey}
+                      </span>
+
+                      {/* Input type badge */}
+                      <span className={`text-[9px] px-1 py-0.5 rounded ${
+                        q.inputType === 'buttons'
+                          ? 'bg-purple-500/20 text-purple-300'
+                          : 'bg-blue-500/20 text-blue-300'
+                      }`}>
+                        {q.inputType}
+                      </span>
+
+                      {/* Current/completed badges */}
+                      {isCurrent && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-300 ml-auto">
+                          CURRENT
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Question text (truncated) */}
+                    <p className={`text-[11px] mt-1 truncate ${isCurrent ? 'text-white' : 'text-slate-400'}`}>
+                      {q.question}
+                    </p>
+
+                    {/* Show collected value if completed */}
+                    {isCompleted && mappingKey && (
+                      <div className="text-[10px] mt-1">
+                        <span className="text-green-400">→ </span>
+                        <span className="text-slate-300 font-mono">{debugState.userInput[mappingKey]}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* Answers Collected */}
       <Section title={`Answers Collected (${answerEntries.length})`}>
