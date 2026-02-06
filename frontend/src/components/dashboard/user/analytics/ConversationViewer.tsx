@@ -11,7 +11,8 @@ import {
   MessageSquare, Clock, User, Bot, ChevronDown, ChevronUp,
   Timer, AlertTriangle, CheckCircle, XCircle, ArrowRight,
   Loader2, RefreshCw, Filter, Calendar, Globe, Smartphone,
-  Tablet, Monitor, UserCheck, Link2, ExternalLink
+  Tablet, Monitor, UserCheck, Link2, ExternalLink, Mail, SkipForward,
+  EyeOff, Eye, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -51,6 +52,16 @@ interface VisitorTracking {
   sessionDuration?: number;
 }
 
+interface ContactModal {
+  shown?: boolean;
+  shownAt?: string;
+  completed?: boolean;
+  completedAt?: string;
+  skipped?: boolean;
+  skippedAt?: string;
+  skippedCount?: number;
+}
+
 interface Conversation {
   _id: string;
   flow: string;
@@ -67,6 +78,7 @@ interface Conversation {
   duration?: number;
   abandonedAt?: string;
   visitorTracking?: VisitorTracking;
+  contactModal?: ContactModal;
 }
 
 interface ConversationViewerProps {
@@ -81,10 +93,12 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'completed' | 'abandoned' | 'in-progress'>('all');
   const [total, setTotal] = useState(0);
+  const [uniqueVisitors, setUniqueVisitors] = useState(0);
+  const [excludeInternal, setExcludeInternal] = useState(true); // Default to excluding internal traffic
 
   useEffect(() => {
     fetchConversations();
-  }, [filter, environment]);
+  }, [filter, environment, excludeInternal]);
 
   const fetchConversations = async () => {
     try {
@@ -95,6 +109,9 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
       if (filter !== 'all') {
         params.set('status', filter);
       }
+      if (excludeInternal) {
+        params.set('excludeInternal', 'true');
+      }
 
       const response = await fetch(`/api/user/conversations?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch conversations');
@@ -102,6 +119,7 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
       const data = await response.json();
       setConversations(data.conversations || []);
       setTotal(data.total || 0);
+      setUniqueVisitors(data.uniqueVisitors || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load conversations');
     } finally {
@@ -210,6 +228,20 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Exclude Internal Toggle */}
+          <button
+            onClick={() => setExcludeInternal(!excludeInternal)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              excludeInternal
+                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+            title={excludeInternal ? 'Showing external traffic only' : 'Showing all traffic including internal'}
+          >
+            {excludeInternal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {excludeInternal ? 'Internal Hidden' : 'Show All'}
+          </button>
+
           {/* Filter */}
           <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
             {(['all', 'completed', 'abandoned', 'in-progress'] as const).map((f) => (
@@ -238,10 +270,14 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-cyan-400">{total}</div>
           <div className="text-sm text-slate-400">Total Conversations</div>
+        </div>
+        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+          <div className="text-2xl font-bold text-purple-400">{uniqueVisitors}</div>
+          <div className="text-sm text-slate-400">Unique Visitors</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-green-400">
@@ -310,6 +346,13 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
                           </span>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
+                          {/* Visitor ID */}
+                          {conversation.visitorTracking?.visitorId && (
+                            <span className="flex items-center gap-1 font-mono text-xs text-slate-500" title={conversation.visitorTracking.visitorId}>
+                              <User className="h-3 w-3" />
+                              {conversation.visitorTracking.visitorId.substring(0, 8)}...
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <MessageSquare className="h-3 w-3" />
                             {conversation.messageCount} messages
@@ -635,6 +678,57 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
                               </div>
                             );
                           })}
+
+                          {/* Contact Modal Indicator */}
+                          {conversation.contactModal?.shown && (
+                            <div className="flex items-center justify-center gap-2 py-4">
+                              <div className={`h-px flex-1 ${
+                                conversation.contactModal.completed
+                                  ? 'bg-pink-500/30'
+                                  : conversation.contactModal.skipped
+                                    ? 'bg-amber-500/30'
+                                    : 'bg-slate-600'
+                              }`} />
+                              <div className={`text-xs px-3 py-2 rounded-lg flex flex-col items-center gap-1.5 ${
+                                conversation.contactModal.completed
+                                  ? 'bg-pink-500/20 text-pink-300'
+                                  : conversation.contactModal.skipped
+                                    ? 'bg-amber-500/20 text-amber-300'
+                                    : 'bg-slate-700 text-slate-400'
+                              }`}>
+                                <div className="flex items-center gap-2">
+                                  <Mail className="h-4 w-4" />
+                                  <span className="font-medium">Contact Modal</span>
+                                  {conversation.contactModal.completed ? (
+                                    <CheckCircle className="h-4 w-4 text-green-400" />
+                                  ) : conversation.contactModal.skipped ? (
+                                    <SkipForward className="h-4 w-4 text-amber-400" />
+                                  ) : null}
+                                </div>
+                                {conversation.contactModal.completed && conversation.userInput.contactEmail && (
+                                  <div className="text-xs text-pink-200/70 flex flex-col items-center gap-0.5">
+                                    <span>{conversation.userInput.contactName || 'No name'}</span>
+                                    <span>{conversation.userInput.contactEmail}</span>
+                                    {conversation.userInput.contactPhone && (
+                                      <span>{conversation.userInput.contactPhone}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {conversation.contactModal.skipped && conversation.contactModal.skippedCount && (
+                                  <span className="text-xs text-amber-200/70">
+                                    Skipped {conversation.contactModal.skippedCount} time{conversation.contactModal.skippedCount > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                              <div className={`h-px flex-1 ${
+                                conversation.contactModal.completed
+                                  ? 'bg-pink-500/30'
+                                  : conversation.contactModal.skipped
+                                    ? 'bg-amber-500/30'
+                                    : 'bg-slate-600'
+                              }`} />
+                            </div>
+                          )}
 
                           {/* Drop-off Indicator */}
                           {conversation.status === 'abandoned' && (

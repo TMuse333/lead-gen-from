@@ -30,6 +30,13 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const flow = searchParams.get('flow');
     const environment = searchParams.get('environment') || 'production'; // Default to production (hide test data)
+    const excludeInternal = searchParams.get('excludeInternal') === 'true';
+
+    // Known internal visitor IDs (testing/development)
+    const internalVisitorIds = [
+      '1ad461c3-a77f-4986-bbd7-d3e3b58790a9', // Thomas - main
+      'b728f84f-7dca-4228-81d6-73ce2eae4635', // Thomas - secondary
+    ];
 
     const conversationsCollection = await getConversationsCollection();
 
@@ -43,8 +50,22 @@ export async function GET(req: NextRequest) {
       filter.flow = flow;
     }
     // Filter by environment (all, production, test)
+    // Treat missing environment field as 'production' (legacy records)
     if (environment !== 'all') {
-      filter.environment = environment;
+      if (environment === 'production') {
+        // Match both explicit 'production' and missing environment (legacy)
+        filter.$or = [
+          { environment: 'production' },
+          { environment: { $exists: false } }
+        ];
+      } else {
+        filter.environment = environment;
+      }
+    }
+
+    // Exclude internal/testing traffic
+    if (excludeInternal) {
+      filter['visitorTracking.visitorId'] = { $nin: internalVisitorIds };
     }
 
     console.log('[User Conversations GET] Query filter:', filter);
@@ -59,12 +80,19 @@ export async function GET(req: NextRequest) {
 
     const total = await conversationsCollection.countDocuments(filter);
 
-    console.log('[User Conversations GET] Found:', total, 'conversations');
+    // Get unique visitor count (distinct non-null visitor IDs)
+    const uniqueVisitors = await conversationsCollection.distinct('visitorTracking.visitorId', {
+      ...filter,
+      'visitorTracking.visitorId': { $ne: null, ...(excludeInternal ? { $nin: internalVisitorIds } : {}) }
+    });
+
+    console.log('[User Conversations GET] Found:', total, 'conversations,', uniqueVisitors.length, 'unique visitors');
 
     return NextResponse.json({
       success: true,
       conversations,
       total,
+      uniqueVisitors: uniqueVisitors.length,
       limit,
       skip,
     });
