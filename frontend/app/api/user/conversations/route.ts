@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     const flow = searchParams.get('flow');
     const environment = searchParams.get('environment') || 'production'; // Default to production (hide test data)
     const excludeInternal = searchParams.get('excludeInternal') === 'true';
+    const timeRange = searchParams.get('timeRange'); // '24h', '7d', '30d', or null for all
 
     // Known internal visitor IDs (testing/development)
     const internalVisitorIds = [
@@ -68,6 +69,26 @@ export async function GET(req: NextRequest) {
       filter['visitorTracking.visitorId'] = { $nin: internalVisitorIds };
     }
 
+    // Time range filter
+    if (timeRange) {
+      const now = new Date();
+      let startDate: Date;
+      switch (timeRange) {
+        case '24h':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(0); // All time
+      }
+      filter.startedAt = { $gte: startDate };
+    }
+
     console.log('[User Conversations GET] Query filter:', filter);
 
     // Get conversations
@@ -86,13 +107,40 @@ export async function GET(req: NextRequest) {
       'visitorTracking.visitorId': { $ne: null, ...(excludeInternal ? { $nin: internalVisitorIds } : {}) }
     });
 
+    // Mark stale in-progress conversations as abandoned (idle > 10 minutes)
+    const ABANDONED_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+    const now = new Date();
+    const processedConversations = conversations.map(conv => {
+      if (conv.status === 'in-progress') {
+        const lastActivity = new Date(conv.lastActivityAt || conv.startedAt);
+        const idleTime = now.getTime() - lastActivity.getTime();
+        if (idleTime > ABANDONED_THRESHOLD_MS) {
+          return {
+            ...conv,
+            status: 'abandoned' as const,
+            abandonedAt: lastActivity,
+            autoAbandoned: true, // Flag to indicate this was auto-detected
+          };
+        }
+      }
+      return conv;
+    });
+
+    // Recalculate stats based on effective status
+    const stats = {
+      completed: processedConversations.filter(c => c.status === 'completed').length,
+      abandoned: processedConversations.filter(c => c.status === 'abandoned').length,
+      inProgress: processedConversations.filter(c => c.status === 'in-progress').length,
+    };
+
     console.log('[User Conversations GET] Found:', total, 'conversations,', uniqueVisitors.length, 'unique visitors');
 
     return NextResponse.json({
       success: true,
-      conversations,
+      conversations: processedConversations,
       total,
       uniqueVisitors: uniqueVisitors.length,
+      stats,
       limit,
       skip,
     });

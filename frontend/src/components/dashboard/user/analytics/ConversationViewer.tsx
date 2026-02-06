@@ -77,6 +77,7 @@ interface Conversation {
   messageCount: number;
   duration?: number;
   abandonedAt?: string;
+  autoAbandoned?: boolean; // True if auto-detected as abandoned after 10 min idle
   visitorTracking?: VisitorTracking;
   contactModal?: ContactModal;
 }
@@ -95,10 +96,12 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
   const [total, setTotal] = useState(0);
   const [uniqueVisitors, setUniqueVisitors] = useState(0);
   const [excludeInternal, setExcludeInternal] = useState(true); // Default to excluding internal traffic
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'all'>('all');
+  const [stats, setStats] = useState({ completed: 0, abandoned: 0, inProgress: 0 });
 
   useEffect(() => {
     fetchConversations();
-  }, [filter, environment, excludeInternal]);
+  }, [filter, environment, excludeInternal, timeRange]);
 
   const fetchConversations = async () => {
     try {
@@ -112,6 +115,9 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
       if (excludeInternal) {
         params.set('excludeInternal', 'true');
       }
+      if (timeRange !== 'all') {
+        params.set('timeRange', timeRange);
+      }
 
       const response = await fetch(`/api/user/conversations?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch conversations');
@@ -120,6 +126,9 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
       setConversations(data.conversations || []);
       setTotal(data.total || 0);
       setUniqueVisitors(data.uniqueVisitors || 0);
+      if (data.stats) {
+        setStats(data.stats);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load conversations');
     } finally {
@@ -228,6 +237,28 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Time Range Filter */}
+          <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+            {([
+              { value: '24h', label: '24h' },
+              { value: '7d', label: '7d' },
+              { value: '30d', label: '30d' },
+              { value: 'all', label: 'All' },
+            ] as const).map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setTimeRange(t.value)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  timeRange === t.value
+                    ? 'bg-purple-500/20 text-purple-300'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* Exclude Internal Toggle */}
           <button
             onClick={() => setExcludeInternal(!excludeInternal)}
@@ -273,28 +304,24 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-cyan-400">{total}</div>
-          <div className="text-sm text-slate-400">Total Conversations</div>
+          <div className="text-sm text-slate-400">
+            {timeRange === '24h' ? 'Last 24 Hours' : timeRange === '7d' ? 'Last 7 Days' : timeRange === '30d' ? 'Last 30 Days' : 'Total Conversations'}
+          </div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div className="text-2xl font-bold text-purple-400">{uniqueVisitors}</div>
           <div className="text-sm text-slate-400">Unique Visitors</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-          <div className="text-2xl font-bold text-green-400">
-            {conversations.filter(c => c.status === 'completed').length}
-          </div>
+          <div className="text-2xl font-bold text-green-400">{stats.completed}</div>
           <div className="text-sm text-slate-400">Completed</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-          <div className="text-2xl font-bold text-red-400">
-            {conversations.filter(c => c.status === 'abandoned').length}
-          </div>
+          <div className="text-2xl font-bold text-red-400">{stats.abandoned}</div>
           <div className="text-sm text-slate-400">Abandoned</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-          <div className="text-2xl font-bold text-yellow-400">
-            {conversations.filter(c => c.status === 'in-progress').length}
-          </div>
+          <div className="text-2xl font-bold text-yellow-400">{stats.inProgress}</div>
           <div className="text-sm text-slate-400">In Progress</div>
         </div>
       </div>
@@ -344,6 +371,12 @@ export default function ConversationViewer({ clientIdentifier, environment = 'pr
                           <span className={`text-xs font-medium ${engagement.color}`}>
                             {engagement.label} Engagement
                           </span>
+                          {conversation.autoAbandoned && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Timed out
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
                           {/* Visitor ID */}
