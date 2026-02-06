@@ -58,16 +58,19 @@ export default function LeadsDashboard() {
   const [environment, setEnvironment] = useState<string>('production');
   const [isDevelopment, setIsDevelopment] = useState(false);
 
-  // Detect development mode and load preferences after hydration (avoids SSR mismatch)
+  // Detect development mode or admin impersonation and load preferences after hydration
   useEffect(() => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    setIsDevelopment(isLocalhost);
+    // Check if admin is impersonating (has impersonation cookie)
+    const isImpersonating = document.cookie.includes('impersonating_user_id=');
+    const canViewTestData = isLocalhost || isImpersonating;
+    setIsDevelopment(canViewTestData);
 
     // Load saved filter preference
     const savedFilter = localStorage.getItem('leads-environment-filter');
     if (savedFilter) {
-      // Only allow test/all filter if in development
-      if ((savedFilter === 'test' || savedFilter === 'all') && !isLocalhost) {
+      // Only allow test/all filter if in development or impersonating
+      if ((savedFilter === 'test' || savedFilter === 'all') && !canViewTestData) {
         setEnvironment('production');
       } else {
         setEnvironment(savedFilter);
